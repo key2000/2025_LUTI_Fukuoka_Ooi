@@ -684,42 +684,6 @@ final_state$r_ij_H
 final_state$L_j_tilde
 L_j_hat
 
-#家賃の確認
-final_r_bar_i=final_state$r_bar_i
-final_r_ij_H=final_state$r_ij_H
-
-rent_df <- data.frame(
-  KEY_CODE = names(final_state$r_bar_i), 
-  market_rent = as.numeric(final_state$r_bar_i) # 数値化
-) %>%
-  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
-
-rent_map_data <- left_join(key_code_sf, rent_df, by = "KEY_CODE") 
-print(summary(rent_map_data$market_rent))
-
-# 家賃マップのプロット 
-rent_plot <- ggplot(rent_map_data) +
-  geom_sf(aes(fill = market_rent), 
-          color = "gray50",  # メッシュ境界線の色
-          linewidth = 0.1) +
-  scale_fill_viridis_c(
-    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
-    name = "平均付値地代\n(千円/m2)", # 単位に合わせて修正してください
-    direction = -1             # 色の反転（高い方を明るく/濃くするかはお好みで）
-  ) +
-  labs(
-    title = "モデル：平均付値地代 (r_bar_i) "
-  ) +
-  theme_void()
-
-print(rent_plot)
-
-# # 地代のヒストグラムを表示（分布の確認）
-# hist(final_state$r_bar_i, 
-#      main = "均衡市場地代の分布", 
-#      xlab = "地代 (円/m2)", 
-#      breaks = 50, 
-#      col = "lightblue")
 
 
 # 居住・従業地別 世帯数 (l_i_j) の確認
@@ -742,8 +706,7 @@ st_write(zone_population,
          layer = layer_name,
          driver = "ESRI Shapefile",
          delete_layer = TRUE)
-
-# データのプロット
+# プロット
 # きりの良い数字にするなら（例: 30000など）、手動で設定してもOKです
 max_pop_val <- 25000
 choropleth_map <- zone_population %>%
@@ -785,7 +748,6 @@ household<-left_join(key_code_sf,household,by="KEY_CODE") %>%
     household = tidyr::replace_na(household, 0)
   )
   
-
 dsn_folder <- "data/processed/実データ：メッシュごと世帯数"
 layer_name <- "household"
 st_write(household,
@@ -794,7 +756,7 @@ st_write(household,
          driver = "ESRI Shapefile",
          delete_layer = TRUE)
 
-# データのプロット
+#プロット
 choropleth_map_1<- household %>%
   ggplot() +
   geom_sf(aes(fill = household), 
@@ -834,3 +796,65 @@ st_write(key_code_sf_w,
          driver = "ESRI Shapefile",
          delete_layer = TRUE)
 #####
+
+#家賃の比較
+#家賃の確認
+final_r_bar_i=final_state$r_bar_i
+final_r_ij_H=final_state$r_ij_H
+
+rent_df <- data.frame(
+  KEY_CODE = names(final_state$r_bar_i), 
+  market_rent = as.numeric(final_state$r_bar_i) # 数値化
+) %>%
+  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
+
+rent_map_data <- left_join(key_code_sf, rent_df, by = "KEY_CODE") 
+print(summary(rent_map_data$market_rent))
+
+# 家賃マップのプロット 
+rent_plot <- ggplot(rent_map_data) +
+  geom_sf(aes(fill = market_rent), 
+          color = "gray50",  # メッシュ境界線の色
+          linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
+    name = "平均付値地代\n(千円/m2)", # 単位に合わせて修正してください
+    direction = -1             # 色の反転（高い方を明るく/濃くするかはお好みで）
+  ) +
+  labs(
+    title = "モデル：平均付値地代 (r_bar_i) "
+  ) +
+  theme_void()
+
+print(rent_plot)
+
+
+
+#アットホームデータの集計
+athome <- st_read("data/raw/athome_date") %>% 
+  st_transform(crs = target_crs)
+athome_mesh <- st_join(athome,key_code_sf, join=st_intersects)
+athome_crop <- athome_mesh %>% 
+  filter(!is.na(KEY_CODE))  #251224データ重たいからいったんここでdataに保存した方がいいかも
+
+athome_crop <- athome_crop %>% 
+  dplyr::select(recID,bldID,rent,room_ar,geometry) %>% 
+  mutate(rent_par_ar=rent/room_ar)
+#プロット
+rent_real_plot <- ggplot(athome_crop) +
+  geom_sf(aes(fill = rent_par_ar), 
+          color = "gray50",  # メッシュ境界線の色
+          linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
+    name = "平均家賃\n(千円/m2)", # 単位に合わせて修正してください
+    direction = -1             # 色の反転（高い方を明るく/濃くするかはお好みで）
+  ) +
+  labs(
+    title = "実データ：平均家賃 (r_bar_i) "
+  ) +
+  theme_void()
+
+print(rent__real_plot)
+
+
