@@ -435,7 +435,7 @@ omega_j <- emp_by_ind%>%
   ) %>%
   dplyr::select(KEY_CODE, omega_j)
 
-#従業世帯数　ボロノイ分割
+#従業世帯数　L_j_hat ボロノイ分割
 emp_sf<-left_join(key_code_sf,emp,by="KEY_CODE")
 center_mesh_sf<-emp_sf%>%
   dplyr::filter(KEY_CODE %in% work_zone)
@@ -505,7 +505,6 @@ alpha_z = 0.7  #  (α_z + α_a = 1 と仮定)
 p = 1          # 財価格  p=1 と仮定
 alpha_0 = (alpha_z^alpha_z) * (alpha_a^alpha_a) 
 
-theta_H = 1.0  
 # gamma_0 = 10.0
 gamma_0 = 1*10^-1
 # gamma_1 = 0.8  
@@ -553,8 +552,8 @@ rr_a=0.1 # agriculture land rent (000 yen/m2/month)
 theta_L=2
 phi=0.6 # building coverage ratio
 
-theta_H=0.1
-# theta_H=1
+theta_H=0.1 #260106 theta_H=0.1から0.2に調整
+
 
 
 #均衡状態計算
@@ -589,7 +588,7 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(
   FF=A_Fi_S/G_i
   # as.numeric(FF)
   
-  #eq.15
+  #eq.17
   A_fij_S=A_Fi_S*P_j_given_i
   
   #eq.9
@@ -600,14 +599,14 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(
   # r_bar_i_matrix[,"mc_50305475"]
   # a_fij_H[,"mc_50305475"]
   
-  #eq.16
+  #eq.18
   l_i_j=A_fij_S/pmax(a_fij_H, 1e-9) 
   l_i_j[is.nan(l_i_j)] <- 0
   l_i_j[which(a_fij_H==0)]=0
   
   # sum(l_i_j[,"mc_50305475"],na.rm=T)
   
-  #eq.17
+  #eq.19
   L_j_tilde=colSums(l_i_j,na.rm = TRUE)
   
   #
@@ -685,7 +684,7 @@ final_state$r_ij_H
 
 final_state$L_j_tilde
 L_j_hat
-
+final_state$a_fij_H
 
 
 # 居住・従業地別 世帯数 (l_i_j) の確認
@@ -709,8 +708,7 @@ st_write(zone_population,
          driver = "ESRI Shapefile",
          delete_layer = TRUE)
 # プロット
-# きりの良い数字にするなら（例: 30000など）、手動で設定してもOKです
-max_pop_val <- 25000
+max_pop_val <- 25000　# 手動で設定してもOKです
 choropleth_map <- zone_population %>%
   ggplot() +
   geom_sf(aes(fill = total_population), 
@@ -779,7 +777,6 @@ choropleth_map_1<- household %>%
   
   coord_sf(datum = NA) # datum = NA で緯度経度グリッドを非表示
 
-# プロットを表示
 print(choropleth_map_1)
 
 
@@ -800,7 +797,7 @@ st_write(key_code_sf_w,
 #####
 
 #家賃の比較
-#家賃の確認
+#モデル：家賃の確認
 final_r_bar_i=final_state$r_bar_i
 final_r_ij_H=final_state$r_ij_H
 
@@ -810,60 +807,62 @@ rent_df <- data.frame(
 ) %>%
   mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
 
-rent_map_data <- left_join(key_code_sf, rent_df, by = "KEY_CODE") 
+rent_map_data <- left_join(key_code_sf, rent_df, by = "KEY_CODE")
+rent_map_data <- rent_map_data %>% 
+  mutate(market_rent=market_rent*1000)
 print(summary(rent_map_data$market_rent))
-
-# 家賃マップのプロット 
+# プロット 
+max_rent_val <- 9000
 rent_plot <- ggplot(rent_map_data) +
   geom_sf(aes(fill = market_rent), 
           color = "gray50",  # メッシュ境界線の色
           linewidth = 0.1) +
   scale_fill_viridis_c(
     option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
-    name = "平均付値地代\n(千円/m2)", # 単位に合わせて修正してください
-    direction = -1             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    name = "平均付値地代\n(円/m2)", # 単位に合わせて修正してください
+    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    labels = scales::label_comma(),
+    limits = c(0, max_rent_val), # ★ここで範囲を固定！
   ) +
   labs(
     title = "モデル：平均付値地代 (r_bar_i) "
   ) +
   theme_void()
-
 print(rent_plot)
 
-
-
-
-#アットホームデータの集計
+#実データ：アットホームデータの集計
+if(F){
 athome <- st_read("data/raw/athome_date") %>% 
   st_transform(crs = target_crs)
 athome_mesh <- st_join(athome,key_code_sf, join=st_intersects)
 athome_crop <- athome_mesh %>% 
   filter(!is.na(KEY_CODE))  #251224データ重たいからいったんここでdataに保存した方がいいかも
 save(athome_crop,file="data/athome_crop.xdr")
+}
 load("data/athome_crop.xdr")
 
-athome_crop <- athome_crop %>% 
+athome_df <- athome_crop %>% 
   dplyr::select(rent,room_ar,KEY_CODE) %>% 
   mutate(rent_par_ar=rent/room_ar)
-athome_crop<-athome_crop %>% 
+athome_df<-athome_df %>% 
   st_drop_geometry() %>% 
   group_by(KEY_CODE) %>% 
   summarise(
     avg_rent=mean(rent_par_ar, na.rm=TRUE)
   ) 
-athome_crop<-key_code_sf %>% 
-  left_join(athome_crop, by="KEY_CODE")
-
-
+athome_df<-key_code_sf %>% 
+  left_join(athome_df, by="KEY_CODE")
 #プロット
-rent_real_plot <- ggplot(athome_crop) +
+rent_real_plot <- ggplot(athome_df) +
   geom_sf(aes(fill = avg_rent), 
           color = "gray50",  # メッシュ境界線の色
           linewidth = 0.1) +
   scale_fill_viridis_c(
     option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
-    name = "平均家賃\n(千円/m2)", # 単位に合わせて修正してください
-    direction = -1             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    name = "平均家賃\n(円/m2)", # 単位に合わせて修正してください
+    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    labels = scales::label_comma(),
+    limits = c(0, max_rent_val), # ★ここで範囲を固定！
   ) +
   labs(
     title = "実データ：平均家賃 (r_bar_i) "
@@ -873,3 +872,72 @@ rent_real_plot <- ggplot(athome_crop) +
 print(rent_real_plot)
 
 
+#床面積の比較
+#モデル：a_fij_H
+final_a_fij_H=final_state$a_fij_H
+a_fij_H_i <- rowSums(final_state$a_fij_H,na.rm=TRUE)
+a_fij_H_i<-tibble(
+  KEY_CODE=rownames(final_state$a_fij_H),
+  a_fi_H=a_fij_H_i/17
+)%>%
+  mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
+ar_map_data <- left_join(key_code_sf, a_fij_H_i , by = "KEY_CODE")
+#プロット
+ar_model_plot <- ggplot(ar_map_data) +
+  geom_sf(aes(fill = a_fi_H), 
+          color = "gray50",  # メッシュ境界線の色
+          linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
+    name = "平均床面積\n(m2)", # 単位に合わせて修正してください
+    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    labels = scales::label_comma(),
+    # limits = c(0, max_rent_val), # ★ここで範囲を固定！
+  ) +
+  labs(
+    title = "モデル：平均床面積 "
+  ) +
+  theme_void()
+
+print(ar_model_plot)
+
+#実データ：アットホームデータの面積
+athome_ar <- athome_crop %>% 
+  dplyr::select(KEY_CODE,room_ar) %>% 
+  st_drop_geometry() %>% 
+  group_by(KEY_CODE)%>% 
+  summarise(
+    avg_room_ar=mean(room_ar, na.rm=TRUE)
+  ) 
+athome_ar<-key_code_sf %>% 
+  left_join(athome_ar, by="KEY_CODE")
+#プロット
+ar_real_plot <- ggplot(athome_ar) +
+  geom_sf(aes(fill = avg_room_ar), 
+          color = "gray50",  # メッシュ境界線の色
+          linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
+    name = "平均床面積\n(m2)", # 単位に合わせて修正してください
+    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    labels = scales::label_comma(),
+    # limits = c(0, max_rent_val), # ★ここで範囲を固定！
+  ) +
+  labs(
+    title = "実データ：平均床面積 "
+  ) +
+  theme_void()
+
+print(ar_real_plot)
+
+
+
+
+
+
+
+
+
+
+#公共交通の所要時間
+load("data/railway_dist.xdr")
