@@ -244,11 +244,11 @@ rm(list=ls())
 gc();gc();
 
 # Install required packages
-#install.packages("sf")
-#install.packages("dplyr")
-#install.packages("raster")
-#install.packages("terra")
-#install.packages("rgdal")
+# install.packages("sf")
+# install.packages("dplyr")
+# install.packages("raster")
+# install.packages("terra")
+# install.packages("rgdal")
 # install.packages("nleqslv")
 library(tidyr)
 library(sf)
@@ -262,6 +262,8 @@ library(igraph)
 library(nleqslv)
 library(ggplot2)
 
+#メートル座標系、JGD2011 2011 福岡2系
+target_crs <- 6670
 
 if(F){
   # source("tntp.R")
@@ -830,19 +832,32 @@ print(rent_plot)
 
 
 
+
 #アットホームデータの集計
 athome <- st_read("data/raw/athome_date") %>% 
   st_transform(crs = target_crs)
 athome_mesh <- st_join(athome,key_code_sf, join=st_intersects)
 athome_crop <- athome_mesh %>% 
   filter(!is.na(KEY_CODE))  #251224データ重たいからいったんここでdataに保存した方がいいかも
+save(athome_crop,file="data/athome_crop.xdr")
+load("data/athome_crop.xdr")
 
 athome_crop <- athome_crop %>% 
-  dplyr::select(recID,bldID,rent,room_ar,geometry) %>% 
+  dplyr::select(rent,room_ar,KEY_CODE) %>% 
   mutate(rent_par_ar=rent/room_ar)
+athome_crop<-athome_crop %>% 
+  st_drop_geometry() %>% 
+  group_by(KEY_CODE) %>% 
+  summarise(
+    avg_rent=mean(rent_par_ar, na.rm=TRUE)
+  ) 
+athome_crop<-key_code_sf %>% 
+  left_join(athome_crop, by="KEY_CODE")
+
+
 #プロット
 rent_real_plot <- ggplot(athome_crop) +
-  geom_sf(aes(fill = rent_par_ar), 
+  geom_sf(aes(fill = avg_rent), 
           color = "gray50",  # メッシュ境界線の色
           linewidth = 0.1) +
   scale_fill_viridis_c(
@@ -855,6 +870,6 @@ rent_real_plot <- ggplot(athome_crop) +
   ) +
   theme_void()
 
-print(rent__real_plot)
+print(rent_real_plot)
 
 
