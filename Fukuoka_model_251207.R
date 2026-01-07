@@ -398,6 +398,7 @@ load("data/key_code_sf.xdr")
 
 load("data/work_zone.xdr")
 
+
 #従業地賃金omega_j
 csv.emp_by_ind<-"data/raw/経済センサス　1kmメッシュ　産業別従業者数/tblT001157S5030.csv"
 emp_by_ind <- read.csv(csv.emp_by_ind, fileEncoding = "CP932", stringsAsFactors = FALSE, na.strings = c("", "NA"))
@@ -615,7 +616,8 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(
     r_bar_i = r_bar_i,     
     l_i_j = l_i_j,       
     r_ij_H = r_ij_H,     
-    a_fij_H = a_fij_H    
+    a_fij_H = a_fij_H, 
+    rg_i = rg_i
   ))
 }
 
@@ -659,6 +661,9 @@ v_j_vec=exp(v_start)
 # View(v_start)
 gapf_vj(v_start)
 
+
+
+
 #均衡解の推定
 result_nleqslv <- nleqslv(
   x = v_start,
@@ -685,6 +690,42 @@ final_state$r_ij_H
 final_state$L_j_tilde
 L_j_hat
 final_state$a_fij_H
+
+# # 260107　しなくていい、必要ない
+# #農業地代の調整
+# v_equilibrium <- result_nleqslv$x %>% exp()
+# state_1 <- caluculate_model_state(v_equilibrium)
+# 
+# l_ij_1   <- state_1$l_i_j
+# a_fij_1  <- state_1$a_fij_H
+# rg_i_1   <- state_1$rg_i
+# 
+# avg_floor_i <- rowSums(a_fij_1 * l_ij_1, na.rm=TRUE) / rowSums(l_ij_1, na.rm=TRUE)
+# 
+# df_check <- data.frame(
+#   KEY_CODE = names(avg_floor_i),
+#   avg_floor = avg_floor_i,
+#   rg_i = rg_i_1,
+#   stringsAsFactors = FALSE
+# ) %>%
+#   filter(!is.na(avg_floor) & avg_floor > 0)
+# 
+# target_floor_size <- 300
+# target_bnd <- df_check %>%
+#   mutate(diff = abs(avg_floor - target_floor_size)) %>%
+#   arrange(diff) %>%
+#   slice(1)
+# 
+
+
+
+
+
+
+
+
+
+
 
 
 # 居住・従業地別 世帯数 (l_i_j) の確認
@@ -875,16 +916,16 @@ print(rent_real_plot)
 #床面積の比較
 #モデル：a_fij_H
 final_a_fij_H=final_state$a_fij_H
-a_fij_H_i <- rowSums(final_state$a_fij_H,na.rm=TRUE)
-a_fij_H_i<-tibble(
-  KEY_CODE=rownames(final_state$a_fij_H),
-  a_fi_H=a_fij_H_i/17
-)%>%
+avg_floor_i <- rowSums(final_a_fij_H * final_L_i_j, na.rm=TRUE) / rowSums(final_L_i_j, na.rm=TRUE)
+avg_floor_i <- tibble(
+  KEY_CODE=rownames(final_a_fij_H),
+  avg_floor_i=avg_floor_i
+) %>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
-ar_map_data <- left_join(key_code_sf, a_fij_H_i , by = "KEY_CODE")
+ar_map_data <- left_join(key_code_sf, avg_floor_i , by = "KEY_CODE")
 #プロット
 ar_model_plot <- ggplot(ar_map_data) +
-  geom_sf(aes(fill = a_fi_H), 
+  geom_sf(aes(fill = avg_floor_i), 
           color = "gray50",  # メッシュ境界線の色
           linewidth = 0.1) +
   scale_fill_viridis_c(
@@ -892,7 +933,7 @@ ar_model_plot <- ggplot(ar_map_data) +
     name = "平均床面積\n(m2)", # 単位に合わせて修正してください
     direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
     labels = scales::label_comma(),
-    # limits = c(0, max_rent_val), # ★ここで範囲を固定！
+    limits = c(0, 120), # ★ここで範囲を固定！
   ) +
   labs(
     title = "モデル：平均床面積 "
@@ -902,6 +943,7 @@ ar_model_plot <- ggplot(ar_map_data) +
 print(ar_model_plot)
 
 #実データ：アットホームデータの面積
+load("data/athome_crop.xdr")
 athome_ar <- athome_crop %>% 
   dplyr::select(KEY_CODE,room_ar) %>% 
   st_drop_geometry() %>% 
@@ -921,7 +963,7 @@ ar_real_plot <- ggplot(athome_ar) +
     name = "平均床面積\n(m2)", # 単位に合わせて修正してください
     direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
     labels = scales::label_comma(),
-    # limits = c(0, max_rent_val), # ★ここで範囲を固定！
+    limits = c(0, 120), # ★ここで範囲を固定！
   ) +
   labs(
     title = "実データ：平均床面積 "
