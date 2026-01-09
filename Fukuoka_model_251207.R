@@ -501,8 +501,8 @@ key_code_sf <- key_code_sf %>%
 
 
 #parameter
-alpha_a = 0.3  
-alpha_z = 0.7  #  (α_z + α_a = 1 と仮定)
+alpha_a = 0.15  #260108 0.3→0.15→0.5
+alpha_z = 0.85 #  (α_z + α_a = 1 と仮定)
 p = 1          # 財価格  p=1 と仮定
 alpha_0 = (alpha_z^alpha_z) * (alpha_a^alpha_a) 
 
@@ -531,7 +531,7 @@ colnames(omega_j_matrix)<-colnames(omega_j_t)
 
 # c_ij <- dists0*175 #時間費用掛け算
 # c_ij <- dists0*1600 #時間費用掛け算
-c_ij <- dists0*1.600 #時間費用掛け算：千円単位
+c_ij <- dists0*0.800 #時間費用掛け算：千円単位1.600から変更
 
 disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
 
@@ -553,7 +553,7 @@ rr_a=0.1 # agriculture land rent (000 yen/m2/month)
 theta_L=2
 phi=0.6 # building coverage ratio
 
-theta_H=0.1 #260106 theta_H=0.1から0.2に調整
+theta_H=0.7 #260106 theta_H=0.1から0.2に調整
 
 
 
@@ -650,12 +650,12 @@ gapf_vj<-function(v_j_vec2){ # v_j_vec2=v_start
 # rr0=0. # 000yen/sqm/month
 # v_j_mat0=alpha_0*disposable_income_ij/rr0^alpha_a
 # v_j_vec0=colMeans(v_j_mat0,na.rm = TRUE)
-v_j_vec0=rep(50,nz_work)
+v_j_vec0=rep(270,nz_work) #50→500→100→80→60
 v_start=log(v_j_vec0)
 v_j_vec2=v_start
 v_j_vec=exp(v_start)
 
-# v_start=rep(5*10^3,ncol(disposable_income_ij))
+# v_start=rep100
 # v_start=log(v_start)
 # names(v_start) = colnames(omega_j_matrix)
 # View(v_start)
@@ -741,13 +741,13 @@ zone_population<-tibble(
 
 zone_population<-left_join(key_code_sf,zone_population,by="KEY_CODE")
 
-dsn_folder <- "data/processed/final_zone_population"
-layer_name <- "final_zone_population"
-st_write(zone_population,
-         dsn = dsn_folder,
-         layer = layer_name,
-         driver = "ESRI Shapefile",
-         delete_layer = TRUE)
+# dsn_folder <- "data/processed/final_zone_population"
+# layer_name <- "final_zone_population"
+# st_write(zone_population,
+#          dsn = dsn_folder,
+#          layer = layer_name,
+#          driver = "ESRI Shapefile",
+#          delete_layer = TRUE)
 # プロット
 max_pop_val <- 25000　# 手動で設定してもOKです
 choropleth_map <- zone_population %>%
@@ -765,7 +765,7 @@ choropleth_map <- zone_population %>%
     labels = scales::label_comma()
   ) +
   labs(
-    title = "モデル：居住世帯数",
+    title = "モデル：居住世帯数 ",
     caption = "データソース: zone_population"
   ) +
   theme_minimal() +
@@ -853,7 +853,7 @@ rent_map_data <- rent_map_data %>%
   mutate(market_rent=market_rent*1000)
 print(summary(rent_map_data$market_rent))
 # プロット 
-max_rent_val <- 9000
+max_rent_val <- 10000
 rent_plot <- ggplot(rent_map_data) +
   geom_sf(aes(fill = market_rent), 
           color = "gray50",  # メッシュ境界線の色
@@ -863,7 +863,7 @@ rent_plot <- ggplot(rent_map_data) +
     name = "平均付値地代\n(円/m2)", # 単位に合わせて修正してください
     direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
     labels = scales::label_comma(),
-    limits = c(0, max_rent_val), # ★ここで範囲を固定！
+    limits = c(0, 10000), # ★ここで範囲を固定！
   ) +
   labs(
     title = "モデル：平均付値地代 (r_bar_i) "
@@ -963,7 +963,7 @@ ar_real_plot <- ggplot(athome_ar) +
     name = "平均床面積\n(m2)", # 単位に合わせて修正してください
     direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
     labels = scales::label_comma(),
-    limits = c(0, 120), # ★ここで範囲を固定！
+    limits = c(0, 300), # ★ここで範囲を固定！
   ) +
   labs(
     title = "実データ：平均床面積 "
@@ -978,8 +978,24 @@ print(ar_real_plot)
 
 
 
-
-
-
 #公共交通の所要時間
 load("data/railway_dist.xdr")
+
+
+
+
+#PT調査
+pt_zone <- st_read("data/raw/H29_Hokubukyusyu_Bzone")
+csv_path3 <- "data/raw/pt/t1266_1000002.csv"
+pt <- read.csv(csv_path3, fileEncoding = "CP932", stringsAsFactors = FALSE, na.strings = c("", "NA"))
+
+pt <- pt %>% 
+  dplyr::select(-c(都市圏pt, 代表交通手段)) %>% 
+  rename(
+    O=発ゾーン,
+    D=着ゾーン,
+    total_trip=トリップ数,
+    accuracy=データ精度_トリップ数
+  )
+
+
