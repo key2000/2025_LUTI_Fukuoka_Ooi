@@ -235,6 +235,11 @@ key_code_sf<-bnd_mesh_wL10_filterd%>%
   dplyr::select(KEY_CODE,geometry)
 save(key_code_sf,file="data/key_code_sf.xdr")
 
+plot(bnd_mesh_crop$geometry,col="gray")
+plot(UEA_Fukuoka$geometry,add=T,border="blue",col=NA,lwd=2)
+plot(key_code_sf$geometry,add=T,col="green" )
+save(bnd_mesh_crop,file="data/bnd_mesh_crop.xdr")
+save(UEA_Fukuoka,file="data/UEA_Fukuoka.xdr")
 #####
 
 
@@ -265,6 +270,7 @@ library(ggplot2)
 #メートル座標系、JGD2011 2011 福岡2系
 target_crs <- 6670
 
+#####
 if(F){
   # source("tntp.R")
   load("data/osm/link10.xdr") # link10
@@ -382,9 +388,9 @@ if(F){
   # # merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
   # dim(estM.df)
 }
-
-
 #####
+
+
 load("data/dists0.xdr") # dists0
 
 # 経済センサス従業員数1kmメッシュ
@@ -501,15 +507,15 @@ key_code_sf <- key_code_sf %>%
 
 
 #parameter
-alpha_a = 0.15  #260108 0.3→0.15→0.5
-alpha_z = 0.85 #  (α_z + α_a = 1 と仮定)
+alpha_a = 0.3  #260108 0.3→0.15→0.5
+alpha_z = 0.7 #  (α_z + α_a = 1 と仮定)
 p = 1          # 財価格  p=1 と仮定
 alpha_0 = (alpha_z^alpha_z) * (alpha_a^alpha_a) 
 
 # gamma_0 = 10.0
-gamma_0 = 1*10^-1
+gamma_0 = 0.2
 # gamma_1 = 0.8  
-gamma_1 = 0.5
+gamma_1 = 0.6
 
 #grobal variable
 nz_res <- nrow(dists0)
@@ -531,7 +537,7 @@ colnames(omega_j_matrix)<-colnames(omega_j_t)
 
 # c_ij <- dists0*175 #時間費用掛け算
 # c_ij <- dists0*1600 #時間費用掛け算
-c_ij <- dists0*0.800 #時間費用掛け算：千円単位1.600から変更
+c_ij <- dists0*1.600 #時間費用掛け算：千円単位1.600から変更
 
 disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
 
@@ -546,14 +552,14 @@ habd=bnd_mesh_with_landuse %>% mutate(area=st_area(.) %>% drop_units()) %>%
 habz=data.frame(zones=rownames(dists0) %>% gsub("mc_","",.)) %>% left_join(habd,by=c("zones"="KEY_CODE"))
 
 G0_i=habz$hab_a # habitable area, sqm
-phi_pub=0.5 # public space
+phi_pub=0.6 # public space
 
 # G_i = rep(150000, nz_res) # sqm: land
 rr_a=0.1 # agriculture land rent (000 yen/m2/month)
 theta_L=2
-phi=0.6 # building coverage ratio
+phi=0.5 # building coverage ratio
 
-theta_H=0.7 #260106 theta_H=0.1から0.2に調整
+theta_H=0.1 #260106 theta_H=0.1から0.2に調整
 
 
 
@@ -597,15 +603,10 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(
   # a_fij_H=alpha_a*disposable_income_ij/pmax(r_bar_i_matrix, 1e-9) # in case of disposable_income==0, population should be zero
   a_fij_H=alpha_a*disposable_income_ij/pmax(r_ij_H, 1e-9) # in case of disposable_income==0, population should be zero
   
-  # r_bar_i_matrix[,"mc_50305475"]
-  # a_fij_H[,"mc_50305475"]
-  
   #eq.18
   l_i_j=A_fij_S/pmax(a_fij_H, 1e-9) 
   l_i_j[is.nan(l_i_j)] <- 0
   l_i_j[which(a_fij_H==0)]=0
-  
-  # sum(l_i_j[,"mc_50305475"],na.rm=T)
   
   #eq.19
   L_j_tilde=colSums(l_i_j,na.rm = TRUE)
@@ -617,7 +618,8 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(
     l_i_j = l_i_j,       
     r_ij_H = r_ij_H,     
     a_fij_H = a_fij_H, 
-    rg_i = rg_i
+    rg_i = rg_i,
+    G_i = G_i
   ))
 }
 
@@ -630,35 +632,16 @@ gapf_vj<-function(v_j_vec2){ # v_j_vec2=v_start
   model_state=caluculate_model_state(v_j_vec)
   L_j_tilde=model_state$L_j_tilde
   
-  # gap_vector=(L_j_tilde-L_j_hat)/L_j_hat　#人口差が巨大だったから割合にした
-  gap_vector=(L_j_tilde-L_j_hat$L_j_hat) #%>% 
-    # as.numeric()
-    # gap_vector$L_j_hat
-  # length(L_j_tilde)
-  # length(L_j_hat)
+  gap_vector=(L_j_tilde-L_j_hat$L_j_hat) 
   return(gap_vector)
 }
 
 
-#初期値の設定(vを逆算)
-# assumed_r_mean=1500 #これちゃんと調べる！！
-# mean_dispossable_income_j=colMeans(disposable_income_ij,na.rm = TRUE)
-# v_start=alpha_0*mean_dispossable_income_j/(assumed_r_mean^alpha_a)
-# v_start = v_start * 20　# 初期値を意図的に大きくして、地代を下げ、供給過多を抑える
-
-# 初期効用の推計: 床地代は2000円/m2と仮定
-# rr0=0. # 000yen/sqm/month
-# v_j_mat0=alpha_0*disposable_income_ij/rr0^alpha_a
-# v_j_vec0=colMeans(v_j_mat0,na.rm = TRUE)
 v_j_vec0=rep(270,nz_work) #50→500→100→80→60
 v_start=log(v_j_vec0)
 v_j_vec2=v_start
 v_j_vec=exp(v_start)
 
-# v_start=rep100
-# v_start=log(v_start)
-# names(v_start) = colnames(omega_j_matrix)
-# View(v_start)
 gapf_vj(v_start)
 
 
@@ -690,44 +673,11 @@ final_state$r_ij_H
 final_state$L_j_tilde
 L_j_hat
 final_state$a_fij_H
-
-# # 260107　しなくていい、必要ない
-# #農業地代の調整
-# v_equilibrium <- result_nleqslv$x %>% exp()
-# state_1 <- caluculate_model_state(v_equilibrium)
-# 
-# l_ij_1   <- state_1$l_i_j
-# a_fij_1  <- state_1$a_fij_H
-# rg_i_1   <- state_1$rg_i
-# 
-# avg_floor_i <- rowSums(a_fij_1 * l_ij_1, na.rm=TRUE) / rowSums(l_ij_1, na.rm=TRUE)
-# 
-# df_check <- data.frame(
-#   KEY_CODE = names(avg_floor_i),
-#   avg_floor = avg_floor_i,
-#   rg_i = rg_i_1,
-#   stringsAsFactors = FALSE
-# ) %>%
-#   filter(!is.na(avg_floor) & avg_floor > 0)
-# 
-# target_floor_size <- 300
-# target_bnd <- df_check %>%
-#   mutate(diff = abs(avg_floor - target_floor_size)) %>%
-#   arrange(diff) %>%
-#   slice(1)
-# 
+final_rgi <- final_state$rg_i
 
 
 
-
-
-
-
-
-
-
-
-
+#####
 # 居住・従業地別 世帯数 (l_i_j) の確認
 final_L_i_j=final_state$l_i_j
 
@@ -822,21 +772,6 @@ print(choropleth_map_1)
 
 
 
-
-
-key_code_sf_w <- key_code_sf %>%
-  dplyr::mutate(
-    is_work_zone = ifelse(KEY_CODE %in% work_zone, 1, 0)
-  )
-dsn_folder <- "data/processed/key_code_sf_w"
-layer_name <- "key_code_sf_w"
-st_write(key_code_sf_w,
-         dsn = dsn_folder,
-         layer = layer_name,
-         driver = "ESRI Shapefile",
-         delete_layer = TRUE)
-#####
-
 #家賃の比較
 #モデル：家賃の確認
 final_r_bar_i=final_state$r_bar_i
@@ -863,7 +798,7 @@ rent_plot <- ggplot(rent_map_data) +
     name = "平均付値地代\n(円/m2)", # 単位に合わせて修正してください
     direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
     labels = scales::label_comma(),
-    limits = c(0, 10000), # ★ここで範囲を固定！
+    limits = c(0, 3200), # ★ここで範囲を固定！
   ) +
   labs(
     title = "モデル：平均付値地代 (r_bar_i) "
@@ -903,7 +838,7 @@ rent_real_plot <- ggplot(athome_df) +
     name = "平均家賃\n(円/m2)", # 単位に合わせて修正してください
     direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
     labels = scales::label_comma(),
-    limits = c(0, max_rent_val), # ★ここで範囲を固定！
+    limits = c(0, 3200), # ★ここで範囲を固定！
   ) +
   labs(
     title = "実データ：平均家賃 (r_bar_i) "
@@ -933,7 +868,7 @@ ar_model_plot <- ggplot(ar_map_data) +
     name = "平均床面積\n(m2)", # 単位に合わせて修正してください
     direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
     labels = scales::label_comma(),
-    limits = c(0, 120), # ★ここで範囲を固定！
+    limits = c(0, 200), # ★ここで範囲を固定！
   ) +
   labs(
     title = "モデル：平均床面積 "
@@ -963,7 +898,7 @@ ar_real_plot <- ggplot(athome_ar) +
     name = "平均床面積\n(m2)", # 単位に合わせて修正してください
     direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
     labels = scales::label_comma(),
-    limits = c(0, 300), # ★ここで範囲を固定！
+    limits = c(0, 200), # ★ここで範囲を固定！
   ) +
   labs(
     title = "実データ：平均床面積 "
@@ -973,7 +908,212 @@ ar_real_plot <- ggplot(athome_ar) +
 print(ar_real_plot)
 
 
+#宅地割合
+final_Gi <- final_state$G_i
+Gi_df <- data.frame(
+  KEY_CODE = names(final_state$G_i), 
+  habit_ar = as.numeric(final_state$G_i) # 数値化
+) %>%
+  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
 
+Gi_map_data <- left_join(key_code_sf, Gi_df, by = "KEY_CODE")
+Gi_map_data <- Gi_map_data %>% 
+  mutate(habit_ar=habit_ar/10000)
+#plot
+Gi_model_plot <- ggplot(Gi_map_data) +
+  geom_sf(aes(fill = habit_ar), 
+          color = "gray50",  # メッシュ境界線の色
+          linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
+    name = "宅地面積", # 単位に合わせて修正してください
+    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    labels = scales::label_comma(),
+    limits = c(0, 100), # ★ここで範囲を固定！
+  ) +
+  labs(
+    title = "モデル：宅地面積割合 "
+  ) +
+  theme_void()
+
+print(Gi_model_plot)
+
+#実データ
+load("data/bnd_mesh_with_landuse.xdr")
+
+habit_ar <- bnd_mesh_with_landuse %>% 
+  dplyr::select(KEY_CODE, "0700")%>% #建物用地
+  rename(build_site="0700") %>% 
+  dplyr::filter(KEY_CODE %in% remaining_res_ids)
+#plot
+Gi_real_plot <- ggplot(habit_ar) +
+  geom_sf(aes(fill = build_site), 
+          color = "gray50",  # メッシュ境界線の色
+          linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
+    name = "宅地面積", # 単位に合わせて修正してください
+    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    labels = scales::label_comma(),
+    limits = c(0, 100), # ★ここで範囲を固定！
+  ) +
+  labs(
+    title = "実データ：宅地面積割合（「建物用地」割合） "
+  ) +
+  theme_void()
+
+print(Gi_real_plot)
+
+#####
+
+
+
+#シナリオ分析
+scn0_v <- result_nleqslv$x  
+scn0_state <- caluculate_model_state(exp(scn0_v))
+
+scn0_rent <- scn0_state$r_bar_i       
+scn0_pop  <- rowSums(scn0_state$l_i_j, na.rm=TRUE) 
+scn0_welfare <- mean(exp(scn0_v))
+
+scn0_L_j_hat <- L_j_hat        
+scn0_omega_j <- disposable_income_ij
+
+target_zone_id <- "50303344" # 九大跡地ゾーンのKEY_CODE
+
+#Lj
+diff_Lj_target <- 50000#変える！
+scn0_Lj_target <-scn0_L_j_hat[target_zone_id, "L_j_hat"]
+scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
+
+total_L <- sum(scn0_L_j_hat$L_j_hat,na.rm = TRUE)
+reduction_ratio <- (total_L - scn0_Lj_target - diff_Lj_target)/(total_L-scn0_Lj_target)
+
+all_zones <- rownames(L_j_hat)
+other_zones <- setdiff(all_zones,target_zone_id)
+L_j_hat[other_zones,"L_j_hat"] <- round(scn0_L_j_hat[other_zones, "L_j_hat"]*reduction_ratio)
+L_j_hat[target_zone_id, "L_j_hat"] <- scn1_Lj_target
+
+scn1_L_j_hat <- L_j_hat
+scn1_total_L <- sum(L_j_hat,na.rm = TRUE)
+
+#omega_j
+target_col_idx <- which(colnames(omega_j_matrix) == target_zone_id)
+scn0_omega_j_matrix <- omega_j_matrix
+scn0_disposable_income_ij <- disposable_income_ij
+
+omega_j_matrix[, target_col_idx] <- omega_j_matrix[, target_col_idx]*1.1
+disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
+
+scn1_omega_j_matrix <- omega_j_matrix
+scn1_disposable_income_ij <- disposable_income_ij
+
+#nleqslv
+v_start=scn0_v
+v_j_vec2=v_start
+v_j_vec=exp(v_start)
+gapf_vj(v_start)
+
+scn1_nleqslv <- nleqslv(
+  x = v_start,  
+  fn = gapf_vj,
+  global = "dbldog",
+  control = list(ftol=1e-8, xtol=1e-8, maxit=200, allowSingular=TRUE)
+)
+
+scn1_v <- scn1_nleqslv$x
+gapf_vj(scn1_nleqslv$x)
+
+print(scn1_nleqslv$termcd) # 1なら成功
+print(scn1_nleqslv$x)      # 均衡効用
+
+v_equilibrium <- scn1_nleqslv$x %>% exp()
+scn1_state <- caluculate_model_state(v_equilibrium)
+
+#グローバル変数を元に戻す 
+L_j_hat <- scn0_L_j_hat
+disposable_income_ij <- scn0_disposable_income_ij
+
+#比較
+scn1_rent <- scn1_state$r_bar_i
+scn1_pop  <- rowSums(scn1_state$l_i_j, na.rm=TRUE)
+
+diff_rent <- scn1_rent - scn0_rent
+diff_pop  <- scn1_pop - scn0_pop
+
+#welfare
+scn0_welfare <- mean(exp(scn0_v)) #260116厚生の計算、調べる!
+scn1_welfare <- mean(exp(scn1_v))
+welfare_change_rate <- scn1_welfare / scn0_welfare
+print(paste("平均厚生の変化率:", round(welfare_change_rate, 4)))
+
+# co2 by dists
+scn0_total_dist <- sum(scn0_state$l_i_j * dists0, na.rm=TRUE)
+scn1_total_dist <- sum(scn1_state$l_i_j * dists0, na.rm=TRUE)
+
+print(paste("現況の総移動距離:", round(scn0_total_dist, 0), "人km"))
+print(paste("シナリオの総移動距離:", round(scn1_total_dist, 0), "人km"))
+print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
+
+co2_factor <- 0.13 # kg-CO2/人km (自動車の例。公共交通ならもっと低い)
+print(paste("CO2削減効果:", round((scn1_total_dist - scn0_total_dist) * co2_factor / 1000, 2), "t-CO2"))
+
+#co2 by ar
+scn0_total_ar <- sum(scn0_state$a_fij_H, na.rm = TRUE)
+scn1_total_ar <- sum(scn1_state$a_fij_H, na.rm = TRUE)
+
+
+
+
+#####
+
+#論文用プロット
+# 分析対象範囲プロットの作成
+library(ggplot2)
+library(ggspatial)
+load("data/bnd_mesh_crop.xdr")
+load("data/UEA_Fukuoka.xdr")
+key_code_sf_w <- key_code_sf %>%
+  dplyr::mutate(
+    is_work_zone = ifelse(KEY_CODE %in% work_zone, 1, 0)
+  )
+# dsn_folder <- "data/processed/key_code_sf_w"
+# layer_name <- "key_code_sf_w"
+# st_write(key_code_sf_w,
+#          dsn = dsn_folder,
+#          layer = layer_name,
+#          driver = "ESRI Shapefile",
+#          delete_layer = TRUE)
+ggplot() +
+  geom_sf(data = bnd_mesh_crop, aes(fill = "excluded"), color = "gray80") +
+  geom_sf(data = key_code_sf_w, aes(fill = as.character(is_work_zone)), color = "gray50",linewidth = 0.3) +
+  geom_sf(data = UEA_Fukuoka, fill = NA, aes(color = "boundary"), linewidth = 0.5) +
+  
+  scale_color_manual(
+    name = "境界",
+    values = c("boundary" = "blue"),
+    labels = c("boundary" = "福岡都市雇用圏")
+  ) +
+  scale_fill_manual(
+    name = "エリア区分", 
+    values = c("excluded" = "gray", "0" = "green", "1"="red"),
+    labels = c("excluded" = "対象外エリア","0"="分析対象：居住地ゾーン", "1"="分析対象：従業地ゾーン")
+  ) +
+  
+  
+  annotation_scale(location = "bl", width_hint = 0.3) + # bl: 左下 (bottom left)
+  annotation_north_arrow(
+    location = "tl", which_north = "true", # tl: 左上 (top left)
+    style = north_arrow_fancy_orienteering(), # デザインはお好みで
+    height = unit(1, "cm"), width = unit(1, "cm")
+  ) +
+  
+  theme_bw() +
+  theme(
+    axis.title = element_blank(), # 軸ラベル削除
+    axis.text = element_blank(),  # 軸メモリ削除
+    axis.ticks = element_blank()  # 目盛線削除
+  )
 
 
 
