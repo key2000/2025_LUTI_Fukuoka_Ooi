@@ -507,7 +507,7 @@ key_code_sf <- key_code_sf %>%
 
 
 #parameter
-alpha_a = 0.3  #260108 0.3→0.15→0.5
+alpha_a = 0.3  #
 alpha_z = 0.7 #  (α_z + α_a = 1 と仮定)
 p = 1          # 財価格  p=1 と仮定
 alpha_0 = (alpha_z^alpha_z) * (alpha_a^alpha_a) 
@@ -534,9 +534,6 @@ omega_j_matrix<-matrix(
 )
 colnames(omega_j_matrix)<-colnames(omega_j_t)
 
-
-# c_ij <- dists0*175 #時間費用掛け算
-# c_ij <- dists0*1600 #時間費用掛け算
 c_ij <- dists0*1.600 #時間費用掛け算：千円単位1.600から変更
 
 disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
@@ -611,7 +608,7 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(
   #eq.19
   L_j_tilde=colSums(l_i_j,na.rm = TRUE)
   
-  #
+  #return
   return(list(
     L_j_tilde = L_j_tilde, 
     r_bar_i = r_bar_i,     
@@ -622,7 +619,6 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(
     G_i = G_i
   ))
 }
-
 
 # 均衡条件のベクトルを返す
 gapf_vj<-function(v_j_vec2){ # v_j_vec2=v_start
@@ -636,15 +632,12 @@ gapf_vj<-function(v_j_vec2){ # v_j_vec2=v_start
   return(gap_vector)
 }
 
-
 v_j_vec0=rep(270,nz_work) #50→500→100→80→60
 v_start=log(v_j_vec0)
 v_j_vec2=v_start
 v_j_vec=exp(v_start)
 
 gapf_vj(v_start)
-
-
 
 
 #均衡解の推定
@@ -661,8 +654,6 @@ gapf_vj(result_nleqslv$x)
 print(result_nleqslv$termcd) # 1なら成功
 print(result_nleqslv$x)      # 均衡効用
 
-
-
 #最終状態カクニン
 v_equilibrium <- result_nleqslv$x %>% exp()
 final_state <- caluculate_model_state(v_equilibrium)
@@ -678,54 +669,16 @@ final_rgi <- final_state$rg_i
 
 
 #####
-# 居住・従業地別 世帯数 (l_i_j) の確認
-final_L_i_j=final_state$l_i_j
+## 居住・従業地別 世帯数 (l_i_j) 
 
-# 計算した：メッシュごと世帯数
+# モデル：メッシュごと世帯数
 zone_population <- rowSums(final_state$l_i_j,na.rm=TRUE)
 zone_population<-tibble(
   KEY_CODE=rownames(final_state$l_i_j),
-  total_population=zone_population
-)%>%
+  zone_population=zone_population
+  )%>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
-
 zone_population<-left_join(key_code_sf,zone_population,by="KEY_CODE")
-
-# dsn_folder <- "data/processed/final_zone_population"
-# layer_name <- "final_zone_population"
-# st_write(zone_population,
-#          dsn = dsn_folder,
-#          layer = layer_name,
-#          driver = "ESRI Shapefile",
-#          delete_layer = TRUE)
-# プロット
-max_pop_val <- 25000　# 手動で設定してもOKです
-choropleth_map <- zone_population %>%
-  ggplot() +
-  geom_sf(aes(fill = total_population), 
-          color = "gray50",  # メッシュ境界線の色
-          linewidth = 0.1 # メッシ
-          ) + # メッシュ境界線の太さ
-
-  scale_fill_viridis_c(
-    option = "magma", # 'viridis', 'plasma', 'cividis', 'magma' などから選択
-    name = "モデル：居住世帯数",
-    direction = -1,
-    limits = c(0, max_pop_val), # ★ここで範囲を固定！
-    labels = scales::label_comma()
-  ) +
-  labs(
-    title = "モデル：居住世帯数 ",
-    caption = "データソース: zone_population"
-  ) +
-  theme_minimal() +
-  coord_sf(datum = NA) # datum = NA で緯度経度グリッドを非表示
-print(choropleth_map)
-
-
-# # 人口上位5ゾーンを表示
-# print(head(sort(zone_population, decreasing = TRUE), 5))
-
 
 #実データ：メッシュごと世帯数
 csv.household<-"data/raw/国勢調査_人口及び世帯数_1kmメッシュ/tblT001100S5030.csv"
@@ -736,146 +689,85 @@ household<-read.csv(csv.household,fileEncoding = "CP932",stringsAsFactors=FALSE,
 household<-household[-1,]
 household<-left_join(key_code_sf,household,by="KEY_CODE") %>% 
   dplyr::mutate(
-    household = tidyr::replace_na(household, 0)
-  )
-  
-dsn_folder <- "data/processed/実データ：メッシュごと世帯数"
-layer_name <- "household"
-st_write(household,
-         dsn = dsn_folder,
-         layer = layer_name,
-         driver = "ESRI Shapefile",
-         delete_layer = TRUE)
+    household = tidyr::replace_na(household, 0))
 
-#プロット
-choropleth_map_1<- household %>%
+#居住プロット zone_population , household 
+lij_plot <- zone_population %>%
   ggplot() +
-  geom_sf(aes(fill = household), 
-          color = "gray50",  # メッシュ境界線の色
-          linewidth = 0.1) + # メッシュ境界線の太さ
+  geom_sf(aes(fill = zone_population), color = "gray50",　linewidth = 0.1 ) + 
   scale_fill_viridis_c(
-    option = "magma", # 'viridis', 'plasma', 'cividis', 'magma' などから選択
-    name = "実データ：居住世帯数",
+    option = "magma",         # 'viridis', 'plasma', 'cividis', 'magma' etc
+    name = "居住世帯数",
     direction = -1,
-    limits = c(0, max_pop_val), # ★実データと同じ範囲を指定！
+    limits = c(0, 25000), 
     labels = scales::label_comma()
   ) +
-  labs(
-    title = "実データ：居住世帯数",
-    caption = "データソース: household"
-  ) +
+  labs(title = "モデル：居住世帯数 ") +
   theme_minimal() +
-  
-  coord_sf(datum = NA) # datum = NA で緯度経度グリッドを非表示
-
-print(choropleth_map_1)
+  coord_sf(datum = NA) 
+print(lij_plot)
 
 
 
-#家賃の比較
-#モデル：家賃の確認
+##　家賃の比較
+#モデル：家賃
 final_r_bar_i=final_state$r_bar_i
 final_r_ij_H=final_state$r_ij_H
-
 rent_df <- data.frame(
   KEY_CODE = names(final_state$r_bar_i), 
-  market_rent = as.numeric(final_state$r_bar_i) # 数値化
-) %>%
+  market_rent = as.numeric(final_state$r_bar_i)
+  ) %>%
   mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
-
 rent_map_data <- left_join(key_code_sf, rent_df, by = "KEY_CODE")
 rent_map_data <- rent_map_data %>% 
   mutate(market_rent=market_rent*1000)
-print(summary(rent_map_data$market_rent))
-# プロット 
-max_rent_val <- 10000
-rent_plot <- ggplot(rent_map_data) +
-  geom_sf(aes(fill = market_rent), 
-          color = "gray50",  # メッシュ境界線の色
-          linewidth = 0.1) +
-  scale_fill_viridis_c(
-    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
-    name = "平均付値地代\n(円/m2)", # 単位に合わせて修正してください
-    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
-    labels = scales::label_comma(),
-    limits = c(0, 3200), # ★ここで範囲を固定！
-  ) +
-  labs(
-    title = "モデル：平均付値地代 (r_bar_i) "
-  ) +
-  theme_void()
-print(rent_plot)
 
-#実データ：アットホームデータの集計
+#実データ：家賃アットホームデータ
 if(F){
-athome <- st_read("data/raw/athome_date") %>% 
-  st_transform(crs = target_crs)
-athome_mesh <- st_join(athome,key_code_sf, join=st_intersects)
-athome_crop <- athome_mesh %>% 
-  filter(!is.na(KEY_CODE))  #251224データ重たいからいったんここでdataに保存した方がいいかも
-save(athome_crop,file="data/athome_crop.xdr")
+  athome <- st_read("data/raw/athome_date") %>% 
+    st_transform(crs = target_crs)
+  athome_mesh <- st_join(athome,key_code_sf, join=st_intersects)
+  athome_crop <- athome_mesh %>% 
+    filter(!is.na(KEY_CODE))
+  save(athome_crop,file="data/athome_crop.xdr")
 }
 load("data/athome_crop.xdr")
-
 athome_df <- athome_crop %>% 
   dplyr::select(rent,room_ar,KEY_CODE) %>% 
   mutate(rent_par_ar=rent/room_ar)
 athome_df<-athome_df %>% 
   st_drop_geometry() %>% 
   group_by(KEY_CODE) %>% 
-  summarise(
-    avg_rent=mean(rent_par_ar, na.rm=TRUE)
-  ) 
+  summarise(avg_rent=mean(rent_par_ar, na.rm=TRUE)) 
 athome_df<-key_code_sf %>% 
   left_join(athome_df, by="KEY_CODE")
-#プロット
-rent_real_plot <- ggplot(athome_df) +
-  geom_sf(aes(fill = avg_rent), 
-          color = "gray50",  # メッシュ境界線の色
-          linewidth = 0.1) +
+
+#家賃プロット　  
+rent_plot <- ggplot(rent_map_data) +
+  geom_sf(aes(fill = market_rent), color = "gray50",  linewidth = 0.1) +
   scale_fill_viridis_c(
-    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
-    name = "平均家賃\n(円/m2)", # 単位に合わせて修正してください
-    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    option = "plasma",      
+    name = "平均付値地代\n(円/m2)", 
+    direction = -1,             
     labels = scales::label_comma(),
-    limits = c(0, 3200), # ★ここで範囲を固定！
+    limits = c(0, 3200), 
   ) +
-  labs(
-    title = "実データ：平均家賃 (r_bar_i) "
-  ) +
+  labs(title = "モデル：平均付値地代") +
   theme_void()
+print(rent_plot)
 
-print(rent_real_plot)
 
 
-#床面積の比較
+##　床面積の比較
 #モデル：a_fij_H
 final_a_fij_H=final_state$a_fij_H
-avg_floor_i <- rowSums(final_a_fij_H * final_L_i_j, na.rm=TRUE) / rowSums(final_L_i_j, na.rm=TRUE)
+avg_floor_i <- rowSums(final_a_fij_H * final_state$l_i_j, na.rm=TRUE) / rowSums(final_state$l_i_j, na.rm=TRUE)
 avg_floor_i <- tibble(
   KEY_CODE=rownames(final_a_fij_H),
   avg_floor_i=avg_floor_i
-) %>%
+  ) %>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
 ar_map_data <- left_join(key_code_sf, avg_floor_i , by = "KEY_CODE")
-#プロット
-ar_model_plot <- ggplot(ar_map_data) +
-  geom_sf(aes(fill = avg_floor_i), 
-          color = "gray50",  # メッシュ境界線の色
-          linewidth = 0.1) +
-  scale_fill_viridis_c(
-    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
-    name = "平均床面積\n(m2)", # 単位に合わせて修正してください
-    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
-    labels = scales::label_comma(),
-    limits = c(0, 200), # ★ここで範囲を固定！
-  ) +
-  labs(
-    title = "モデル：平均床面積 "
-  ) +
-  theme_void()
-
-print(ar_model_plot)
 
 #実データ：アットホームデータの面積
 load("data/athome_crop.xdr")
@@ -883,92 +775,54 @@ athome_ar <- athome_crop %>%
   dplyr::select(KEY_CODE,room_ar) %>% 
   st_drop_geometry() %>% 
   group_by(KEY_CODE)%>% 
-  summarise(
-    avg_room_ar=mean(room_ar, na.rm=TRUE)
-  ) 
+  summarise(avg_room_ar=mean(room_ar, na.rm=TRUE)) 
 athome_ar<-key_code_sf %>% 
   left_join(athome_ar, by="KEY_CODE")
-#プロット
-ar_real_plot <- ggplot(athome_ar) +
-  geom_sf(aes(fill = avg_room_ar), 
-          color = "gray50",  # メッシュ境界線の色
-          linewidth = 0.1) +
+
+#床面積プロット　  
+ar_plot <- ggplot(ar_map_data) +
+  geom_sf(aes(fill = avg_floor_i), color = "gray50",  linewidth = 0.1) +
   scale_fill_viridis_c(
-    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
-    name = "平均床面積\n(m2)", # 単位に合わせて修正してください
-    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    option = "viridis",      
+    name = "平均床面積\n(m2)", 
+    direction = -1,             
     labels = scales::label_comma(),
-    limits = c(0, 200), # ★ここで範囲を固定！
+    limits = c(0, 200), 
   ) +
-  labs(
-    title = "実データ：平均床面積 "
-  ) +
+  labs(title = "モデル：平均床面積") +
   theme_void()
+print(ar_plot)
 
-print(ar_real_plot)
 
-
-#宅地割合
+## 宅地割合
 final_Gi <- final_state$G_i
 Gi_df <- data.frame(
   KEY_CODE = names(final_state$G_i), 
-  habit_ar = as.numeric(final_state$G_i) # 数値化
-) %>%
+  habit_ar = as.numeric(final_state$G_i) ) %>%
   mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
-
 Gi_map_data <- left_join(key_code_sf, Gi_df, by = "KEY_CODE")
 Gi_map_data <- Gi_map_data %>% 
   mutate(habit_ar=habit_ar/10000)
-#plot
-Gi_model_plot <- ggplot(Gi_map_data) +
-  geom_sf(aes(fill = habit_ar), 
-          color = "gray50",  # メッシュ境界線の色
-          linewidth = 0.1) +
+
+#宅地割合プロット　  
+Gi_plot <- ggplot(Gi_map_data) +
+  geom_sf(aes(fill = habit_ar), color = "gray50",  linewidth = 0.1) +
   scale_fill_viridis_c(
-    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
-    name = "宅地面積", # 単位に合わせて修正してください
-    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
+    option = "viridis",      
+    name = "宅地割合\n(m2)", 
+    direction = -1,             
     labels = scales::label_comma(),
-    limits = c(0, 100), # ★ここで範囲を固定！
+    limits = c(0, 3200), 
   ) +
-  labs(
-    title = "モデル：宅地面積割合 "
-  ) +
+  labs(title = "モデル：宅地割合") +
   theme_void()
-
-print(Gi_model_plot)
-
-#実データ
-load("data/bnd_mesh_with_landuse.xdr")
-
-habit_ar <- bnd_mesh_with_landuse %>% 
-  dplyr::select(KEY_CODE, "0700")%>% #建物用地
-  rename(build_site="0700") %>% 
-  dplyr::filter(KEY_CODE %in% remaining_res_ids)
-#plot
-Gi_real_plot <- ggplot(habit_ar) +
-  geom_sf(aes(fill = build_site), 
-          color = "gray50",  # メッシュ境界線の色
-          linewidth = 0.1) +
-  scale_fill_viridis_c(
-    option = "plasma",         # 家賃は "plasma" (青→赤→黄) が見やすいことが多いです
-    name = "宅地面積", # 単位に合わせて修正してください
-    direction = -1,             # 色の反転（高い方を明るく/濃くするかはお好みで）
-    labels = scales::label_comma(),
-    limits = c(0, 100), # ★ここで範囲を固定！
-  ) +
-  labs(
-    title = "実データ：宅地面積割合（「建物用地」割合） "
-  ) +
-  theme_void()
-
-print(Gi_real_plot)
+print(ar_plot)
 
 #####
 
 
 
-#シナリオ分析
+###　シナリオ分析
 scn0_v <- result_nleqslv$x  
 scn0_state <- caluculate_model_state(exp(scn0_v))
 
@@ -982,7 +836,7 @@ scn0_omega_j <- disposable_income_ij
 target_zone_id <- "50303344" # 九大跡地ゾーンのKEY_CODE
 
 #Lj
-diff_Lj_target <- 50000#変える！
+diff_Lj_target <- 15000#調べて変える！
 scn0_Lj_target <-scn0_L_j_hat[target_zone_id, "L_j_hat"]
 scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
 
@@ -1035,11 +889,105 @@ L_j_hat <- scn0_L_j_hat
 disposable_income_ij <- scn0_disposable_income_ij
 
 #比較
-scn1_rent <- scn1_state$r_bar_i
-scn1_pop  <- rowSums(scn1_state$l_i_j, na.rm=TRUE)
+scn0_v
+scn1_v
 
-diff_rent <- scn1_rent - scn0_rent
-diff_pop  <- scn1_pop - scn0_pop
+scn0_state
+scn1_state
+
+exp(scn0_v)
+exp(scn1_v)
+
+scn0_state$l_i_j
+scn1_state$l_i_j
+
+
+#比較　世帯数
+scn0_household <- zone_population %>% rename(scn0_household=zone_population)
+scn1_household <- rowSums(scn1_state$l_i_j,na.rm=TRUE)
+scn1_household<-tibble(
+  KEY_CODE=rownames(scn1_state$l_i_j),
+  scn1_household=scn1_household
+  )%>%
+  mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
+diff_household <- scn0_household %>% 
+  left_join(scn1_household,by="KEY_CODE") %>% 
+  mutate(diff_household=scn1_household-scn0_household) %>% 
+  dplyr::select(KEY_CODE,diff_household,geometry)
+scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
+
+#plot
+household_plot <- diff_household %>%
+  ggplot() +
+  geom_sf(aes(fill = diff_household), color = "gray50",　linewidth = 0.1 ) + 
+  scale_fill_viridis_c(
+    option = "magma",         # 'viridis', 'plasma', 'cividis', 'magma' etc
+    name = "居住世帯数",
+    direction = -1,
+    limits = c(-500, 60), 
+    labels = scales::label_comma()
+  ) +
+  labs(title = "モデル：居住世帯数 ") +
+  theme_minimal() +
+  coord_sf(datum = NA) 
+print(household_plot)
+
+#比較　家賃
+scn0_rent <- rent_map_data %>% rename(scn0_rent=market_rent)
+scn1_rent <- data.frame(
+  KEY_CODE = names(scn1_state$r_bar_i), 
+  scn1_rent = as.numeric(scn1_state$r_bar_i)
+  ) %>%
+  mutate(
+    KEY_CODE = gsub("^mc_", "", KEY_CODE),
+    scn1_rent=scn1_rent*1000)
+diff_rent <- scn0_rent %>% 
+  left_join(scn1_rent,by="KEY_CODE") %>% 
+  mutate(diff_rent=scn0_rent-scn1_rent) %>% 
+  dplyr::select(KEY_CODE,diff_rent,geometry)
+scn1_rent <- left_join(key_code_sf, scn1_rent, by = "KEY_CODE")
+#家賃プロット　  
+rent_plot <- ggplot(diff_rent) +
+  geom_sf(aes(fill = diff_rent), color = "gray50",  linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "plasma",      
+    name = "平均付値地代\n(円/m2)", 
+    direction = -1,             
+    labels = scales::label_comma(),
+    limits = c(-50, 20), 
+  ) +
+  labs(title = "モデル：平均付値地代") +
+  theme_void()
+print(rent_plot)
+
+
+#比較　床面積
+scn0_ar <- ar_map_data %>% rename(scn0_ar=avg_floor_i)
+scn1_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm=TRUE) / rowSums(scn1_state$l_i_j, na.rm=TRUE)
+scn1_ar <- tibble(
+  KEY_CODE=rownames(scn1_state$a_fij_H),
+  scn1_ar =scn1_ar
+  ) %>%
+  mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
+diff_ar <- scn0_ar %>% 
+  left_join(scn1_ar,by="KEY_CODE") %>% 
+  mutate(diff_ar=scn1_ar-scn0_ar) %>% 
+  dplyr::select(KEY_CODE,diff_ar,geometry)
+scn1_ar <- left_join(key_code_sf, scn1_ar , by = "KEY_CODE")
+#床面積プロット　  
+ar_plot <- ggplot(diff_ar) +
+  geom_sf(aes(fill = diff_ar), color = "gray50",  linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "viridis",      
+    name = "平均床面積\n(m2)", 
+    direction = -1,             
+    labels = scales::label_comma(),
+    limits = c(-7.0, 2.0), 
+  ) +
+  labs(title = "モデル：平均床面積") +
+  theme_void()
+print(ar_plot)
+
 
 #welfare
 scn0_welfare <- mean(exp(scn0_v)) #260116厚生の計算、調べる!
@@ -1055,12 +1003,23 @@ print(paste("現況の総移動距離:", round(scn0_total_dist, 0), "人km"))
 print(paste("シナリオの総移動距離:", round(scn1_total_dist, 0), "人km"))
 print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
 
-co2_factor <- 0.13 # kg-CO2/人km (自動車の例。公共交通ならもっと低い)
-print(paste("CO2削減効果:", round((scn1_total_dist - scn0_total_dist) * co2_factor / 1000, 2), "t-CO2"))
-
 #co2 by ar
-scn0_total_ar <- sum(scn0_state$a_fij_H, na.rm = TRUE)
-scn1_total_ar <- sum(scn1_state$a_fij_H, na.rm = TRUE)
+scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn1_state$l_i_j, na.rm = TRUE)
+scn1_total_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm=TRUE) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
