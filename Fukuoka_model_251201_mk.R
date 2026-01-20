@@ -120,6 +120,8 @@ plot(st_geometry(UEA_Fukuoka),
      border = "blue", 
      lwd = 2)
 
+save(bnd_mesh_with_landuse,file="data/bnd_mesh_with_landuse.xdr")
+
 # over10のゾーン数をカウント
 mesh_over10_count <- sum(bnd_mesh_with_landuse$habit_category == "over10", na.rm = TRUE)
 print(paste0("over10のメッシュ数: ", mesh_over10_count))
@@ -230,6 +232,8 @@ st_write(bnd_mesh_wL10_filterd,
          delete_layer = TRUE)
 
 
+#####
+
 
 #####
 
@@ -253,77 +257,81 @@ library(cppRouting)
 library(igraph)
 library(nleqslv)
 
-# source("tntp.R")
-load("data/osm/link10.xdr") # link10
-load("data/osm/node10.xdr") # node10
 
-# st_write(link10,dsn="data/osm/link10.shp")
-# which(is.na(link10$maxspeed))
-
-# capacity, alpha, beta, free.flow.time
-
-# capacity: pcu/hour
-# https://www.nilim.go.jp/lab/bcg/siryou/tnn/tnn0317pdf/ks0317005.pdf
-cap.df=data.frame(hwy=unique(link10$highway) %>% sort(),
-                  cap=c(10^4,2500,1700,2500,1700,1500,1500,1250,1250,2500,1700))
-# 1500pcu/lane/hour
-# 日換算係数の考え方
-# https://www.nilim.go.jp/lab/bcg/siryou/tnn/tnn0317pdf/ks0317006.pdf
-KK=0.1
-# capacity pcu/day
-# cap.df$cap/KK
-
-# http://library.jsce.or.jp/jsce/open/00037/2002/695-0091.pdf
-# alpha=0.15;beta=4 #BPR
-# alpha=0.96;beta=1.2 # mizokami/matsui, 1989
-
-# https://bin.t.u-tokyo.ac.jp/kaken/pdf/traffic_assign%20tutrial%20for%20C.pdf
-# alpha=0.48;beta=2.82
-
-#https://www.jstage.jst.go.jp/article/thagis/17/2/17_203/_pdf
-alpha=0.48;beta=2.89 # yamada/matsui (1998)
-
-
-link10=link10 %>% mutate(FFtime=linklen/maxspeed*60/10^3) %>%  # fftime (minutes)
-  merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
-
-
-nodes=data.frame(node10$ID,st_coordinates(node10))
-names(nodes)=c("Node","X","Y")
-
-# E:/WorkDir01/prog/R/2024/2024_TAP/cppRouting01.R
-
-
-tI=grep("mc_",node10$ID)
-# tM=expand.grid(node10$ID[tI],node10$ID[tI])
-# # head(tM)
-# trips=data.frame(from=tM[,1],to=tM[,2],demand=5)
-# dim(trips)
-zones=node10$ID[tI]
-# city certers
-work_zone<-c(50303302,50303206,50303395,50303208,50302364,50302356,50303344,50303393,50302390,50302290,50302347,50302329,50305475,50305318,50304377,50302422,50301491,50302176)
-tI=which(node10$ID%in%paste0("mc_",work_zone))
-centers=node10$ID[tI]
-
-sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(), 
-                 directed = TRUE,
-                 # capacity = 10^4,
-                 capacity = link10$cap/KK,
-                 alpha = alpha,
-                 beta = beta,
-                 coords = nodes)
-
-
-# estimate OD travel time under user zero traffic : minutes
-system.time({ # 0.13 
-  dists0<-get_distance_matrix(sgr,
-                              from=zones,
-                              to=centers,
-                              algorithm = "mch") # because of the rectangular shape of the matrix
-})
-
-
-
+if(F){
+  # source("tntp.R")
+  load("data/osm/link10.xdr") # link10
+  load("data/osm/node10.xdr") # node10
+  
+  # st_write(link10,dsn="data/osm/link10.shp")
+  # which(is.na(link10$maxspeed))
+  
+  # capacity, alpha, beta, free.flow.time
+  
+  # capacity: pcu/hour
+  # https://www.nilim.go.jp/lab/bcg/siryou/tnn/tnn0317pdf/ks0317005.pdf
+  cap.df=data.frame(hwy=unique(link10$highway) %>% sort(),
+                    cap=c(10^4,2500,1700,2500,1700,1500,1500,1250,1250,2500,1700))
+  # 1500pcu/lane/hour
+  # 日換算係数の考え方
+  # https://www.nilim.go.jp/lab/bcg/siryou/tnn/tnn0317pdf/ks0317006.pdf
+  KK=0.1
+  # capacity pcu/day
+  # cap.df$cap/KK
+  
+  # http://library.jsce.or.jp/jsce/open/00037/2002/695-0091.pdf
+  # alpha=0.15;beta=4 #BPR
+  # alpha=0.96;beta=1.2 # mizokami/matsui, 1989
+  
+  # https://bin.t.u-tokyo.ac.jp/kaken/pdf/traffic_assign%20tutrial%20for%20C.pdf
+  # alpha=0.48;beta=2.82
+  
+  #https://www.jstage.jst.go.jp/article/thagis/17/2/17_203/_pdf
+  alpha=0.48;beta=2.89 # yamada/matsui (1998)
+  
+  
+  link10=link10 %>% mutate(FFtime=linklen/maxspeed*60/10^3) %>%  # fftime (minutes)
+    merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
+  
+  
+  nodes=data.frame(node10$ID,st_coordinates(node10))
+  names(nodes)=c("Node","X","Y")
+  
+  # E:/WorkDir01/prog/R/2024/2024_TAP/cppRouting01.R
+  
+  
+  tI=grep("mc_",node10$ID)
+  # tM=expand.grid(node10$ID[tI],node10$ID[tI])
+  # # head(tM)
+  # trips=data.frame(from=tM[,1],to=tM[,2],demand=5)
+  # dim(trips)
+  zones=node10$ID[tI]
+  # city certers
+  work_zone<-c(50303302,50303206,50303395,50303208,50302364,50302356,50303344,50303393,50302390,50302290,50302347,50302329,50305475,50305318,50304377,50302422,50301491,50302176)
+  tI=which(node10$ID%in%paste0("mc_",work_zone))
+  centers=node10$ID[tI]
+  
+  sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(), 
+                   directed = TRUE,
+                   # capacity = 10^4,
+                   capacity = link10$cap/KK,
+                   alpha = alpha,
+                   beta = beta,
+                   coords = nodes)
+  
+  
+  # estimate OD travel time under user zero traffic : minutes
+  system.time({ # 0.13 
+    dists0<-get_distance_matrix(sgr,
+                                from=zones,
+                                to=centers,
+                                algorithm = "mch") # because of the rectangular shape of the matrix
+  })
+  
+  save(dists0,file="data/dists0.xdr")
+  
+}
+load("data/dists0.xdr") # dists0
 
 ## codes for traffic assignment
 if(F){
@@ -372,6 +380,10 @@ if(F){
 # 経済センサス従業員数1kmメッシュ
 load("data/emp.xdr") # emp
 
+# 土地利用：可住地数
+load("data/bnd_mesh_with_landuse.xdr") # bnd_mesh_with_landuse
+# max(bnd_mesh_with_landuse$habit_sum)
+
 
 #従業地賃金omega_j
 csv.emp_by_ind<-"data/raw/経済センサス　1kmメッシュ　産業別従業者数/tblT001157S5030.csv"
@@ -396,7 +408,8 @@ A<-emp_by_ind%>%
 csv.wage_by_ind<-"data/raw/賃金構造基本統計調査　福岡　産業別/Fukuoka_avg_wage.csv"
 wage_by_ind<-read.csv(csv.wage_by_ind,stringsAsFactors=FALSE,na.strings=c("","NA"))#単位：千円
 wage_by_ind<-wage_by_ind%>%
-  mutate(avg_wage=avg_wage*1000)
+  # mutate(avg_wage=avg_wage*1000)
+  mutate(avg_wage=avg_wage) # 千円単位にする
 W<-pull(wage_by_ind,avg_wage)
 
 estimated_avg_wage <-(M%*%W)/A$all
@@ -416,8 +429,10 @@ p = 1          # 財価格  p=1 と仮定
 alpha_0 = (alpha_z^alpha_z) * (alpha_a^alpha_a) 
 
 theta_H = 1.0  
-gamma_0 = 10.0 
-gamma_1 = 0.8  
+# gamma_0 = 10.0
+gamma_0 = 1*10^-1
+# gamma_1 = 0.8  
+gamma_1 = 0.5
 
 #grobal variable
 nz_res <- nrow(dists0)
@@ -448,16 +463,35 @@ L_j_hat<-t(emp_j_data)
 # sum(L_j_hat)
 
 # c_ij <- dists0*175 #時間費用掛け算
-c_ij <- dists0*1600 #時間費用掛け算
+# c_ij <- dists0*1600 #時間費用掛け算
+c_ij <- dists0*1.600 #時間費用掛け算：千円単位
 
 disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
 
-k_i = rep(1.0, nz_res)
-G_i = rep(150000, nz_res)
+k_i = rep(0.1, nz_res)
+
+# habitable area
+library(units)
+habd=bnd_mesh_with_landuse %>% mutate(area=st_area(.) %>% drop_units()) %>% 
+  dplyr::select(KEY_CODE,habit_sum,area) %>% mutate(hab_a=area*habit_sum/100) %>% 
+  st_drop_geometry() %>% dplyr::select(KEY_CODE,hab_a)
+# typeof(habd$KEY_CODE)
+habz=data.frame(zones=rownames(dists0) %>% gsub("mc_","",.)) %>% left_join(habd,by=c("zones"="KEY_CODE"))
+
+G0_i=habz$hab_a # habitable area, sqm
+phi_pub=0.5 # public space
+
+# G_i = rep(150000, nz_res) # sqm: land
+rr_a=0.1 # agriculture land rent (000 yen/m2/month)
+theta_L=2
+phi=0.6 # building coverage ratio
+
+theta_H=0.1
+# theta_H=1
 
 
 #均衡状態計算
-caluculate_model_state<-function(v_j_vec){ # v_j_vec=v_start
+caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(v_start)
   v_j_matrix = matrix(v_j_vec, nrow = nz_res, ncol = nz_work, byrow = TRUE)
   
   #eq.11
@@ -465,32 +499,50 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=v_start
   r_ij_H[is.nan(r_ij_H)]<-0
   
   #eq.12
-  # exp_r=exp(theta_H*r_ij_H)
-  # sum_exp_r_per_i=rowSums(exp_r)
-  # P_j_given_i=exp_r/pmax(sum_exp_r_per_i, 1e-9)#0割防止
-  # 
-  r_ij_H_powered=r_ij_H^theta_H
-  sum_r_powered_per_i=rowSums(r_ij_H_powered,na.rm=TRUE)
-  P_j_given_i=r_ij_H_powered/pmax(sum_r_powered_per_i,1e-9)
+  exp_r=exp(theta_H*r_ij_H)
+  exp_r[which(r_ij_H==0)]=0 # disposable_income_ij=0の時，立地確率を強制的にゼロにする．
+  sum_exp_r_per_i=rowSums(exp_r,na.rm=T) # na.rm=T added @251204
+  P_j_given_i=exp_r/pmax(sum_exp_r_per_i, 1e-9)#0割防止
+  # rowSums(P_j_given_i,na.rm=T)
+  
+  # r_ij_H_powered=r_ij_H^theta_H
+  # sum_r_powered_per_i=rowSums(r_ij_H_powered,na.rm=TRUE)
+  # P_j_given_i=r_ij_H_powered/pmax(sum_r_powered_per_i,1e-9)
   
   #eq.13
   r_bar_i=rowSums(r_ij_H*P_j_given_i,na.rm=TRUE)
+  # as.numeric(r_bar_i)
+  # eq.15(new)
+  power_gamma=gamma_1/(1-gamma_1)
+  rg_i=phi*(1-gamma_1)*(r_bar_i*gamma_0)^(1/(1-gamma_1))*(gamma_1/k_i)^power_gamma
+  # as.numeric(rg_i)
+  G_i=G0_i*exp(theta_L*(rg_i-rr_a))/(1+exp(theta_L*(rg_i-rr_a)))*phi_pub*phi
   
   #eq.14
-  power_gamma=gamma_1/(1-gamma_1)
+  # power_gamma=gamma_1/(1-gamma_1)
   A_Fi_S=gamma_0*((r_bar_i*gamma_0*gamma_1)/k_i)^power_gamma*G_i
   A_Fi_S[is.nan(A_Fi_S)]<-0
+  # building height
+  FF=A_Fi_S/G_i
+  # as.numeric(FF)
   
   #eq.15
   A_fij_S=A_Fi_S*P_j_given_i
   
   #eq.9
   r_bar_i_matrix=matrix(r_bar_i,nrow=nz_res,ncol=nz_work)
-  a_fij_H=alpha_a*disposable_income_ij/pmax(r_bar_i_matrix, 1e-9)
+  # a_fij_H=alpha_a*disposable_income_ij/pmax(r_bar_i_matrix, 1e-9) # in case of disposable_income==0, population should be zero
+  a_fij_H=alpha_a*disposable_income_ij/pmax(r_ij_H, 1e-9) # in case of disposable_income==0, population should be zero
+  
+  # r_bar_i_matrix[,"mc_50305475"]
+  # a_fij_H[,"mc_50305475"]
   
   #eq.16
   l_i_j=A_fij_S/pmax(a_fij_H, 1e-9) 
   l_i_j[is.nan(l_i_j)] <- 0
+  l_i_j[which(a_fij_H==0)]=0
+  
+  # sum(l_i_j[,"mc_50305475"],na.rm=T)
   
   #eq.17
   L_j_tilde=colSums(l_i_j,na.rm = TRUE)
@@ -507,25 +559,41 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=v_start
 
 
 # 均衡条件のベクトルを返す
-gapf_vj<-function(v_j_vec){
-  v_j_vec=abs(v_j_vec)
+gapf_vj<-function(v_j_vec2){ # v_j_vec2=v_start
+  # v_j_vec=abs(v_j_vec) # これはおかしいkii@251203: 正であることを保証するなら，v_j_vec2=exp(v_j_vec)などとすべき
+  v_j_vec=exp(v_j_vec2)
   
   model_state=caluculate_model_state(v_j_vec)
   L_j_tilde=model_state$L_j_tilde
   
-  gap_vector=(L_j_tilde-L_j_hat)/L_j_hat　#人口差が巨大だったから割合にした
-  
+  # gap_vector=(L_j_tilde-L_j_hat)/L_j_hat　#人口差が巨大だったから割合にした
+  gap_vector=(L_j_tilde-L_j_hat)
+  # length(L_j_tilde)
+  # length(L_j_hat)
   return(gap_vector)
 }
 
 
 #初期値の設定(vを逆算)
-assumed_r_mean=1500 #これちゃんと調べる！！
-mean_dispossable_income_j=colMeans(disposable_income_ij,na.rm = TRUE)
-v_start=alpha_0*mean_dispossable_income_j/(assumed_r_mean^alpha_a)
-v_start = v_start * 10　# 初期値を意図的に大きくして、地代を下げ、供給過多を抑える
-names(v_start) = colnames(omega_j_matrix)
+# assumed_r_mean=1500 #これちゃんと調べる！！
+# mean_dispossable_income_j=colMeans(disposable_income_ij,na.rm = TRUE)
+# v_start=alpha_0*mean_dispossable_income_j/(assumed_r_mean^alpha_a)
+# v_start = v_start * 20　# 初期値を意図的に大きくして、地代を下げ、供給過多を抑える
+
+# 初期効用の推計: 床地代は2000円/m2と仮定
+# rr0=0. # 000yen/sqm/month
+# v_j_mat0=alpha_0*disposable_income_ij/rr0^alpha_a
+# v_j_vec0=colMeans(v_j_mat0,na.rm = TRUE)
+v_j_vec0=rep(150,nz_work)
+v_start=log(v_j_vec0)
+v_j_vec2=v_start
+v_j_vec=exp(v_start)
+
+# v_start=rep(5*10^3,ncol(disposable_income_ij))
+# v_start=log(v_start)
+# names(v_start) = colnames(omega_j_matrix)
 # View(v_start)
+gapf_vj(v_start)
 
 #均衡解の推定
 result_nleqslv <- nleqslv(
@@ -535,17 +603,25 @@ result_nleqslv <- nleqslv(
   control = list(ftol=1e-8, xtol=1e-8, maxit=200)
 )
 
+result_nleqslv$x
+gapf_vj(result_nleqslv$x)
+
 print(result_nleqslv$termcd) # 1なら成功
 print(result_nleqslv$x)      # 均衡効用
 
 
 
 #最終状態カクニン
-v_equilibrium <- result_nleqslv$x
+v_equilibrium <- result_nleqslv$x %>% exp()
 final_state <- caluculate_model_state(v_equilibrium)
 
 final_state$r_bar_i
 final_state$r_ij_H
+
+final_state$L_j_tilde
+L_j_hat
+
+
 
 # # 地代のヒストグラムを表示（分布の確認）
 # hist(final_state$r_bar_i, 
@@ -603,5 +679,6 @@ st_write(household,
          delete_layer = TRUE)
 
 
+#####
 
 

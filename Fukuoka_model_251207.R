@@ -402,7 +402,7 @@ load("data/bnd_mesh_with_landuse.xdr") # bnd_mesh_with_landuse
 
 load("data/key_code_sf.xdr")
 
-load("data/work_zone.xdr")
+load("data/work_zone.xdr") # work_zone
 
 
 #従業地賃金omega_j
@@ -534,7 +534,7 @@ omega_j_matrix<-matrix(
 )
 colnames(omega_j_matrix)<-colnames(omega_j_t)
 
-c_ij <- dists0*1.600 #時間費用掛け算：千円単位1.600から変更
+c_ij <- dists0*1.600 #時間費用掛け算：千円単位1.600から変更：：distは分単位の所要時間．月の時間費用（千円/月）であってますか？
 
 disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
 
@@ -557,7 +557,6 @@ theta_L=2
 phi=0.5 # building coverage ratio
 
 theta_H=0.1 #260106 theta_H=0.1から0.2に調整
-
 
 
 #均衡状態計算
@@ -623,7 +622,7 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(
 # 均衡条件のベクトルを返す
 gapf_vj<-function(v_j_vec2){ # v_j_vec2=v_start
   # v_j_vec=abs(v_j_vec) # これはおかしいkii@251203: 正であることを保証するなら，v_j_vec2=exp(v_j_vec)などとすべき
-  v_j_vec=exp(v_j_vec2)
+  v_j_vec=exp(v_j_vec2) # 消費モデルの効用水準
   
   model_state=caluculate_model_state(v_j_vec)
   L_j_tilde=model_state$L_j_tilde
@@ -672,13 +671,19 @@ final_rgi <- final_state$rg_i
 ## 居住・従業地別 世帯数 (l_i_j) 
 
 # モデル：メッシュごと世帯数
-zone_population <- rowSums(final_state$l_i_j,na.rm=TRUE)
+# rm("zone_population")
+zone_population=rowSums(final_state$l_i_j,na.rm=TRUE)
 zone_population<-tibble(
   KEY_CODE=rownames(final_state$l_i_j),
   zone_population=zone_population
   )%>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
-zone_population<-left_join(key_code_sf,zone_population,by="KEY_CODE")
+# zone_population<-data.frame(
+#   KEY_CODE=rownames(final_state$l_i_j),
+#   zone_population=zone_population
+# )%>%
+#   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
+# zone_population<-left_join(key_code_sf,zone_population,by="KEY_CODE")
 
 #実データ：メッシュごと世帯数
 csv.household<-"data/raw/国勢調査_人口及び世帯数_1kmメッシュ/tblT001100S5030.csv"
@@ -687,12 +692,22 @@ household<-read.csv(csv.household,fileEncoding = "CP932",stringsAsFactors=FALSE,
   dplyr::rename(household="T001100035")%>%
   dplyr::mutate(KEY_CODE=as.character(KEY_CODE),household=as.numeric(household))
 household<-household[-1,]
-household<-left_join(key_code_sf,household,by="KEY_CODE") %>% 
+# household<-left_join(key_code_sf,household,by="KEY_CODE") %>% 
+#   dplyr::mutate(
+#     household = tidyr::replace_na(household, 0))
+
+zone_pop_sf=left_join(key_code_sf,zone_population,by="KEY_CODE") %>% 
+  left_join(household,by="KEY_CODE") %>% 
   dplyr::mutate(
     household = tidyr::replace_na(household, 0))
 
+plot(zone_pop_sf$household,zone_pop_sf$zone_population)
+abline(0,1,col="red")
+sum(zone_pop_sf$household)
+sum(zone_pop_sf$zone_population)
+
 #居住プロット zone_population , household 
-lij_plot <- zone_population %>%
+lij_plot <- zone_pop_sf %>%
   ggplot() +
   geom_sf(aes(fill = zone_population), color = "gray50",　linewidth = 0.1 ) + 
   scale_fill_viridis_c(
@@ -793,6 +808,8 @@ ar_plot <- ggplot(ar_map_data) +
   theme_void()
 print(ar_plot)
 
+# ar_map_data$avg_floor_i %>% hist()
+
 
 ## 宅地割合
 final_Gi <- final_state$G_i
@@ -804,6 +821,8 @@ Gi_map_data <- left_join(key_code_sf, Gi_df, by = "KEY_CODE")
 Gi_map_data <- Gi_map_data %>% 
   mutate(habit_ar=habit_ar/10000)
 
+hist(Gi_map_data$habit_ar)
+
 #宅地割合プロット　  
 Gi_plot <- ggplot(Gi_map_data) +
   geom_sf(aes(fill = habit_ar), color = "gray50",  linewidth = 0.1) +
@@ -812,11 +831,11 @@ Gi_plot <- ggplot(Gi_map_data) +
     name = "宅地割合\n(m2)", 
     direction = -1,             
     labels = scales::label_comma(),
-    limits = c(0, 3200), 
+    limits = c(0, 30), 
   ) +
   labs(title = "モデル：宅地割合") +
   theme_void()
-print(ar_plot)
+print(Gi_plot)
 
 #####
 
@@ -826,11 +845,12 @@ print(ar_plot)
 scn0_v <- result_nleqslv$x  
 scn0_state <- caluculate_model_state(exp(scn0_v))
 
+names(scn0_state)
 scn0_rent <- scn0_state$r_bar_i       
 scn0_pop  <- rowSums(scn0_state$l_i_j, na.rm=TRUE) 
 scn0_welfare <- mean(exp(scn0_v))
 
-scn0_L_j_hat <- L_j_hat        
+scn0_L_j_hat <- L_j_hat # 従業者数        
 scn0_omega_j <- disposable_income_ij
 
 target_zone_id <- "50303344" # 九大跡地ゾーンのKEY_CODE
@@ -849,18 +869,23 @@ L_j_hat[other_zones,"L_j_hat"] <- round(scn0_L_j_hat[other_zones, "L_j_hat"]*red
 L_j_hat[target_zone_id, "L_j_hat"] <- scn1_Lj_target
 
 scn1_L_j_hat <- L_j_hat
-scn1_total_L <- sum(L_j_hat,na.rm = TRUE)
+scn1_total_L <- sum(L_j_hat,na.rm = TRUE) # OK
 
 #omega_j
 target_col_idx <- which(colnames(omega_j_matrix) == target_zone_id)
 scn0_omega_j_matrix <- omega_j_matrix
 scn0_disposable_income_ij <- disposable_income_ij
 
-omega_j_matrix[, target_col_idx] <- omega_j_matrix[, target_col_idx]*1.1
-disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
+omega_j_matrix[, target_col_idx] <- omega_j_matrix[, target_col_idx]*1.1 # 所得増加？
+disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0) # さらに交通費用を引いている？ベースシナリオから変更する必要はある？
 
 scn1_omega_j_matrix <- omega_j_matrix
 scn1_disposable_income_ij <- disposable_income_ij
+
+# 総所得
+sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat) # base scenario
+sum(omega_j$omega_j*scn1_L_j_hat$L_j_hat)  # scenario 1 
+# scenario1の方が総所得が低くなっている．
 
 #nleqslv
 v_start=scn0_v
@@ -903,7 +928,8 @@ scn1_state$l_i_j
 
 
 #比較　世帯数
-scn0_household <- zone_population %>% rename(scn0_household=zone_population)
+# scn0_household <- zone_population %>% rename(scn0_household=zone_population)
+scn0_household <- zone_pop_sf %>% rename(scn0_household=zone_population)
 scn1_household <- rowSums(scn1_state$l_i_j,na.rm=TRUE)
 scn1_household<-tibble(
   KEY_CODE=rownames(scn1_state$l_i_j),
@@ -916,6 +942,8 @@ diff_household <- scn0_household %>%
   dplyr::select(KEY_CODE,diff_household,geometry)
 scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
 
+# diff_household$diff_household %>% hist()
+
 #plot
 household_plot <- diff_household %>%
   ggplot() +
@@ -924,7 +952,7 @@ household_plot <- diff_household %>%
     option = "magma",         # 'viridis', 'plasma', 'cividis', 'magma' etc
     name = "居住世帯数",
     direction = -1,
-    limits = c(-500, 60), 
+    limits = c(-500, 300), 
     labels = scales::label_comma()
   ) +
   labs(title = "モデル：居住世帯数 ") +
@@ -988,6 +1016,8 @@ ar_plot <- ggplot(diff_ar) +
   theme_void()
 print(ar_plot)
 
+sum(scn1_ar$scn1_ar)-sum(scn0_ar$scn0_ar) # 床面積は増加
+
 
 #welfare
 scn0_welfare <- mean(exp(scn0_v)) #260116厚生の計算、調べる!
@@ -995,9 +1025,38 @@ scn1_welfare <- mean(exp(scn1_v))
 welfare_change_rate <- scn1_welfare / scn0_welfare
 print(paste("平均厚生の変化率:", round(welfare_change_rate, 4)))
 
+# calculated indirect utility
+vij.sc0=alpha_0*disposable_income_ij/scn0_state$r_ij_H^alpha_a
+vj.sc0=vij.sc0[1,] %>% as.vector()
+
+vij.sc1=alpha_0*disposable_income_ij/scn1_state$r_ij_H^alpha_a
+vj.sc1=vij.sc1[1,] %>% as.vector()
+
+EV=(vj.sc1-vj.sc0)/alpha_0*scn0_state$r_ij_H^alpha_a
+
+scn0_household
+scn1_household
+
+# 台形公式
+Benefit.0=(scn0_household$scn0_household+scn1_household$scn1_household)/2*EV
+Benefit.1=apply(Benefit.0,2,sum)
+Benefit.2=sum(Benefit.1) # 千円/月？
+# aa=c(1,2)
+# bb=matrix(1:4,2,2)
+# aa*bb
+
 # co2 by dists
-scn0_total_dist <- sum(scn0_state$l_i_j * dists0, na.rm=TRUE)
+scn0_total_dist <- sum(scn0_state$l_i_j * dists0, na.rm=TRUE) # dists0は片道の所要時間?(分）往復？
 scn1_total_dist <- sum(scn1_state$l_i_j * dists0, na.rm=TRUE)
+
+# 時速を仮定して走行距離を推定：今後は交通モデルと連動
+dist.km=dists0*40/60
+scn0_total_dist <- sum(scn0_state$l_i_j * dist.km, na.rm=TRUE) # dists0は片道の所要時間?(分）往復？
+scn1_total_dist <- sum(scn1_state$l_i_j * dist.km, na.rm=TRUE)
+scn1_total_dist-scn0_total_dist # km/日？
+# 120gCO2/kmと仮定
+eCO2=120
+dCO2=eCO2*(scn1_total_dist-scn0_total_dist)/10^6 #(tCO2/day)：CO2排出は減少
 
 print(paste("現況の総移動距離:", round(scn0_total_dist, 0), "人km"))
 print(paste("シナリオの総移動距離:", round(scn1_total_dist, 0), "人km"))
@@ -1006,20 +1065,24 @@ print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
 #co2 by ar
 scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn1_state$l_i_j, na.rm = TRUE)
 scn1_total_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm=TRUE) 
+sum(scn1_total_ar)-sum(scn0_total_ar) # 住宅面積は増加
 
 
 
+# 総所得
+sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat) # base scenario
+sum(omega_j$omega_j*scn1_L_j_hat$L_j_hat)  # scenario 1 
+# scenario1の方が総所得が低くなっている．
 
+# 地代収入
+GI0=scn0_state$rg_i*scn0_state$G_i+(G0_i-scn0_state$G_i)*rr_a
+GI1=scn1_state$rg_i*scn1_state$G_i+(G0_i-scn1_state$G_i)*rr_a
+sum(GI1)-sum(GI0) # 千円/月？　減少
 
+# 宅地面積変化
+sum(scn1_state$G_i-scn0_state$G_i)
 
-
-
-
-
-
-
-
-
+# 床面積
 
 
 
