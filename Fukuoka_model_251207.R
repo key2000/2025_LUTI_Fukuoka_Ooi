@@ -721,8 +721,8 @@ lij_plot_R <- zone_pop_sf %>%
   coord_sf(datum = NA) 
 print(lij_plot_R)
 
-lij_plot_M#model
-lij_plot_R#real
+# lij_plot_M#model
+# lij_plot_R#real
 
 ##　家賃の比較
 #モデル：家賃
@@ -773,8 +773,8 @@ rent_plot_M <- ggplot(rent_sf) +
   theme_void()
 print(rent_plot_M)
 
-rent_plot_M
-rent_plot_R
+# rent_plot_M
+# rent_plot_R
 
 ##　床面積の比較
 #モデル：a_fij_H
@@ -815,8 +815,8 @@ ar_plot_M <- ggplot(floor_sf) +
   theme_void()
 print(ar_plot_M)
 
-ar_plot_M
-ar_plot_R
+# ar_plot_M
+# ar_plot_R
 
 # ar_map_data$avg_floor_i %>% hist()
 
@@ -868,18 +868,44 @@ target_zone_id <- "50303344" # 九大跡地ゾーンのKEY_CODE
 #Lj
 diff_Lj_target <- 15000#調べて変える！
 scn0_Lj_target <-scn0_L_j_hat[target_zone_id, "L_j_hat"]
-scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
 
-total_L <- sum(scn0_L_j_hat$L_j_hat,na.rm = TRUE)
-reduction_ratio <- (total_L - scn0_Lj_target - diff_Lj_target)/(total_L-scn0_Lj_target)
+#scn1
+if(F){
+  scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
+  
+  total_L <- sum(scn0_L_j_hat$L_j_hat,na.rm = TRUE)
+  reduction_ratio <- (total_L - scn0_Lj_target - diff_Lj_target)/(total_L-scn0_Lj_target)
+  
+  all_zones <- rownames(scn0_L_j_hat)
+  other_zones <- setdiff(all_zones,target_zone_id)
+  L_j_hat[other_zones,"L_j_hat"] <- round(scn0_L_j_hat[other_zones, "L_j_hat"]*reduction_ratio)
+  L_j_hat[target_zone_id, "L_j_hat"] <- scn1_Lj_target
 
-all_zones <- rownames(L_j_hat)
-other_zones <- setdiff(all_zones,target_zone_id)
-L_j_hat[other_zones,"L_j_hat"] <- round(scn0_L_j_hat[other_zones, "L_j_hat"]*reduction_ratio)
-L_j_hat[target_zone_id, "L_j_hat"] <- scn1_Lj_target
+  scn1_L_j_hat <- L_j_hat
+  scn1_total_L <- sum(L_j_hat,na.rm = TRUE) # OK
+}
 
-scn1_L_j_hat <- L_j_hat
-scn1_total_L <- sum(L_j_hat,na.rm = TRUE) # OK
+#scn2 CBD距離と元の雇用者数
+if(T){
+  all_zones <- rownames(scn0_L_j_hat)
+  other_zones <- setdiff(all_zones,target_zone_id)
+  
+  scn2_Lj_target <- scn0_Lj_target + diff_Lj_target
+  cbd_code <- "50303302"
+  colnames(dists0) <- gsub("mc_","",colnames(dists0)) #dists0からmc_抜く、もっと前にやるべき
+  rownames(dists0) <- gsub("mc_","",rownames(dists0))
+  dist_from_cbd <- dists0[other_zones, cbd_code]
+  reduction_weight <- dist_from_cbd*1/(scn0_L_j_hat[other_zones,"L_j_hat"]+1)
+  reduction_amount<- diff_Lj_target*(reduction_weight/sum(reduction_weight))
+  
+  L_j_hat[other_zones,"L_j_hat"] <- round(scn0_L_j_hat[other_zones,"L_j_hat"]-reduction_amount)
+  L_j_hat[target_zone_id,"L_j_hat"] <- scn2_Lj_target
+  
+  scn2_Lj_target <- L_j_hat
+  scn2_total_L <- sum(L_j_hat,na.rm = TRUE)
+}
+
+
 
 #omega_j
 target_col_idx <- which(colnames(omega_j_matrix) == target_zone_id)
@@ -888,14 +914,14 @@ scn0_disposable_income_ij <- disposable_income_ij
 
  # 総所得
 sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat) # base scenario
-sum(omega_j$omega_j*scn1_L_j_hat$L_j_hat)  # scenario 1 
+sum(omega_j$omega_j*L_j_hat$L_j_hat)  # scenario 1 
 # scenario1の方が総所得が低くなっている．
 
-k01 <- sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat)/sum(omega_j$omega_j*scn1_L_j_hat$L_j_hat)
+k01 <- sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat)/sum(omega_j$omega_j*L_j_hat$L_j_hat)
 scn1_omega_j <- omega_j %>% 
   mutate(scn1_omega_j = omega_j*k01, KEY_CODE=KEY_CODE) %>% dplyr::select(KEY_CODE,scn1_omega_j)
 
-sum(scn1_omega_j$scn1_omega_j*scn1_L_j_hat$L_j_hat)# scenario 1
+sum(scn1_omega_j$scn1_omega_j*L_j_hat$L_j_hat)# scenario 1
 sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat) # base scenario 更新完了
 
   mesh_names <- as.character(scn1_omega_j$KEY_CODE)
@@ -1074,19 +1100,22 @@ print(paste("現況の総移動距離:", round(scn0_total_dist, 0), "人km"))
 print(paste("シナリオの総移動距離:", round(scn1_total_dist, 0), "人km"))
 print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
 
-#co2 by ar
+#total ar
 scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn1_state$l_i_j, na.rm = TRUE)
 scn1_total_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm=TRUE) 
 sum(scn1_total_ar) - sum(scn0_total_ar) # 住宅面積は増加
 
+#co2 by ar
+co20=(sum(scn0_total_ar)*296/3.6/4.17+(1193*1.99))*0.57/1000/365 #tCO2\day
+co21=(sum(scn1_total_ar)*296/3.6/4.17+(1193*1.99))*0.57/1000/365 #tCO2\day
 
 # 地代収入
 GI0=scn0_state$rg_i*scn0_state$G_i+(G0_i-scn0_state$G_i)*rr_a
 GI1=scn1_state$rg_i*scn1_state$G_i+(G0_i-scn1_state$G_i)*rr_a
-sum(GI1)-sum(GI0) # 千円/月？　減少
+sum(GI1)-sum(GI0) # 千円/月
 
 # 宅地面積変化
-sum(scn1_state$G_i-scn0_state$G_i)
+sum(scn1_state$G_i)-sum(scn0_state$G_i)
 
 # 床面積
 
