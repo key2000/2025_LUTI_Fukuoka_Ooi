@@ -426,10 +426,9 @@ A<-emp_by_ind%>%
   dplyr::select("all")
 
 csv.wage_by_ind<-"data/raw/賃金構造基本統計調査　福岡　産業別/Fukuoka_avg_wage.csv"
-wage_by_ind<-read.csv(csv.wage_by_ind,stringsAsFactors=FALSE,na.strings=c("","NA"))#単位：千円
+wage_by_ind<-read.csv(csv.wage_by_ind,stringsAsFactors=FALSE,na.strings=c("","NA"))#単位：千円/月
 wage_by_ind<-wage_by_ind%>%
-  # mutate(avg_wage=avg_wage*1000)
-  mutate(avg_wage=avg_wage) # 千円単位にする
+  mutate(avg_wage=avg_wage) # 千円単位
 W<-pull(wage_by_ind,avg_wage)
 
 estimated_avg_wage <-(M%*%W)/A$all
@@ -733,7 +732,7 @@ rent_df <- data.frame(
   KEY_CODE = names(final_state$r_bar_i), 
   market_rent = as.numeric(final_state$r_bar_i)
   ) %>%
-  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE),market_rent=market_rent*1000) #単位千円→円
+  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE),market_rent=market_rent*1000) #単位千円→円!!
 # rent_map_data <- left_join(key_code_sf, rent_df, by = "KEY_CODE")
 
 
@@ -760,7 +759,7 @@ athome_df<-athome_df %>%
 rent_sf <- left_join(key_code_sf,rent_df,by="KEY_CODE") %>% 
   left_join(athome_df,by="KEY_CODE")
 
-#家賃プロットrent_Plot rent_sf fill=market_rent, avg_rent
+#家賃プロットrent_Plot rent_sf fill=market_rent, avg_rent　#単位：円
 rent_plot_M <- ggplot(rent_sf) +
   geom_sf(aes(fill = market_rent), color = "gray50",  linewidth = 0.1) +
   scale_fill_viridis_c(
@@ -972,14 +971,14 @@ scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
 
 
 #比較　家賃
-scn0_rent <- rent_map_data %>% rename(scn0_rent=market_rent)
+scn0_rent <- rent_map_data %>% rename(scn0_rent=market_rent)#単位：円
 scn1_rent <- data.frame(
   KEY_CODE = names(scn1_state$r_bar_i), 
   scn1_rent = as.numeric(scn1_state$r_bar_i)
   ) %>%
   mutate(
     KEY_CODE = gsub("^mc_", "", KEY_CODE),
-    scn1_rent=scn1_rent*1000)
+    scn1_rent=scn1_rent*1000)#単位：千円→円
 diff_rent <- scn0_rent %>% 
   left_join(scn1_rent,by="KEY_CODE") %>% 
   mutate(diff_rent=scn1_rent-scn0_rent) %>% 
@@ -1040,7 +1039,7 @@ print(paste("平均厚生の変化率:", round(welfare_change_rate, 4)))
 vij.sc0=alpha_0*scn0_disposable_income_ij/scn0_state$r_ij_H^alpha_a
 vj.sc0=vij.sc0[1,] %>% as.vector()
 
-vij.sc1=alpha_0*scn1_disposable_income_ij/scn1_state$r_ij_H^alpha_a
+vij.sc1=alpha_0*scn1_disposable_income_ij/scn0_state$r_ij_H^alpha_a
 vj.sc1=vij.sc1[1,] %>% as.vector()
 
 EV=(vj.sc1-vj.sc0)/alpha_0*scn0_state$r_ij_H^alpha_a
@@ -1061,12 +1060,14 @@ Benefit.2=sum(Benefit.1) # 千円/月？
 # scn1_total_dist <- sum(scn1_state$l_i_j * dists0, na.rm=TRUE)
 
 # 時速を仮定して走行距離を推定：今後は交通モデルと連動
-dist.km=dists0*40/60
-scn0_total_dist <- sum(scn0_state$l_i_j * dist.km, na.rm=TRUE) # dists0は片道の所要時間?(分）往復？
-scn1_total_dist <- sum(scn1_state$l_i_j * dist.km, na.rm=TRUE)
-scn1_total_dist-scn0_total_dist # km/日？
-# 120gCO2/kmと仮定
-eCO2=120
+dist.km=dists0*40/60　#km/人・片道
+scn0_total_dist <- sum(scn0_state$l_i_j * dist.km*2, na.rm=TRUE) # dists0は片道の所要時間(分）
+scn1_total_dist <- sum(scn1_state$l_i_j * dist.km*2, na.rm=TRUE)
+scn1_total_dist-scn0_total_dist # km/日・全員
+# 260127 127gCO2/kmと仮定
+eCO2=127
+eCO2*scn0_total_dist/10^6
+eCO2*scn1_total_dist/10^6
 dCO2=eCO2*(scn1_total_dist-scn0_total_dist)/10^6 #(tCO2/day)：CO2排出は減少
 
 print(paste("現況の総移動距離:", round(scn0_total_dist, 0), "人km"))
@@ -1076,7 +1077,7 @@ print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
 #co2 by ar
 scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn1_state$l_i_j, na.rm = TRUE)
 scn1_total_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm=TRUE) 
-sum(scn1_total_ar)-sum(scn0_total_ar) # 住宅面積は増加
+sum(scn1_total_ar) - sum(scn0_total_ar) # 住宅面積は増加
 
 
 # 地代収入
@@ -1269,6 +1270,32 @@ scn_plot <- diff_rent %>%
     plot.margin = margin(10, 10, 10, 10) 
   )
 print(scn_plot)
+
+
+ratio_household <- scn1_household/scn0_household
+
+ar_plot <- ggplot(scn0_household) +
+  geom_sf(aes(fill = scn0_household), color = "gray50",  linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "magma",      
+    name = "(世帯)", 
+    direction = -1,             
+    labels = scales::label_comma(),
+    limits = c(0, 25000), 
+  ) +
+  labs(title = "現状：居住世帯数") +
+  theme_void()
+print(ar_plot)
+
+
+
+
+
+
+
+
+
+
 
 
 
