@@ -733,7 +733,7 @@ rent_df <- data.frame(
   market_rent = as.numeric(final_state$r_bar_i)
   ) %>%
   mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE),market_rent=market_rent*1000) #単位千円→円!!
-# rent_map_data <- left_join(key_code_sf, rent_df, by = "KEY_CODE")
+rent_map_data <- left_join(key_code_sf, rent_df, by = "KEY_CODE")
 
 
 #実データ：家賃アットホームデータ
@@ -785,7 +785,7 @@ avg_floor_i <- tibble(
   avg_floor_i=avg_floor_i
   ) %>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
-# ar_map_data <- left_join(key_code_sf, avg_floor_i , by = "KEY_CODE")
+ar_map_data <- left_join(key_code_sf, avg_floor_i , by = "KEY_CODE")
 
 #実データ：アットホームデータの面積
 load("data/athome_crop.xdr")
@@ -886,7 +886,7 @@ target_col_idx <- which(colnames(omega_j_matrix) == target_zone_id)
 scn0_omega_j_matrix <- omega_j_matrix
 scn0_disposable_income_ij <- disposable_income_ij
 
-# 総所得
+ # 総所得
 sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat) # base scenario
 sum(omega_j$omega_j*scn1_L_j_hat$L_j_hat)  # scenario 1 
 # scenario1の方が総所得が低くなっている．
@@ -1050,7 +1050,7 @@ scn1_household
 # 台形公式
 Benefit.0=(scn0_household$scn0_household+scn1_household$scn1_household)/2*EV
 Benefit.1=apply(Benefit.0,2,sum)
-Benefit.2=sum(Benefit.1) # 千円/月？
+Benefit.2=sum(Benefit.1) # 千円/月
 # aa=c(1,2)
 # bb=matrix(1:4,2,2)
 # aa*bb
