@@ -861,7 +861,6 @@ scn0_pop  <- rowSums(scn0_state$l_i_j, na.rm=TRUE)
 scn0_welfare <- mean(exp(scn0_v))
 
 scn0_L_j_hat <- L_j_hat # 従業者数        
-scn0_omega_j <- disposable_income_ij
 
 target_zone_id <- "50303344" # 九大跡地ゾーンのKEY_CODE
 
@@ -870,7 +869,7 @@ diff_Lj_target <- 15000#調べて変える！
 scn0_Lj_target <-scn0_L_j_hat[target_zone_id, "L_j_hat"]
 
 #scn1
-if(F){
+if(T){
   scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
   
   total_L <- sum(scn0_L_j_hat$L_j_hat,na.rm = TRUE)
@@ -886,7 +885,7 @@ if(F){
 }
 
 #scn2 CBD距離と元の雇用者数
-if(T){
+if(F){
   all_zones <- rownames(scn0_L_j_hat)
   other_zones <- setdiff(all_zones,target_zone_id)
   
@@ -909,13 +908,14 @@ if(T){
 
 #omega_j
 target_col_idx <- which(colnames(omega_j_matrix) == target_zone_id)
+scn0_omega_j <- omega_j
 scn0_omega_j_matrix <- omega_j_matrix
 scn0_disposable_income_ij <- disposable_income_ij
 
  # 総所得
 sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat) # base scenario
-sum(omega_j$omega_j*L_j_hat$L_j_hat)  # scenario 1 
-# scenario1の方が総所得が低くなっている．
+sum(omega_j$omega_j*L_j_hat$L_j_hat)  # scenario 
+# scenarioの方が総所得が低くなっている．
 
 k01 <- sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat)/sum(omega_j$omega_j*L_j_hat$L_j_hat)
 scn1_omega_j <- omega_j %>% 
@@ -1052,8 +1052,6 @@ ar_plot <- ggplot(diff_ar) +
   theme_void()
 print(ar_plot)
 
-sum(scn1_ar$scn1_ar)-sum(scn0_ar$scn0_ar) # 床面積は増加
-
 
 #welfare
 scn0_welfare <- mean(exp(scn0_v)) #260116厚生の計算、調べる!
@@ -1101,7 +1099,7 @@ print(paste("シナリオの総移動距離:", round(scn1_total_dist, 0), "人km
 print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
 
 #total ar
-scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn1_state$l_i_j, na.rm = TRUE)
+scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn0_state$l_i_j, na.rm = TRUE)
 scn1_total_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm=TRUE) 
 sum(scn1_total_ar) - sum(scn0_total_ar) # 住宅面積は増加
 
@@ -1260,10 +1258,11 @@ ggplot(zone_pop_sf, aes(x = household, y = zone_population)) +
 
 #シナリオ分析のplot
 #household
-limit_val <- max(abs(diff_rent$diff_rent), na.rm = TRUE)
-scn_plot <- diff_rent %>%
+library(scales)
+limit_val <- max(abs(diff_ar$diff_ar), na.rm = TRUE)
+scn_plot <- diff_household %>%
   ggplot() +
-  geom_sf(aes(fill = diff_rent), color = "gray60",　linewidth = 0.1 ) + 
+  geom_sf(aes(fill = diff_household), color = "gray60",　linewidth = 0.1 ) + 
   annotation_north_arrow(
     location = "tl",             # tl=Top Left (左上), tr=Top Right (右上)
     which_north = "true",
@@ -1287,11 +1286,11 @@ scn_plot <- diff_rent %>%
     mid = "white",         # ゼロ付近の色（白）
     high = "red",          # プラス側の色（赤）
     midpoint = 0,          # 色が切り替わる値（通常は0）
-    limits = c(-limit_val, limit_val), # 範囲を対称にする
+    limits = c(-210, 210), # 範囲を対称にする
     labels = label_comma() # 凡例にカンマを入れる
   ) + 
   labs(
-       fill="変化量\n(円/m^2)") +
+       fill="変化量\n(世帯)") +
   theme_void()+
   theme(
     plot.background = element_rect(fill = "white", color = NA), 
