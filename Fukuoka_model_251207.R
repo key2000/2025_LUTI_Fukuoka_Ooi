@@ -869,7 +869,7 @@ diff_Lj_target <- 15000#調べて変える！
 scn0_Lj_target <-scn0_L_j_hat[target_zone_id, "L_j_hat"]
 
 #scn1
-if(T){
+if(F){
   scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
   
   total_L <- sum(scn0_L_j_hat$L_j_hat,na.rm = TRUE)
@@ -885,7 +885,7 @@ if(T){
 }
 
 #scn2 CBD距離と元の雇用者数
-if(F){
+if(T){
   all_zones <- rownames(scn0_L_j_hat)
   other_zones <- setdiff(all_zones,target_zone_id)
   
@@ -1088,11 +1088,13 @@ dist.km=dists0*40/60　#km/人・片道
 scn0_total_dist <- sum(scn0_state$l_i_j * dist.km*2, na.rm=TRUE) # dists0は片道の所要時間(分）
 scn1_total_dist <- sum(scn1_state$l_i_j * dist.km*2, na.rm=TRUE)
 scn1_total_dist-scn0_total_dist # km/日・全員
+(scn1_total_dist-scn0_total_dist)/scn0_total_dist
 # 260127 127gCO2/kmと仮定
 eCO2=127
 eCO2*scn0_total_dist/10^6
 eCO2*scn1_total_dist/10^6
 dCO2=eCO2*(scn1_total_dist-scn0_total_dist)/10^6 #(tCO2/day)：CO2排出は減少
+dCO2/(eCO2*scn0_total_dist/10^6)
 
 print(paste("現況の総移動距離:", round(scn0_total_dist, 0), "人km"))
 print(paste("シナリオの総移動距離:", round(scn1_total_dist, 0), "人km"))
@@ -1101,19 +1103,21 @@ print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
 #total ar
 scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn0_state$l_i_j, na.rm = TRUE)
 scn1_total_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm=TRUE) 
-sum(scn1_total_ar) - sum(scn0_total_ar) # 住宅面積は増加
+(sum(scn1_total_ar) - sum(scn0_total_ar))/sum(scn0_total_ar) # 住宅面積は増加
+
 
 #co2 by ar
 co20=(sum(scn0_total_ar)*296/3.6/4.17+(1193*1.99))*0.57/1000/365 #tCO2\day
 co21=(sum(scn1_total_ar)*296/3.6/4.17+(1193*1.99))*0.57/1000/365 #tCO2\day
+(co21-co20)/co20
 
 # 地代収入
 GI0=scn0_state$rg_i*scn0_state$G_i+(G0_i-scn0_state$G_i)*rr_a
 GI1=scn1_state$rg_i*scn1_state$G_i+(G0_i-scn1_state$G_i)*rr_a
-sum(GI1)-sum(GI0) # 千円/月
+(sum(GI1)-sum(GI0))/sum(GI0) # 千円/月
 
 # 宅地面積変化
-sum(scn1_state$G_i)-sum(scn0_state$G_i)
+(sum(scn1_state$G_i)-sum(scn0_state$G_i))/sum(scn0_state$G_i)
 
 # 床面積
 
