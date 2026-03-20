@@ -740,7 +740,7 @@ sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(),
                  alpha = alpha,
                  beta = beta,
                  coords = nodes)
-
+save(sgr,file="sgr.road.xdr")
 
 # estimate OD travel time under user zero traffic 
 system.time({ # 0.13 
@@ -1585,6 +1585,7 @@ gc();gc();
 library(sf)
 library(dplyr)
 library(purrr) # map2
+library(igraph)
 # library(units)
 # library(lwgeom)
 
@@ -1597,6 +1598,31 @@ mesh.Fukuoka.uea2=st_transform(mesh.Fukuoka.uea2.0,st_crs(fukuoka.railway.simpli
 # centeroid of mesh
 mesh.Fukuoka.uea2.cnt=st_centroid(mesh.Fukuoka.uea2)
 
+# check isolation of network
+# fukuoka.railway.simplified
+# link10=rbind(rail_network,rail_network %>% rename(ID1=ID2,ID2=ID1)) %>% left_join(lkspd,by="type") %>% mutate(FFtime=length/speed*60/10^3,cap=10^5) #%>%  # fftime (minutes)
+link10=fukuoka.railway.simplified
+# link10=fukuoka.railway.simplified2
+ig <- graph_from_data_frame(
+  d = link10[,c("ID1", "ID2", "length")] %>% st_drop_geometry(),
+  directed = TRUE,
+  vertices = NULL
+)
+# is_connected(ig) # 連結判定
+# components(ig)$no # 連結成分の数を知りたい場合
+# components(ig)$csize # 成分ごとのサイズを確認
+# どのノードがどの成分か知りたい
+comp <- components(ig, mode = "weak")  # or "strong"
+aa=data.frame(
+  node = V(ig)$name,
+  component = comp$membership
+)
+aa %>% group_by(component) %>% summarise(n=n())
+# isolate nodes
+isonodes=aa %>% filter(component!=1) %>% .$node
+# remove isolate network nodes
+fukuoka.railway.simplified=fukuoka.railway.simplified[-c(which(fukuoka.railway.simplified$ID1%in%isonodes),
+                              which(fukuoka.railway.simplified$ID2%in%isonodes)),]
 
 # node data of network
 tmp.nodes=st_coordinates(fukuoka.railway.simplified) %>% 
@@ -1628,8 +1654,8 @@ nodes2=rbind(st.nodes2,lk.nodes)
 tmp.nodes=st_coordinates(fukuoka.railway.simplified) %>% as.data.frame() %>% 
   group_by(L1) %>% 
   summarize(X1=first(X),Y1=first(Y),X2=last(X),Y2=last(Y)) %>% 
-  left_join(nodes2 %>% select(X,Y,osm_id),by=c("X1"="X","Y1"="Y")) %>% 
-  left_join(nodes2 %>% select(X,Y,osm_id),by=c("X2"="X","Y2"="Y"))
+  left_join(nodes2 %>% dplyr::select(X,Y,osm_id),by=c("X1"="X","Y1"="Y")) %>% 
+  left_join(nodes2 %>% dplyr::select(X,Y,osm_id),by=c("X2"="X","Y2"="Y"))
   
 fukuoka.railway.simplified2=fukuoka.railway.simplified %>% 
   mutate(ID1=tmp.nodes$osm_id.x,ID2=tmp.nodes$osm_id.y)
@@ -1640,20 +1666,21 @@ system.time({ # 2.27
   distm=st_distance(mesh.Fukuoka.uea2.cnt,st.nodes2.sf)
 })
 # dim(distm)
+# which(is.na(distm))
 
 tI=apply(distm,1,which.min)
 aa1=st.nodes2.sf[tI,] %>% dplyr::select(nodeID=osm_id) %>% mutate(linkID=paste0("acl_",formatC(1:length(tI),width=4,flag="0"))) #%>% rename(ID=osm_id.y)
-aa2=mesh.Fukuoka.uea2.cnt %>% mutate(MeshCode=paste0("mc_",KEY_CODE),linkID=paste0("acl_",formatC(1:length(tI),width=4,flag="0"))) %>% rename(nodeID=MeshCode) %>% select(nodeID,linkID,geometry)
-aa3=rbind(aa1,aa2) %>% arrange(linkID) %>% select(linkID,nodeID,geometry)
+aa2=mesh.Fukuoka.uea2.cnt %>% mutate(MeshCode=paste0("mc_",KEY_CODE),linkID=paste0("acl_",formatC(1:length(tI),width=4,flag="0"))) %>% rename(nodeID=MeshCode) %>% dplyr::select(nodeID,linkID,geometry)
+aa3=rbind(aa1,aa2) %>% arrange(linkID) %>% dplyr::select(linkID,nodeID,geometry)
 
 system.time({ # 1.78  
   ac_link = aa3 %>% 
     group_by(linkID) %>% 
     summarize(osm_id=first(linkID), ID1=first(nodeID),ID2=last(nodeID),name=as.character(NA),z_order=0,type="access",geometry=st_cast(st_combine(geometry), "LINESTRING")) %>%
-    mutate(length=st_length(geometry)) %>% select(-linkID)
+    mutate(length=st_length(geometry)) %>% dplyr::select(-linkID)
     # filter(st_geometry_type(.) == "MULTIPOINT") %>%
     # st_cast("LINESTRING")
-    st_as_sf()
+    # st_as_sf()
 })
 
 rail_network=rbind(fukuoka.railway.simplified2,ac_link)
@@ -1663,9 +1690,9 @@ save(rail_network,file="data/osm/rail_network.xdr")
 st_write(rail_network,dsn="data/osm/rail_network.gpkg",delete_dsn = T)
 
 # nodes
-rail_network.nodes=rbind(aa2 %>% select(nodeID) %>% mutate(type="mesh"),
-      st.nodes2.sf %>% select(nodeID=osm_id) %>% mutate(type="station"),
-      lk.nodes.sf %>% select(nodeID=osm_id) %>% mutate(type="network"))
+rail_network.nodes=rbind(aa2 %>% dplyr::select(nodeID) %>% mutate(type="mesh"),
+      st.nodes2.sf %>% dplyr::select(nodeID=osm_id) %>% mutate(type="station"),
+      lk.nodes.sf %>% dplyr::select(nodeID=osm_id) %>% mutate(type="network"))
 save(rail_network.nodes,file="data/osm/rail_network.nodes.xdr")
 st_write(rail_network.nodes,dsn="data/osm/rail_network.nodes.gpkg",delete_dsn = T)
 
@@ -1684,8 +1711,8 @@ library(sf)
 library(igraph)
 
 # source("tntp.R")
-load("data/osm/link10.xdr") # link10
-load("data/osm/node10.xdr") # node10
+# load("data/osm/link10.xdr") # link10
+# load("data/osm/node10.xdr") # node10
 
 load("data/osm/rail_network.xdr") # rail_network
 load("data/osm/rail_network.nodes.xdr") # rail_network.nodes
@@ -1699,7 +1726,7 @@ load("data/osm/rail_network.nodes.xdr") # rail_network.nodes
 # 1500pcu/lane/hour
 # 日換算係数の考え方
 # https://www.nilim.go.jp/lab/bcg/siryou/tnn/tnn0317pdf/ks0317006.pdf
-KK=0.1
+# KK=0.1
 # capacity pcu/day
 # cap.df$cap/KK
 
@@ -1711,18 +1738,20 @@ KK=0.1
 # alpha=0.48;beta=2.82
 
 #https://www.jstage.jst.go.jp/article/thagis/17/2/17_203/_pdf
-alpha=0.48;beta=2.89 # yamada/matsui (1998)
+# alpha=0.48;beta=2.89 # yamada/matsui (1998)
 
-rail_network$type %>% unique()
-rail_network$length
+# rail_network$type %>% unique()
+# rail_network$length
 
 #link speed km/h
 lkspd=data.frame(type=c("rail","subway","access"),speed=c(60,40,5))
-# in case of using bus when access length is long, the speed should be faster.
+# in case of using bus when access length is long, the speed of access should be faster.
 
-link10=rail_network %>% left_join(lkspd,by="type") %>% mutate(FFtime=length/speed*60/10^3,cap=10^5) #%>%  # fftime (minutes)
-  # merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
-
+# link10=rail_network %>% left_join(lkspd,by="type") %>% mutate(FFtime=length/speed*60/10^3,cap=10^5) #%>%  # fftime (minutes)
+link10=rbind(rail_network,rail_network %>% rename(ID1=ID2,ID2=ID1)) %>% left_join(lkspd,by="type") %>% mutate(FFtime=length/speed*60/10^3,cap=10^5) #%>%  # fftime (minutes)
+# merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
+dim(link10)
+# which(is.na(link10$FFtime))
 
 node10=data.frame(rail_network.nodes$nodeID,st_coordinates(rail_network.nodes))
 names(node10)=c("Node","X","Y")
@@ -1730,12 +1759,14 @@ names(node10)=c("Node","X","Y")
 # E:/WorkDir01/prog/R/2024/2024_TAP/cppRouting01.R
 
 
+
+
 work_zone<-c(50303302,50303206,50303395,50303208,50302364,50302356,50303344,50303393,50302390,50302290,50302347,50302329,50305475,50305318,50304377,50302422,50301491,50302176)
 tI=which(node10$Node%in%paste0("mc_",work_zone))
 centers=node10$Node[tI]
 
 sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(), 
-                 directed = F,
+                 directed = T,
                  capacity = 10^5,
                  # capacity = link10$cap/KK,
                  # alpha = alpha,
@@ -1743,8 +1774,60 @@ sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(),
                  alpha = 0.1,
                  beta = 1,
                  coords = node10)
+save(sgr,file="sgr.rail.xdr")
 # sgr$data
 # ?makegraph
+#　孤立判定
+{
+  library(igraph)
+  # makegraph() に使った edges をそのまま使う
+  ig <- graph_from_data_frame(
+    d = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(),
+    directed = TRUE,
+    vertices = NULL
+  )
+  
+  is_connected(ig) # 連結判定
+  components(ig)$no # 連結成分の数を知りたい場合
+  components(ig)$csize # 成分ごとのサイズを確認
+  
+  # どのノードがどの成分か知りたい
+  comp <- components(ig, mode = "weak")  # or "strong"
+  data.frame(
+    node = V(ig)$name,
+    component = comp$membership
+  )
+
+  
+  # 完全孤立ノード
+  isolated_nodes <- V(ig)$name[degree(ig) == 0]
+  isolated_nodes
+  # 連結成分による孤立判定
+  wc <- components(ig, mode = "weak")
+  isolated_weak <- V(ig)$name[wc$csize[wc$membership] == 1]
+  isolated_weak
+  
+  # Strongly connected（強連結孤立）
+  sc <- components(ig, mode = "strong")
+  isolated_strong <- V(ig)$name[sc$csize[sc$membership] == 1]
+  isolated_strong
+  
+  # 起点から到達不能ノード＝ルーティング不能
+  tI=grep("mc_",node10$Node)
+  zones=node10$Node[tI]
+  dist<-get_distance_matrix(sgr,
+                            from=zones,
+                            to=centers,
+                            algorithm = "mch") # because of the rectangular shape of the matrix
+  unreachable <- names(dist)[!is.finite(dist)]
+  unreachable
+  which(is.na(dist))
+  dim(dist)
+  zones[397]
+  dist[397,]
+  which(link10$ID1==zones[397]) %>% link10[.,]
+  
+}
 
 # 混雑による速度低下は考慮しないので，igraphで十分
 # estimate OD travel time under user zero traffic 
@@ -1757,10 +1840,11 @@ system.time({ # 0.13
                               algorithm = "mch") # because of the rectangular shape of the matrix
 })
 # apply(dists0,2,min,na.rm=T)
+# which(is.na(dists0))
 
 save(dists0,file="data/railway_dist.xdr")
 
-load("data/railway_dist.xdr") # dists0
+load("data/railway_dist.xdr") # dists0, minutes per one way
 rownames(dists0)
 colnames(dists0)
 
