@@ -402,7 +402,7 @@ load("data/bnd_mesh_with_landuse.xdr") # bnd_mesh_with_landuse
 
 load("data/key_code_sf.xdr")
 
-load("data/work_zone.xdr")
+load("data/work_zone.xdr") # work_zone
 
 
 #従業地賃金omega_j
@@ -426,10 +426,9 @@ A<-emp_by_ind%>%
   dplyr::select("all")
 
 csv.wage_by_ind<-"data/raw/賃金構造基本統計調査　福岡　産業別/Fukuoka_avg_wage.csv"
-wage_by_ind<-read.csv(csv.wage_by_ind,stringsAsFactors=FALSE,na.strings=c("","NA"))#単位：千円
+wage_by_ind<-read.csv(csv.wage_by_ind,stringsAsFactors=FALSE,na.strings=c("","NA"))#単位：千円/月
 wage_by_ind<-wage_by_ind%>%
-  # mutate(avg_wage=avg_wage*1000)
-  mutate(avg_wage=avg_wage) # 千円単位にする
+  mutate(avg_wage=avg_wage) # 千円単位
 W<-pull(wage_by_ind,avg_wage)
 
 estimated_avg_wage <-(M%*%W)/A$all
@@ -534,7 +533,7 @@ omega_j_matrix<-matrix(
 )
 colnames(omega_j_matrix)<-colnames(omega_j_t)
 
-c_ij <- dists0*1.600 #時間費用掛け算：千円単位1.600から変更
+c_ij <- dists0*1.600 #時間費用掛け算：千円単位1.600から変更：：distは分単位の所要時間．月の時間費用（千円/月）であってますか？
 
 disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
 
@@ -557,7 +556,6 @@ theta_L=2
 phi=0.5 # building coverage ratio
 
 theta_H=0.1 #260106 theta_H=0.1から0.2に調整
-
 
 
 #均衡状態計算
@@ -623,7 +621,7 @@ caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(
 # 均衡条件のベクトルを返す
 gapf_vj<-function(v_j_vec2){ # v_j_vec2=v_start
   # v_j_vec=abs(v_j_vec) # これはおかしいkii@251203: 正であることを保証するなら，v_j_vec2=exp(v_j_vec)などとすべき
-  v_j_vec=exp(v_j_vec2)
+  v_j_vec=exp(v_j_vec2) # 消費モデルの効用水準
   
   model_state=caluculate_model_state(v_j_vec)
   L_j_tilde=model_state$L_j_tilde
@@ -672,13 +670,19 @@ final_rgi <- final_state$rg_i
 ## 居住・従業地別 世帯数 (l_i_j) 
 
 # モデル：メッシュごと世帯数
-zone_population <- rowSums(final_state$l_i_j,na.rm=TRUE)
+# rm("zone_population")
+zone_population=rowSums(final_state$l_i_j,na.rm=TRUE)
 zone_population<-tibble(
   KEY_CODE=rownames(final_state$l_i_j),
   zone_population=zone_population
   )%>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
-zone_population<-left_join(key_code_sf,zone_population,by="KEY_CODE")
+# zone_population<-data.frame(
+#   KEY_CODE=rownames(final_state$l_i_j),
+#   zone_population=zone_population
+# )%>%
+#   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
+# zone_population<-left_join(key_code_sf,zone_population,by="KEY_CODE")
 
 #実データ：メッシュごと世帯数
 csv.household<-"data/raw/国勢調査_人口及び世帯数_1kmメッシュ/tblT001100S5030.csv"
@@ -687,27 +691,38 @@ household<-read.csv(csv.household,fileEncoding = "CP932",stringsAsFactors=FALSE,
   dplyr::rename(household="T001100035")%>%
   dplyr::mutate(KEY_CODE=as.character(KEY_CODE),household=as.numeric(household))
 household<-household[-1,]
-household<-left_join(key_code_sf,household,by="KEY_CODE") %>% 
+# household<-left_join(key_code_sf,household,by="KEY_CODE") %>% 
+#   dplyr::mutate(
+#     household = tidyr::replace_na(household, 0))
+
+zone_pop_sf=left_join(key_code_sf,zone_population,by="KEY_CODE") %>% 
+  left_join(household,by="KEY_CODE") %>% 
   dplyr::mutate(
     household = tidyr::replace_na(household, 0))
 
-#居住プロット zone_population , household 
-lij_plot <- zone_population %>%
+plot(zone_pop_sf$household,zone_pop_sf$zone_population)
+abline(0,1,col="red")
+sum(zone_pop_sf$household)
+sum(zone_pop_sf$zone_population)
+
+#居住プロットlij_plot zone_pop_sf fill=zone_population , household 
+lij_plot_R <- zone_pop_sf %>%
   ggplot() +
-  geom_sf(aes(fill = zone_population), color = "gray50",　linewidth = 0.1 ) + 
+  geom_sf(aes(fill = household), color = "gray50",　linewidth = 0.1 ) + 
   scale_fill_viridis_c(
     option = "magma",         # 'viridis', 'plasma', 'cividis', 'magma' etc
-    name = "居住世帯数",
+    name = "(世帯)",
     direction = -1,
     limits = c(0, 25000), 
     labels = scales::label_comma()
   ) +
-  labs(title = "モデル：居住世帯数 ") +
+  labs(title = "実データ：居住世帯数 ") +
   theme_minimal() +
   coord_sf(datum = NA) 
-print(lij_plot)
+print(lij_plot_R)
 
-
+# lij_plot_M#model
+# lij_plot_R#real
 
 ##　家賃の比較
 #モデル：家賃
@@ -717,10 +732,9 @@ rent_df <- data.frame(
   KEY_CODE = names(final_state$r_bar_i), 
   market_rent = as.numeric(final_state$r_bar_i)
   ) %>%
-  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
+  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE),market_rent=market_rent*1000) #単位千円→円!!
 rent_map_data <- left_join(key_code_sf, rent_df, by = "KEY_CODE")
-rent_map_data <- rent_map_data %>% 
-  mutate(market_rent=market_rent*1000)
+
 
 #実データ：家賃アットホームデータ
 if(F){
@@ -739,24 +753,28 @@ athome_df<-athome_df %>%
   st_drop_geometry() %>% 
   group_by(KEY_CODE) %>% 
   summarise(avg_rent=mean(rent_par_ar, na.rm=TRUE)) 
-athome_df<-key_code_sf %>% 
-  left_join(athome_df, by="KEY_CODE")
+# athome_df<-key_code_sf %>% 
+#   left_join(athome_df, by="KEY_CODE")
 
-#家賃プロット　  
-rent_plot <- ggplot(rent_map_data) +
+rent_sf <- left_join(key_code_sf,rent_df,by="KEY_CODE") %>% 
+  left_join(athome_df,by="KEY_CODE")
+
+#家賃プロットrent_Plot rent_sf fill=market_rent, avg_rent　#単位：円
+rent_plot_M <- ggplot(rent_sf) +
   geom_sf(aes(fill = market_rent), color = "gray50",  linewidth = 0.1) +
   scale_fill_viridis_c(
     option = "plasma",      
-    name = "平均付値地代\n(円/m2)", 
+    name = "(円/m^2)", 
     direction = -1,             
     labels = scales::label_comma(),
     limits = c(0, 3200), 
   ) +
   labs(title = "モデル：平均付値地代") +
   theme_void()
-print(rent_plot)
+print(rent_plot_M)
 
-
+# rent_plot_M
+# rent_plot_R
 
 ##　床面積の比較
 #モデル：a_fij_H
@@ -776,25 +794,34 @@ athome_ar <- athome_crop %>%
   st_drop_geometry() %>% 
   group_by(KEY_CODE)%>% 
   summarise(avg_room_ar=mean(room_ar, na.rm=TRUE)) 
-athome_ar<-key_code_sf %>% 
-  left_join(athome_ar, by="KEY_CODE")
+# athome_ar<-key_code_sf %>%
+#   left_join(athome_ar, by="KEY_CODE")
 
-#床面積プロット　  
-ar_plot <- ggplot(ar_map_data) +
+floor_sf <- left_join(key_code_sf,avg_floor_i,by="KEY_CODE") %>% 
+  left_join(athome_ar,by="KEY_CODE")
+
+
+#床面積プロットar_plot floor_sf fill=avg_floor_i,avg_room_ar　  
+ar_plot_M <- ggplot(floor_sf) +
   geom_sf(aes(fill = avg_floor_i), color = "gray50",  linewidth = 0.1) +
   scale_fill_viridis_c(
     option = "viridis",      
-    name = "平均床面積\n(m2)", 
+    name = "(m^2)", 
     direction = -1,             
     labels = scales::label_comma(),
     limits = c(0, 200), 
   ) +
   labs(title = "モデル：平均床面積") +
   theme_void()
-print(ar_plot)
+print(ar_plot_M)
+
+# ar_plot_M
+# ar_plot_R
+
+# ar_map_data$avg_floor_i %>% hist()
 
 
-## 宅地割合
+# 宅地割合
 final_Gi <- final_state$G_i
 Gi_df <- data.frame(
   KEY_CODE = names(final_state$G_i), 
@@ -804,6 +831,8 @@ Gi_map_data <- left_join(key_code_sf, Gi_df, by = "KEY_CODE")
 Gi_map_data <- Gi_map_data %>% 
   mutate(habit_ar=habit_ar/10000)
 
+hist(Gi_map_data$habit_ar)
+
 #宅地割合プロット　  
 Gi_plot <- ggplot(Gi_map_data) +
   geom_sf(aes(fill = habit_ar), color = "gray50",  linewidth = 0.1) +
@@ -812,11 +841,11 @@ Gi_plot <- ggplot(Gi_map_data) +
     name = "宅地割合\n(m2)", 
     direction = -1,             
     labels = scales::label_comma(),
-    limits = c(0, 3200), 
+    limits = c(0, 30), 
   ) +
   labs(title = "モデル：宅地割合") +
   theme_void()
-print(ar_plot)
+print(Gi_plot)
 
 #####
 
@@ -826,42 +855,86 @@ print(ar_plot)
 scn0_v <- result_nleqslv$x  
 scn0_state <- caluculate_model_state(exp(scn0_v))
 
+names(scn0_state)
 scn0_rent <- scn0_state$r_bar_i       
 scn0_pop  <- rowSums(scn0_state$l_i_j, na.rm=TRUE) 
 scn0_welfare <- mean(exp(scn0_v))
 
-scn0_L_j_hat <- L_j_hat        
-scn0_omega_j <- disposable_income_ij
+scn0_L_j_hat <- L_j_hat # 従業者数        
 
 target_zone_id <- "50303344" # 九大跡地ゾーンのKEY_CODE
 
 #Lj
 diff_Lj_target <- 15000#調べて変える！
 scn0_Lj_target <-scn0_L_j_hat[target_zone_id, "L_j_hat"]
-scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
 
-total_L <- sum(scn0_L_j_hat$L_j_hat,na.rm = TRUE)
-reduction_ratio <- (total_L - scn0_Lj_target - diff_Lj_target)/(total_L-scn0_Lj_target)
+#scn1
+if(F){
+  scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
+  
+  total_L <- sum(scn0_L_j_hat$L_j_hat,na.rm = TRUE)
+  reduction_ratio <- (total_L - scn0_Lj_target - diff_Lj_target)/(total_L-scn0_Lj_target)
+  
+  all_zones <- rownames(scn0_L_j_hat)
+  other_zones <- setdiff(all_zones,target_zone_id)
+  L_j_hat[other_zones,"L_j_hat"] <- round(scn0_L_j_hat[other_zones, "L_j_hat"]*reduction_ratio)
+  L_j_hat[target_zone_id, "L_j_hat"] <- scn1_Lj_target
 
-all_zones <- rownames(L_j_hat)
-other_zones <- setdiff(all_zones,target_zone_id)
-L_j_hat[other_zones,"L_j_hat"] <- round(scn0_L_j_hat[other_zones, "L_j_hat"]*reduction_ratio)
-L_j_hat[target_zone_id, "L_j_hat"] <- scn1_Lj_target
+  scn1_L_j_hat <- L_j_hat
+  scn1_total_L <- sum(L_j_hat,na.rm = TRUE) # OK
+}
 
-scn1_L_j_hat <- L_j_hat
-scn1_total_L <- sum(L_j_hat,na.rm = TRUE)
+#scn2 CBD距離と元の雇用者数
+if(T){
+  all_zones <- rownames(scn0_L_j_hat)
+  other_zones <- setdiff(all_zones,target_zone_id)
+  
+  scn2_Lj_target <- scn0_Lj_target + diff_Lj_target
+  cbd_code <- "50303302"
+  colnames(dists0) <- gsub("mc_","",colnames(dists0)) #dists0からmc_抜く、もっと前にやるべき
+  rownames(dists0) <- gsub("mc_","",rownames(dists0))
+  dist_from_cbd <- dists0[other_zones, cbd_code]
+  reduction_weight <- dist_from_cbd*1/(scn0_L_j_hat[other_zones,"L_j_hat"]+1)
+  reduction_amount<- diff_Lj_target*(reduction_weight/sum(reduction_weight))
+  
+  L_j_hat[other_zones,"L_j_hat"] <- round(scn0_L_j_hat[other_zones,"L_j_hat"]-reduction_amount)
+  L_j_hat[target_zone_id,"L_j_hat"] <- scn2_Lj_target
+  
+  scn2_Lj_target <- L_j_hat
+  scn2_total_L <- sum(L_j_hat,na.rm = TRUE)
+}
+
+
 
 #omega_j
 target_col_idx <- which(colnames(omega_j_matrix) == target_zone_id)
+scn0_omega_j <- omega_j
 scn0_omega_j_matrix <- omega_j_matrix
 scn0_disposable_income_ij <- disposable_income_ij
 
-omega_j_matrix[, target_col_idx] <- omega_j_matrix[, target_col_idx]*1.1
-disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
+ # 総所得
+sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat) # base scenario
+sum(omega_j$omega_j*L_j_hat$L_j_hat)  # scenario 
+# scenarioの方が総所得が低くなっている．
+
+k01 <- sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat)/sum(omega_j$omega_j*L_j_hat$L_j_hat)
+scn1_omega_j <- omega_j %>% 
+  mutate(scn1_omega_j = omega_j*k01, KEY_CODE=KEY_CODE) %>% dplyr::select(KEY_CODE,scn1_omega_j)
+
+sum(scn1_omega_j$scn1_omega_j*L_j_hat$L_j_hat)# scenario 1
+sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat) # base scenario 更新完了
+
+  mesh_names <- as.character(scn1_omega_j$KEY_CODE)
+omega_j_matrix <- matrix(as.numeric(scn1_omega_j$scn1_omega_j), 
+                              nrow = nz_res, 
+                              ncol = nrow(scn1_omega_j), 
+                              byrow = TRUE)
+  colnames(omega_j_matrix) <- mesh_names
+disposable_income_ij <-pmax(-c_ij+omega_j_matrix, 0)
 
 scn1_omega_j_matrix <- omega_j_matrix
-scn1_disposable_income_ij <- disposable_income_ij
-
+scn1_disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
+  
 #nleqslv
 v_start=scn0_v
 v_j_vec2=v_start
@@ -886,6 +959,7 @@ scn1_state <- caluculate_model_state(v_equilibrium)
 
 #グローバル変数を元に戻す 
 L_j_hat <- scn0_L_j_hat
+omega_j_matrix <- scn0_omega_j_matrix
 disposable_income_ij <- scn0_disposable_income_ij
 
 #比較
@@ -903,7 +977,8 @@ scn1_state$l_i_j
 
 
 #比較　世帯数
-scn0_household <- zone_population %>% rename(scn0_household=zone_population)
+# scn0_household <- zone_population %>% rename(scn0_household=zone_population)
+scn0_household <- zone_pop_sf %>% rename(scn0_household=zone_population)
 scn1_household <- rowSums(scn1_state$l_i_j,na.rm=TRUE)
 scn1_household<-tibble(
   KEY_CODE=rownames(scn1_state$l_i_j),
@@ -916,34 +991,23 @@ diff_household <- scn0_household %>%
   dplyr::select(KEY_CODE,diff_household,geometry)
 scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
 
+# diff_household$diff_household %>% hist()
+
 #plot
-household_plot <- diff_household %>%
-  ggplot() +
-  geom_sf(aes(fill = diff_household), color = "gray50",　linewidth = 0.1 ) + 
-  scale_fill_viridis_c(
-    option = "magma",         # 'viridis', 'plasma', 'cividis', 'magma' etc
-    name = "居住世帯数",
-    direction = -1,
-    limits = c(-500, 60), 
-    labels = scales::label_comma()
-  ) +
-  labs(title = "モデル：居住世帯数 ") +
-  theme_minimal() +
-  coord_sf(datum = NA) 
-print(household_plot)
+
 
 #比較　家賃
-scn0_rent <- rent_map_data %>% rename(scn0_rent=market_rent)
+scn0_rent <- rent_map_data %>% rename(scn0_rent=market_rent)#単位：円
 scn1_rent <- data.frame(
   KEY_CODE = names(scn1_state$r_bar_i), 
   scn1_rent = as.numeric(scn1_state$r_bar_i)
   ) %>%
   mutate(
     KEY_CODE = gsub("^mc_", "", KEY_CODE),
-    scn1_rent=scn1_rent*1000)
+    scn1_rent=scn1_rent*1000)#単位：千円→円
 diff_rent <- scn0_rent %>% 
   left_join(scn1_rent,by="KEY_CODE") %>% 
-  mutate(diff_rent=scn0_rent-scn1_rent) %>% 
+  mutate(diff_rent=scn1_rent-scn0_rent) %>% 
   dplyr::select(KEY_CODE,diff_rent,geometry)
 scn1_rent <- left_join(key_code_sf, scn1_rent, by = "KEY_CODE")
 #家賃プロット　  
@@ -982,7 +1046,7 @@ ar_plot <- ggplot(diff_ar) +
     name = "平均床面積\n(m2)", 
     direction = -1,             
     labels = scales::label_comma(),
-    limits = c(-7.0, 2.0), 
+    limits = c(-0.5, 1.3), 
   ) +
   labs(title = "モデル：平均床面積") +
   theme_void()
@@ -995,39 +1059,75 @@ scn1_welfare <- mean(exp(scn1_v))
 welfare_change_rate <- scn1_welfare / scn0_welfare
 print(paste("平均厚生の変化率:", round(welfare_change_rate, 4)))
 
-# co2 by dists
-scn0_total_dist <- sum(scn0_state$l_i_j * dists0, na.rm=TRUE)
-scn1_total_dist <- sum(scn1_state$l_i_j * dists0, na.rm=TRUE)
+# calculated indirect utility
+vij.sc0=alpha_0*scn0_disposable_income_ij/scn0_state$r_ij_H^alpha_a
+vj.sc0=vij.sc0[1,] %>% as.vector()
+
+vij.sc1=alpha_0*scn1_disposable_income_ij/scn0_state$r_ij_H^alpha_a
+vj.sc1=vij.sc1[1,] %>% as.vector()
+
+EV=(vj.sc1-vj.sc0)/alpha_0*scn0_state$r_ij_H^alpha_a
+
+scn0_household
+scn1_household
+
+# 台形公式
+Benefit.0=(scn0_household$scn0_household+scn1_household$scn1_household)/2*EV
+Benefit.1=apply(Benefit.0,2,sum)
+Benefit.2=sum(Benefit.1) # 千円/月
+# aa=c(1,2)
+# bb=matrix(1:4,2,2)
+# aa*bb
+
+# # co2 by dists
+# scn0_total_dist <- sum(scn0_state$l_i_j * dists0, na.rm=TRUE) # dists0は片道の所要時間?(分）往復？
+# scn1_total_dist <- sum(scn1_state$l_i_j * dists0, na.rm=TRUE)
+
+# 時速を仮定して走行距離を推定：今後は交通モデルと連動
+dist.km=dists0*40/60　#km/人・片道
+scn0_total_dist <- sum(scn0_state$l_i_j * dist.km*2, na.rm=TRUE) # dists0は片道の所要時間(分）
+scn1_total_dist <- sum(scn1_state$l_i_j * dist.km*2, na.rm=TRUE)
+scn1_total_dist-scn0_total_dist # km/日・全員
+(scn1_total_dist-scn0_total_dist)/scn0_total_dist
+# 260127 127gCO2/kmと仮定
+eCO2=127
+eCO2*scn0_total_dist/10^6
+eCO2*scn1_total_dist/10^6
+dCO2=eCO2*(scn1_total_dist-scn0_total_dist)/10^6 #(tCO2/day)：CO2排出は減少
+dCO2/(eCO2*scn0_total_dist/10^6)
 
 print(paste("現況の総移動距離:", round(scn0_total_dist, 0), "人km"))
 print(paste("シナリオの総移動距離:", round(scn1_total_dist, 0), "人km"))
 print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
 
-#co2 by ar
-scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn1_state$l_i_j, na.rm = TRUE)
+#total ar
+scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn0_state$l_i_j, na.rm = TRUE)
 scn1_total_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm=TRUE) 
+(sum(scn1_total_ar) - sum(scn0_total_ar))/sum(scn0_total_ar) # 住宅面積は増加
 
 
+#co2 by ar
+co20=(sum(scn0_total_ar)*296/3.6/4.17+(1193*1.99))*0.57/1000/365 #tCO2\day
+co21=(sum(scn1_total_ar)*296/3.6/4.17+(1193*1.99))*0.57/1000/365 #tCO2\day
+(co21-co20)/co20
 
+# 地代収入
+GI0=scn0_state$rg_i*scn0_state$G_i+(G0_i-scn0_state$G_i)*rr_a
+GI1=scn1_state$rg_i*scn1_state$G_i+(G0_i-scn1_state$G_i)*rr_a
+(sum(GI1)-sum(GI0))/sum(GI0) # 千円/月
 
+# 宅地面積変化
+(sum(scn1_state$G_i)-sum(scn0_state$G_i))/sum(scn0_state$G_i)
 
-
-
-
-
-
-
-
-
-
+# 床面積
 
 
 
 
 #####
 
-#論文用プロット
-# 分析対象範囲プロットの作成
+###論文用プロット
+## 分析対象範囲プロットの作成
 library(ggplot2)
 library(ggspatial)
 load("data/bnd_mesh_crop.xdr")
@@ -1073,6 +1173,160 @@ ggplot() +
     axis.text = element_blank(),  # 軸メモリ削除
     axis.ticks = element_blank()  # 目盛線削除
   )
+
+
+##妥当性確認plot
+# install.packages("patchwork")
+library(patchwork)
+library(ggplot2)
+library(ggspatial)
+
+lij_plot_M#model
+lij_plot_R#real
+
+rent_plot_M
+rent_plot_R
+
+ar_plot_M
+ar_plot_R
+
+# ※論文用に個別のタイトルは消して、パネル全体のタイトルにする等の調整も可能です
+theme(legend.position = "right") #などで凡例位置を揃えておくと綺麗です
+
+combined_plot <- (lij_plot_R + lij_plot_M) / 
+  (rent_plot_R + rent_plot_M) / 
+  (ar_plot_R + ar_plot_M) + 
+  # 全体の設定
+  plot_layout(ncol = 1) & # guides="collect"で同じ凡例をまとめることも可能
+  # plot_annotation(tag_levels = 'a')& # (a), (b)... の番号を自動で振る
+  theme(
+    plot.title = element_text(size = 10),
+    legend.title = element_text(size = 8),
+    legend.text = element_text(size = 7),
+    legend.key.height = unit(0.4,"cm"),
+    legend.key.width = unit(0.4,"cm")
+    )
+
+
+map_elements <- list(
+  annotation_north_arrow(
+    location = "tl",             # tl=Top Left (左上), tr=Top Right (右上)
+    which_north = "true",
+    pad_x = unit(0.2, "cm"),     # 端からの余白
+    pad_y = unit(0.2, "cm"),
+    style = north_arrow_fancy_orienteering(), # デザインはお好みで
+    height = unit(0.8, "cm"),    # 矢印の大きさ
+    width = unit(0.8, "cm")
+  ),
+
+  annotation_scale(
+    location = "bl",             # br=Bottom Right (右下), bl=Bottom Left (左下)
+    width_hint = 0.3,            # バーの幅（地図全体の何割くらいにするか）
+    pad_x = unit(0.2, "cm"),
+    pad_y = unit(0.2, "cm"),
+    text_cex = 0.6,              # 文字サイズ
+    bar_cols = c("grey40", "white"),
+    line_width = 1,
+    height = unit(0.15, "cm")    # バーの太さ（細めにする）
+  )
+)
+
+final_plot_with_map <- combined_plot & map_elements
+
+print(final_plot_with_map)
+
+
+##居住分散図
+library(scales)
+cor_val <- cor(zone_pop_sf$household, zone_pop_sf$zone_population, use = "complete.obs")
+r_label <- paste("r =", round(cor_val, 3))
+
+ggplot(zone_pop_sf, aes(x = household, y = zone_population)) +
+  geom_point(alpha = 0.6, size = 2, color = "navy") +
+  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed", size = 0.8) +
+  
+  scale_x_continuous(labels = label_comma()) + 
+  scale_y_continuous(labels = label_comma()) +
+  
+  labs(
+    x = "実データ：従業世帯数（世帯）",
+    y = "モデル推計値：従業世帯数（世帯）",
+    title = "モデル再現性の検証（従業世帯数）"
+  ) +
+  annotate("text", x = Inf, y = -Inf, label = r_label,
+           hjust = 1.1, vjust = -1, size = 5, fontface = "italic") +
+  
+  theme_bw() +
+  coord_fixed(ratio = 1)
+
+
+#シナリオ分析のplot
+#household
+library(scales)
+limit_val <- max(abs(diff_ar$diff_ar), na.rm = TRUE)
+scn_plot <- diff_household %>%
+  ggplot() +
+  geom_sf(aes(fill = diff_household), color = "gray60",　linewidth = 0.1 ) + 
+  annotation_north_arrow(
+    location = "tl",             # tl=Top Left (左上), tr=Top Right (右上)
+    which_north = "true",
+    # pad_x = unit(0.2, "cm"),     # 端からの余白
+    # pad_y = unit(0.2, "cm"),
+    style = north_arrow_fancy_orienteering(), # デザインはお好みで
+    # height = unit(0.8, "cm"),    # 矢印の大きさ
+    # width = unit(0.8, "cm")
+  )+
+  annotation_scale(
+    location = "bl",             # br=Bottom Right (右下), bl=Bottom Left (左下)
+    width_hint = 0.3,            # バーの幅（地図全体の何割くらいにするか）
+    bar_cols = c("grey40", "white"),
+    # line_width = 1,
+    text_cex = 0.8,              # 文字サイズ
+    height = unit(0.15, "cm")    # バーの太さ（細めにする）
+  )+
+  
+  scale_fill_gradient2(
+    low = "blue",          # マイナス側の色（青）
+    mid = "white",         # ゼロ付近の色（白）
+    high = "red",          # プラス側の色（赤）
+    midpoint = 0,          # 色が切り替わる値（通常は0）
+    limits = c(-210, 210), # 範囲を対称にする
+    labels = label_comma() # 凡例にカンマを入れる
+  ) + 
+  labs(
+       fill="変化量\n(世帯)") +
+  theme_void()+
+  theme(
+    plot.background = element_rect(fill = "white", color = NA), 
+    panel.background = element_rect(fill = "gray80", color = NA),
+    plot.margin = margin(10, 10, 10, 10) 
+  )
+print(scn_plot)
+
+
+ratio_household <- scn1_household/scn0_household
+
+ar_plot <- ggplot(scn0_household) +
+  geom_sf(aes(fill = scn0_household), color = "gray50",  linewidth = 0.1) +
+  scale_fill_viridis_c(
+    option = "magma",      
+    name = "(世帯)", 
+    direction = -1,             
+    labels = scales::label_comma(),
+    limits = c(0, 25000), 
+  ) +
+  labs(title = "現状：居住世帯数") +
+  theme_void()
+print(ar_plot)
+
+
+
+
+
+
+
+
+
 
 
 
