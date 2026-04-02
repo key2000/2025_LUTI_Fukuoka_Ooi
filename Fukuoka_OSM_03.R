@@ -30,6 +30,7 @@ system.time({ # 36.88
   pbf.lines=oe_read(paste0(tstr,fl[tI]),layer="lines",force_vectortranslate=T)
 })
 # save(pbf.lines,file="data/osm/kyushu.pbf.lines.xdr")
+load("data/osm/kyushu.pbf.lines.xdr") # pbf.lines
 
 pbf.highway=pbf.lines %>% filter(!is.na(highway))
 
@@ -84,6 +85,7 @@ Fukuoka.osm2=st_transform(Fukuoka.osm2,6689) # JGD2011 / UTM zone 52N
 # save
 Fukuoka.osm2=Fukuoka.osm2 %>% select(osm_id,name,highway,nlane,maxspeed,oneway)
 save(Fukuoka.osm2,file="data/osm/Fukuoka.osm2.xdr")
+load("data/osm/Fukuoka.osm2.xdr") #Fukuoka.osm2
 st_write(Fukuoka.osm2,dsn="data/osm/Fukuoka.osm2.gpkg",delete_dsn = T)
 
 # cast line to point
@@ -176,6 +178,8 @@ nodes.Fukuoka.highway=rbind(pt3.orgseg,pt3.newseg2) %>% dplyr::select(ID,geometr
 nodes2=c(link3$ID1,link3$ID2) %>% unique() %>% sort()
 nodes.Fukuoka.highway=nodes.Fukuoka.highway %>% filter(nodes.Fukuoka.highway$ID%in%nodes2)
 save(nodes.Fukuoka.highway,file="data/osm/nodes.Fukuoka.highway.xdr")
+load("data/osm/nodes.Fukuoka.highway.xdr") # nodes.Fukuoka.highway
+plot(nodes.Fukuoka.highway$geometry,add=T)
 st_write(nodes.Fukuoka.highway,dsn="data/osm/nodes.Fukuoka.highway.gpkg",delete_dsn=T)
 
 system.time({ # 9.17 
@@ -224,11 +228,12 @@ tmpM=pt_cd2 %>% select(osm_id.x,osm_id.y) %>% na.omit() # crossing point only
 ptn=tmpM %>% group_by(osm_id.x) %>% summarise(n=n()) # number of crossing points (if line which connect only at end point, ptn=2)
 tI=which(ptn$n>2) # 中間点で交点を持つリンク(osm_id）
 
+pt_cd3=pt_cd2 #%>% mutate(osm_id_new=osm_id.x)
+pt_cd3$osm_id.y[which(!is.na(pt_cd3$osm_id.y))]=pt_cd3$osm_id.x[which(!is.na(pt_cd3$osm_id.y))]
+
 if(length(tI)>0){
   tmp.L=as.list(rep(NA,length(tI)))
   system.time({ # 331.28    
-    pt_cd3=pt_cd2 #%>% mutate(osm_id_new=osm_id.x)
-    pt_cd3$osm_id.y[which(!is.na(pt_cd3$osm_id.y))]=pt_cd3$osm_id.x[which(!is.na(pt_cd3$osm_id.y))]
     for(ii in 1:length(tI)){ # ii=1
       tI2=which(pt_cd3$osm_id.x==ptn$osm_id.x[tI[ii]])
       # pt_cd3[tI2,]
@@ -275,7 +280,7 @@ link5=link4 %>% # left_join(kansai.pbf.highway4.UTM54N %>% st_drop_geometry(),by
 save(link5,file="data/osm/link5.xdr")
 st_write(link5,dsn="data/osm/link5.gpkg",delete_dsn = T)
 load("data/osm/link5.xdr") # link5
-
+plot(link5$geometry)
 
 system.time({ # 9.17 
   # 座標抽出（L1 = 元の行番号）
@@ -836,7 +841,7 @@ Fukuoka.rail=Fukuoka.other.osm[which(railwaytagind==1),]
 plot(Fukuoka.rail$geometry)
 # st_write(Fukuoka.rail)
 st_write(Fukuoka.rail,dsn="data/osm/Fukuoka.rail0.gpkg",delete_dsn = T)
-
+# Fukuoka.rail=st_read("data/osm/Fukuoka.rail0.gpkg")
 
 ## OSM
 tstr="E:/WorkDir01/prog/R/2025/2025_GlobalUrbanModel/data/OSM/"
@@ -892,6 +897,7 @@ Fukuoka.stations=Fukuoka.other.osm.points.publicTransport[tI1,]
 # tI4=setdiff(stop1,stop2)
 # Fukuoka.other.osm.points.publicTransport[which(Fukuoka.other.osm.points.publicTransport$osm_id%in%tI4),]
 save(Fukuoka.stations,file="data/Fukuoka.stations.xdr")
+# load("data/Fukuoka.stations.xdr") # Fukuoka.stations
 st_write(Fukuoka.stations,dsn="data/osm/Fukuoka.stations.gpkg",delete_dsn = T)
 
 
@@ -976,6 +982,7 @@ fukuoka.railway2=fukuoka.railway[-tI6,]
 # service"=>"yard"
 # "usage"=>"main"
 save(fukuoka.railway2,file="data/fukuoka.railway2.xdr")
+load("data/fukuoka.railway2.xdr") # fukuoka.railway2
 st_write(fukuoka.railway2,dsn="data/osm/fukuoka.railway2.gpkg",delete_dsn = T)
 
 #####
