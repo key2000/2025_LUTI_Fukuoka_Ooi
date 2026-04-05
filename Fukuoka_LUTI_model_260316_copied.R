@@ -347,6 +347,10 @@ if(F){
 rm(list=ls())
 gc();gc();
 
+# install.packages("ggplot2")
+# install.packages("units")
+# install.packages("stringr")
+
 library(tidyr)
 library(sf)
 library(dplyr)
