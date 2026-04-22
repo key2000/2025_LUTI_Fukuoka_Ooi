@@ -1,6 +1,5 @@
 # extract network data from OSM
-# road network
-#####
+#road network#####
 rm(list=ls())
 gc();gc();
 
@@ -90,11 +89,11 @@ st_write(Fukuoka.osm2,dsn="data/osm/Fukuoka.osm2.gpkg",delete_dsn = T)
 
 # cast line to point
 system.time({ # 9.31 
-  df=Fukuoka.osm2 %>% select(osm_id)
+  df=Fukuoka.osm2 %>% dplyr::select(osm_id)
   pt <- st_cast(df, "POINT")
 })
 
-pt_line=st_coordinates(Fukuoka.osm2 %>% select(osm_id))
+pt_line=st_coordinates(Fukuoka.osm2 %>% dplyr::select(osm_id))
 
 pt_cd=st_coordinates(pt) %>% as.data.frame() # coordinates
 n_pt=pt_cd %>% group_by(X,Y) %>% summarise(n=n()) %>% ungroup() %>% ungroup() # group by same coordinates
@@ -990,7 +989,7 @@ st_write(fukuoka.railway2,dsn="data/osm/fukuoka.railway2.gpkg",delete_dsn = T)
 
 
 # rail network model: connect station and railway, station and zone centroid
-#####
+#rail network#####
 rm(list=ls())
 gc();gc();
 

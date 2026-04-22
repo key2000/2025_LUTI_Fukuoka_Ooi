@@ -17,7 +17,7 @@ library(stringr)
 target_crs <- 6670
 
 # 1kmメッシュ 
-bnd_mesh_wL10_wE=st_read("data/processed/bnd_mesh_wL10_filterd/bnd_mesh_wL10_filterd.shp")
+bnd_mesh_wL10_wE=st_read("data/bnd_mesh_wL10_filterd/bnd_mesh_wL10_filterd.shp")
 st_crs(bnd_mesh_wL10_wE)
 plot(bnd_mesh_wL10_wE$geometry)
 
