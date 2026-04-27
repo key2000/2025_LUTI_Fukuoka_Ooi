@@ -869,7 +869,7 @@ diff_Lj_target <- 15000#調べて変える！
 scn0_Lj_target <-scn0_L_j_hat[target_zone_id, "L_j_hat"]
 
 #scn1
-if(F){
+if(T){
   scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
   
   total_L <- sum(scn0_L_j_hat$L_j_hat,na.rm = TRUE)
@@ -885,7 +885,7 @@ if(F){
 }
 
 #scn2 CBD距離と元の雇用者数
-if(T){
+if(F){
   all_zones <- rownames(scn0_L_j_hat)
   other_zones <- setdiff(all_zones,target_zone_id)
   
@@ -1262,67 +1262,98 @@ ggplot(zone_pop_sf, aes(x = household, y = zone_population)) +
 
 #シナリオ分析のplot
 #household
-library(scales)
-limit_val <- max(abs(diff_ar$diff_ar), na.rm = TRUE)
+# library(scales)
+# limit_val <- max(abs(diff_ar$diff_ar), na.rm = TRUE)
+# scn_plot <- diff_household %>%
+#   ggplot() +
+#   geom_sf(aes(fill = diff_household), color = "gray60",　linewidth = 0.1 ) + 
+#   annotation_north_arrow(
+#     location = "tl",             # tl=Top Left (左上), tr=Top Right (右上)
+#     which_north = "true",
+#     # pad_x = unit(0.2, "cm"),     # 端からの余白
+#     # pad_y = unit(0.2, "cm"),
+#     style = north_arrow_fancy_orienteering(), # デザインはお好みで
+#     # height = unit(0.8, "cm"),    # 矢印の大きさ
+#     # width = unit(0.8, "cm")
+#   )+
+#   annotation_scale(
+#     location = "bl",             # br=Bottom Right (右下), bl=Bottom Left (左下)
+#     width_hint = 0.3,            # バーの幅（地図全体の何割くらいにするか）
+#     bar_cols = c("grey40", "white"),
+#     # line_width = 1,
+#     text_cex = 0.8,              # 文字サイズ
+#     height = unit(0.15, "cm")    # バーの太さ（細めにする）
+#   )+
+#   
+#   scale_fill_gradient2(
+#     low = "blue",          # マイナス側の色（青）
+#     mid = "white",         # ゼロ付近の色（白）
+#     high = "red",          # プラス側の色（赤）
+#     midpoint = 0,          # 色が切り替わる値（通常は0）
+#     limits = c(-210, 210), # 範囲を対称にする
+#     labels = label_comma() # 凡例にカンマを入れる
+#   ) + 
+#   labs(
+#        fill="変化量\n(世帯)") +
+#   theme_void()+
+#   theme(
+#     plot.background = element_rect(fill = "white", color = NA), 
+#     panel.background = element_rect(fill = "gray80", color = NA),
+#     plot.margin = margin(10, 10, 10, 10) 
+#   )
+# print(scn_plot)
+# 
+# 
+# ratio_household <- scn1_household/scn0_household
+# 
+# ar_plot <- ggplot(scn0_household) +
+#   geom_sf(aes(fill = scn0_household), color = "gray50",  linewidth = 0.1) +
+#   scale_fill_viridis_c(
+#     option = "magma",      
+#     name = "(世帯)", 
+#     direction = -1,             
+#     labels = scales::label_comma(),
+#     limits = c(0, 25000), 
+#   ) +
+#   labs(title = "現状：居住世帯数") +
+#   theme_void()
+# print(ar_plot)
+# 
+# 
+
+
+# アプローチ2：ステップカラー（階級区分）を使う方法
 scn_plot <- diff_household %>%
   ggplot() +
-  geom_sf(aes(fill = diff_household), color = "gray60",　linewidth = 0.1 ) + 
+  geom_sf(aes(fill = diff_household), color = "gray60", linewidth = 0.1 ) + 
   annotation_north_arrow(
-    location = "tl",             # tl=Top Left (左上), tr=Top Right (右上)
-    which_north = "true",
-    # pad_x = unit(0.2, "cm"),     # 端からの余白
-    # pad_y = unit(0.2, "cm"),
-    style = north_arrow_fancy_orienteering(), # デザインはお好みで
-    # height = unit(0.8, "cm"),    # 矢印の大きさ
-    # width = unit(0.8, "cm")
+    location = "tl", which_north = "true",
+    style = north_arrow_fancy_orienteering()
   )+
   annotation_scale(
-    location = "bl",             # br=Bottom Right (右下), bl=Bottom Left (左下)
-    width_hint = 0.3,            # バーの幅（地図全体の何割くらいにするか）
-    bar_cols = c("grey40", "white"),
-    # line_width = 1,
-    text_cex = 0.8,              # 文字サイズ
-    height = unit(0.15, "cm")    # バーの太さ（細めにする）
+    location = "bl", width_hint = 0.3, bar_cols = c("grey40", "white"),
+    text_cex = 0.8, height = unit(0.15, "cm")
   )+
-  
-  scale_fill_gradient2(
-    low = "blue",          # マイナス側の色（青）
-    mid = "white",         # ゼロ付近の色（白）
-    high = "red",          # プラス側の色（赤）
-    midpoint = 0,          # 色が切り替わる値（通常は0）
-    limits = c(-210, 210), # 範囲を対称にする
-    labels = label_comma() # 凡例にカンマを入れる
+  scale_fill_steps2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0,
+    limits = c(-210, 210),
+    # ↓ここを追加：色の切り替わり（区切り）を非線形に細かく設定する
+    breaks = c(-100, -30, -5, 5, 30, 100), 
+    labels = label_comma(),
+    show.limits = TRUE # 凡例の端まで表示する
   ) + 
-  labs(
-       fill="変化量\n(世帯)") +
-  theme_void()+
+  labs(fill="変化量\n(世帯)") +
+  theme_void() +
   theme(
     plot.background = element_rect(fill = "white", color = NA), 
     panel.background = element_rect(fill = "gray80", color = NA),
-    plot.margin = margin(10, 10, 10, 10) 
+    plot.margin = margin(10, 10, 10, 10),
+    legend.key.height = unit(1.5, "cm") # 凡例を少し縦長にすると見やすい
   )
 print(scn_plot)
-
-
-ratio_household <- scn1_household/scn0_household
-
-ar_plot <- ggplot(scn0_household) +
-  geom_sf(aes(fill = scn0_household), color = "gray50",  linewidth = 0.1) +
-  scale_fill_viridis_c(
-    option = "magma",      
-    name = "(世帯)", 
-    direction = -1,             
-    labels = scales::label_comma(),
-    limits = c(0, 25000), 
-  ) +
-  labs(title = "現状：居住世帯数") +
-  theme_void()
-print(ar_plot)
-
-
-
-
-
 
 
 
