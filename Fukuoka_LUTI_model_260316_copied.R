@@ -883,80 +883,82 @@ V.rail=para[1]*dists0.rail+para[3]
 
 
 
-# # LUTI ####
-# flag01=0
-# alpha01=0.5
-# ii=1
-# tt0=proc.time()
-# while(flag01==0){
-#   # for(ii in 1:30){ # ii=1
-#   
-#   V.car=para[1]*dists0.road+para[2]+para[4]*parkPrice/2 # todo: 地価の変動を駐車場価格に反映（未対応＠260316）
-#   
-#   den=exp(V.bike)+exp(V.car)+exp(V.rail)
-#   P.bike=exp(V.bike)/den
-#   P.car=exp(V.car)/den
-#   P.rail=exp(V.rail)/den
-#   
-#   # average generalized converted cost (minutes/trip), assume average
-#   agcc=(P.bike*V.bike+P.car*V.car+P.rail*V.rail)/para[1]
-#   # which(is.na(V.rail))
-#   c_ij <- agcc*1.600 #時間費用掛け算：千円単位1.600から変更：：distは分単位の所要時間．月の時間費用（千円/月）であってますか？ OK
-#   disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
-#   
-#   #均衡解の推定
-#   result_nleqslv <- nleqslv(
-#     x = v_start,
-#     fn = gapf_vj,
-#     global = "dbldog",
-#     control = list(ftol=1e-8, xtol=1e-8, maxit=200)
-#   )
-#   
-#   #最終状態カクニン
-#   v_equilibrium <- result_nleqslv$x %>% exp()
-#   final_state <- caluculate_model_state(v_equilibrium)
-#   # aa=final_state$l_i_j
-#   # dim(aa)
-#   # dim(dists0.road)
-#   
-#   # car OD demand
-#   # which(is.na(final_state$l_i_j))
-#   ODD.car=final_state$l_i_j*P.car
-#   trips <- as.data.frame.table(ODD.car, responseName = "demand")
-#   names(trips) <- c("from", "to", "demand")
-#   # which(is.na(trips$demand))
-#   
-#   traffic01 <- assign_traffic(Graph = sgr,  from = trips$from, to = trips$to, demand = trips$demand, 
-#                               max_gap = 1e-2, algorithm = "bfw", verbose = FALSE)
-#   
-#   sgr2 <- makegraph(df = traffic01$data[,c("from","to","cost")], 
-#                     directed = TRUE,
-#                     capacity = 10^4,
-#                     alpha = alpha,
-#                     beta = beta,
-#                     coords = nodes)
-#   
-#   
-#   # estimate OD travel time under user equilibrium traffic assignment
-#   dists0.road.b=dists0.road
-#   system.time({ # 0.13 
-#     dists1.road<-get_distance_matrix(sgr2,
-#                                      from=zones,
-#                                      to=centers,
-#                                      algorithm = "mch") # because of the rectangular shape of the matrix
-#   })
-#   
-#   dists0.road=alpha01*dists1.road+(1-alpha01)*dists0.road.b
-#   # cat("ii=",ii,", diff=",sum((dists0.road.b-dists0.road)^2),"\n")
-#   diff01=sum((dists0.road.b-dists0.road)^2)
-#   cat("ii=",ii,", diff=",diff01,"\n")
-#   ii=ii+1
-#   if(diff01<100 | ii>10^3){
-#     flag01=1
-#   }
-#   
-# }
-# proc.time()-tt0
+# LUTI ####
+if(F){
+flag01=0
+alpha01=0.5
+ii=1
+tt0=proc.time()
+while(flag01==0){
+  # for(ii in 1:30){ # ii=1
+
+  V.car=para[1]*dists0.road+para[2]+para[4]*parkPrice/2 # todo: 地価の変動を駐車場価格に反映（未対応＠260316）
+
+  den=exp(V.bike)+exp(V.car)+exp(V.rail)
+  P.bike=exp(V.bike)/den
+  P.car=exp(V.car)/den
+  P.rail=exp(V.rail)/den
+
+  # average generalized converted cost (minutes/trip), assume average
+  agcc=(P.bike*V.bike+P.car*V.car+P.rail*V.rail)/para[1]
+  # which(is.na(V.rail))
+  c_ij <- agcc*1.600 #時間費用掛け算：千円単位1.600から変更：：distは分単位の所要時間．月の時間費用（千円/月）であってますか？ OK
+  disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
+
+  #均衡解の推定
+  result_nleqslv <- nleqslv(
+    x = v_start,
+    fn = gapf_vj,
+    global = "dbldog",
+    control = list(ftol=1e-8, xtol=1e-8, maxit=200)
+  )
+
+  #最終状態カクニン
+  v_equilibrium <- result_nleqslv$x %>% exp()
+  final_state <- caluculate_model_state(v_equilibrium)
+  # aa=final_state$l_i_j
+  # dim(aa)
+  # dim(dists0.road)
+
+  # car OD demand
+  # which(is.na(final_state$l_i_j))
+  ODD.car=final_state$l_i_j*P.car
+  trips <- as.data.frame.table(ODD.car, responseName = "demand")
+  names(trips) <- c("from", "to", "demand")
+  # which(is.na(trips$demand))
+
+  traffic01 <- assign_traffic(Graph = sgr,  from = trips$from, to = trips$to, demand = trips$demand,
+                              max_gap = 1e-2, algorithm = "bfw", verbose = FALSE)
+
+  sgr2 <- makegraph(df = traffic01$data[,c("from","to","cost")],
+                    directed = TRUE,
+                    capacity = 10^4,
+                    alpha = alpha,
+                    beta = beta,
+                    coords = nodes)
+
+
+  # estimate OD travel time under user equilibrium traffic assignment
+  dists0.road.b=dists0.road
+  system.time({ # 0.13
+    dists1.road<-get_distance_matrix(sgr2,
+                                     from=zones,
+                                     to=centers,
+                                     algorithm = "mch") # because of the rectangular shape of the matrix
+  })
+
+  dists0.road=alpha01*dists1.road+(1-alpha01)*dists0.road.b
+  # cat("ii=",ii,", diff=",sum((dists0.road.b-dists0.road)^2),"\n")
+  diff01=sum((dists0.road.b-dists0.road)^2)
+  cat("ii=",ii,", diff=",diff01,"\n")
+  ii=ii+1
+  if(diff01<100 | ii>10^3){
+    flag01=1
+  }
+
+}
+proc.time()-tt0
+}
 
 # head(dists)
 # head(dists0)
@@ -1035,7 +1037,7 @@ athome_ar <- athome_crop %>%
   # 単位：m2
 
 # install.packages("GA")
-install.packages("doParallel")
+# install.packages("doParallel")
 library(GA)
 library(parallel)
 library(doParallel)
@@ -1110,7 +1112,7 @@ calibration_fitness <- function(x) {
         global  = "dbldog",
         control = list(ftol = 1e-6, xtol = 1e-6, maxit = 100)
       )
-      if (res_lu$termcd != 1) return(-1e10)
+      if (!(res_lu$termcd %in% c(1, 2))) return(-1e10)
       
       state_l <- calc_state_local(exp(res_lu$x))
       
@@ -1147,7 +1149,10 @@ calibration_fitness <- function(x) {
       ii_local   <- ii_local + 1
       
       # GA評価中は反復回数を制限（本番LUTIは ii>1000 まで）
-      if (diff_local < 500 | ii_local > 10) flag_local <- 1
+      if (diff_local < 1000 | ii_local > 20) {
+        cat("ii=", ii_local, "diff=", diff_local, "\n")  # 何回目で打ち切られたか確認
+        flag_local <- 1
+      }
     }
     # ---- LUTIループここまで ----
     
@@ -1210,34 +1215,44 @@ calibration_fitness <- function(x) {
 
 
 # ---- クラスター準備 ----
-cl <- makeCluster(detectCores() - 1)
-registerDoParallel(cl)
+# cl <- makeCluster(detectCores() - 1)
+# # registerDoParallel(cl)
+# 
+# clusterExport(cl, varlist = c(
+#   # fitness関数本体
+#   "calibration_fitness",
+#   # 距離行列・ネットワーク
+#   "dists0.road", "dists0.bike", "dists0.rail",
+#   "sgr", "nodes", "zones", "centers",
+#   "alpha", "beta",
+#   # モード選択（固定）
+#   "V.bike", "V.rail", "para", "parkPrice",
+#   # 経済データ
+#   "omega_j_matrix", "L_j_hat",
+#   # 土地利用（固定）
+#   "G0_i", "k_i", "phi", "phi_pub", "rr_a",
+#   # 均衡計算
+#   "nz_res", "nz_work", "v_start",
+#   # 観測値（元コードと同じ変数名）
+#   "household", "athome_df", "athome_ar",
+#   
+#   "assign_traffic", "makegraph", "get_distance_matrix"
+# ))
+# 
+# clusterEvalQ(cl, {
+#   library(nleqslv)
+#   library(cppRouting)
+#   library(dplyr)
+#   library(tibble)
+# })
 
-clusterExport(cl, varlist = c(
-  # fitness関数本体
-  "calibration_fitness",
-  # 距離行列・ネットワーク
-  "dists0.road", "dists0.bike", "dists0.rail",
-  "sgr", "nodes", "zones", "centers",
-  "alpha", "beta",
-  # モード選択（固定）
-  "V.bike", "V.rail", "para", "parkPrice",
-  # 経済データ
-  "omega_j_matrix", "L_j_hat",
-  # 土地利用（固定）
-  "G0_i", "k_i", "phi", "phi_pub", "rr_a",
-  # 均衡計算
-  "nz_res", "nz_work", "v_start",
-  # 観測値（元コードと同じ変数名）
-  "household", "athome_df", "athome_ar"
-))
+# 初期パラメータ（元コードの値）
+x_test <- c(0.3, 0.2, 0.6, 0.1, 2.0)
 
-clusterEvalQ(cl, {
-  library(nleqslv)
-  library(cppRouting)
-  library(dplyr)
-  library(tibble)
-})
+# 単発で fitness を呼ぶ（並列化なし）
+test_result <- calibration_fitness(x_test)
+cat("fitness 値:", test_result, "\n")
+
 
 # ---- GA実行 ----
 cat("GA開始:", format(Sys.time(), "%H:%M:%S"), "\n")
@@ -1245,15 +1260,15 @@ system.time({
   ga_result_calib <- ga(
     type    = "real-valued",
     fitness = calibration_fitness,
-    
+
     #         alpha_a  gamma_0  gamma_1  theta_H  theta_L
     lower   = c(0.1,    0.05,    0.3,     0.02,    0.5),
     upper   = c(0.5,    0.8,     0.9,     0.5,     5.0),
-    
-    popSize = 20,    # 動作確認用：本番は50程度に増やす
-    maxiter = 20,    # 動作確認用：本番は100程度に増やす
-    
-    parallel = cl,
+
+    popSize = 50,    # 個体数、動作確認用：本番は50程度に増やす
+    maxiter = 100,    # 世代数、動作確認用：本番は100程度に増やす
+
+    parallel = TRUE,
     monitor  = TRUE
   )
 })
@@ -1276,6 +1291,7 @@ alpha_z <- 1 - alpha_a
 alpha_0 <- (alpha_z ^ alpha_z) * (alpha_a ^ alpha_a)
 gamma_0 <- best_params["gamma_0"]
 gamma_1 <- best_params["gamma_1"]
+
 theta_H <- best_params["theta_H"]
 theta_L <- best_params["theta_L"]
 
@@ -1399,7 +1415,8 @@ plot(zone_pop_sf$household,zone_pop_sf$zone_population)
 abline(0,1,col="red")
 sum(zone_pop_sf$household)
 sum(zone_pop_sf$zone_population)
-cor(zone_pop_sf$household,zone_pop_sf$zone_population)
+(cor(zone_pop_sf$household,zone_pop_sf$zone_population))^2
+
 
 
 #居住プロット zone_population , household 
@@ -1444,6 +1461,7 @@ athome_df<-key_code_sf %>%
 rentC=data.frame(athome=athome_df$avg_rent,est=rent_map_data$market_rent) %>% na.omit()
 plot(rentC$athome,rentC$est)
 abline(0,1,col="red")
+(cor(rentC$athome, rentC$est))^2
 
 #家賃プロット　  
 p_rent_obs   <- make_map(athome_df, "avg_rent",       "実データ：家賃", "plasma", c(0, 3200))
@@ -1472,7 +1490,12 @@ athome_ar <- athome_crop %>%
 athome_ar<-key_code_sf %>% 
   left_join(athome_ar, by="KEY_CODE")
 
-#床面積プロット　  
+#床面積プロット　 
+arC=data.frame(athome=athome_ar$avg_room_ar,est=ar_map_data$avg_floor_i) %>% na.omit()
+plot(arC$athome,arC$est)
+abline(0,1,col="red")
+(cor(arC$athome, arC$est))^2
+
 p_ar_obs   <- make_map(athome_ar, "avg_room_ar",       "実データ：床面積", "viridis", c(0, 200))
 p_ar_model <- make_map(ar_map_data, "avg_floor_i", "モデル：床面積",   "viridis", c(0, 200))
 print(p_ar_obs + p_ar_model)  # patchwork
