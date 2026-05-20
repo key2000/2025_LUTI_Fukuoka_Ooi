@@ -1057,7 +1057,7 @@ calibration_fitness <- function(x) {
   tryCatch({
     
     # ---- LUTIループをfitness内部で完走させる ----
-    dists_road_local <- dists0.road
+    dists_road_local <- dists0.road*1
     flag_local <- 0
     ii_local   <- 1
     
@@ -1215,36 +1215,36 @@ calibration_fitness <- function(x) {
 
 
 # ---- クラスター準備 ----
-# cl <- makeCluster(detectCores() - 1)
-# # registerDoParallel(cl)
-# 
-# clusterExport(cl, varlist = c(
-#   # fitness関数本体
-#   "calibration_fitness",
-#   # 距離行列・ネットワーク
-#   "dists0.road", "dists0.bike", "dists0.rail",
-#   "sgr", "nodes", "zones", "centers",
-#   "alpha", "beta",
-#   # モード選択（固定）
-#   "V.bike", "V.rail", "para", "parkPrice",
-#   # 経済データ
-#   "omega_j_matrix", "L_j_hat",
-#   # 土地利用（固定）
-#   "G0_i", "k_i", "phi", "phi_pub", "rr_a",
-#   # 均衡計算
-#   "nz_res", "nz_work", "v_start",
-#   # 観測値（元コードと同じ変数名）
-#   "household", "athome_df", "athome_ar",
-#   
-#   "assign_traffic", "makegraph", "get_distance_matrix"
-# ))
-# 
-# clusterEvalQ(cl, {
-#   library(nleqslv)
-#   library(cppRouting)
-#   library(dplyr)
-#   library(tibble)
-# })
+cl <- makeCluster(detectCores() - 1)
+# registerDoParallel(cl)
+
+clusterExport(cl, varlist = c(
+  # fitness関数本体
+  "calibration_fitness",
+  # 距離行列・ネットワーク
+  "dists0.road", "dists0.bike", "dists0.rail",
+  "sgr", "nodes", "zones", "centers",
+  "alpha", "beta",
+  # モード選択（固定）
+  "V.bike", "V.rail", "para", "parkPrice",
+  # 経済データ
+  "omega_j_matrix", "L_j_hat",
+  # 土地利用（固定）
+  "G0_i", "k_i", "phi", "phi_pub", "rr_a",
+  # 均衡計算
+  "nz_res", "nz_work", "v_start",
+  # 観測値（元コードと同じ変数名）
+  "household", "athome_df", "athome_ar",
+
+  "assign_traffic", "makegraph", "get_distance_matrix"
+))
+
+clusterEvalQ(cl, {
+  library(nleqslv)
+  library(cppRouting)
+  library(dplyr)
+  library(tibble)
+})
 
 # 初期パラメータ（元コードの値）
 x_test <- c(0.3, 0.2, 0.6, 0.1, 2.0)
@@ -1253,6 +1253,13 @@ x_test <- c(0.3, 0.2, 0.6, 0.1, 2.0)
 test_result <- calibration_fitness(x_test)
 cat("fitness 値:", test_result, "\n")
 
+# ワーカー側で fitness が動くかテスト
+test_in_worker <- parLapply(cl, 1:1, function(i) {
+  r1 <- calibration_fitness(c(0.3, 0.2, 0.6, 0.1, 2.0))
+  r2 <- calibration_fitness(c(0.3, 0.2, 0.6, 0.1, 2.0))  # 同じパラメータで2回目
+  c(r1, r2)
+})
+cat("1回目:", test_in_worker[[1]][1], "  2回目:", test_in_worker[[1]][2], "\n")
 
 # ---- GA実行 ----
 cat("GA開始:", format(Sys.time(), "%H:%M:%S"), "\n")
@@ -1268,7 +1275,7 @@ system.time({
     popSize = 50,    # 個体数、動作確認用：本番は50程度に増やす
     maxiter = 100,    # 世代数、動作確認用：本番は100程度に増やす
 
-    parallel = TRUE,
+    parallel = cl,
     monitor  = TRUE
   )
 })
