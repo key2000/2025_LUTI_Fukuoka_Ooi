@@ -1012,9 +1012,9 @@ household <- read.csv(
   na.strings = c("", "NA")
 ) %>%
   dplyr::select(KEY_CODE, T001100035) %>%
-  dplyr::rename(household = "T001100035") %>%
+  dplyr::rename(obs_household = "T001100035") %>%
   dplyr::mutate(KEY_CODE = as.character(KEY_CODE),
-                household = as.numeric(household))
+                obs_household = as.numeric(household))
 household <- household[-1, ]
 
 # --- 家賃・床面積（@homeデータ）---
@@ -1282,6 +1282,8 @@ system.time({
 cat("GA終了:", format(Sys.time(), "%H:%M:%S"), "\n")
 
 stopCluster(cl)
+gc()
+gc()
 
 # ---- 結果の確認 ----
 best_params <- ga_result_calib@solution[1, ]
@@ -1289,6 +1291,11 @@ names(best_params) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
 cat("\n最適パラメータ:\n")
 print(round(best_params, 4))
 cat("最良fitness（-Loss）:", ga_result_calib@fitnessValue, "\n\n")
+
+save(ga_result_calib, best_params, file = "ga_result_backup.RData")
+load("ga_result_backup.RData")
+best_params <- ga_result_calib@solution[1, ]
+names(best_params) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
 
 plot(ga_result_calib)  # 収束曲線
 
@@ -1305,7 +1312,6 @@ theta_L <- best_params["theta_L"]
 
 # ---- LUTIループを最適パラメータで再実行 ----
 # 元コードL.882〜954と同じ処理を最適パラメータで実行する
-cat("\n最適パラメータでLUTIループを再実行します\n")
 flag01 <- 0
 alpha01 <- 0.5
 ii <- 1
@@ -1361,7 +1367,7 @@ while (flag01 == 0) {
   if (diff01 < 100 | ii > 1e3) flag01 <- 1
 }
 proc.time() - tt0
-cat("最適パラメータでのLUTIループ完了\n\n")
+
 
 
 
@@ -1370,6 +1376,8 @@ cat("最適パラメータでのLUTIループ完了\n\n")
 #実データとモデル比較#####
 # install.packages("patchwork")
 library(patchwork)
+# install.packages("wCorr")
+library(wCorr)
 
 # 地図プロットを作る関数を1つ定義する
 make_map <- function(data, fill_var, title, option, limits) {
@@ -1386,49 +1394,43 @@ make_map <- function(data, fill_var, title, option, limits) {
 ## 居住・従業地別 世帯数 (l_i_j) 
 
 # モデル：メッシュごと世帯数
-# rm("zone_population")
-zone_population=rowSums(final_state$l_i_j,na.rm=TRUE)
-zone_population<-tibble(
+est_household=rowSums(final_state$l_i_j,na.rm=TRUE)
+est_household<-tibble(
   KEY_CODE=rownames(final_state$l_i_j),
-  zone_population=zone_population
+  est_household=est_household
 )%>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
-# zone_population<-data.frame(
-#   KEY_CODE=rownames(final_state$l_i_j),
-#   zone_population=zone_population
-# )%>%
-#   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
-# zone_population<-left_join(key_code_sf,zone_population,by="KEY_CODE")
 
 #実データ：メッシュごと世帯数
 csv.household<-"data/raw/国勢調査_人口及び世帯数_1kmメッシュ/tblT001100S5030.csv"
-household<-read.csv(csv.household,fileEncoding = "CP932",stringsAsFactors=FALSE,na.strings= c("", "NA"))%>%
+obs_household<-read.csv(csv.household,fileEncoding = "CP932",stringsAsFactors=FALSE,na.strings= c("", "NA"))%>%
   dplyr::select(KEY_CODE,T001100035)%>%
-  dplyr::rename(household="T001100035")%>%
-  dplyr::mutate(KEY_CODE=as.character(KEY_CODE),household=as.numeric(household))
-household<-household[-1,]
-# save(household,file="data/household.xdr")
-# file.exists("data/household.xdr")
-# household<-left_join(key_code_sf,household,by="KEY_CODE") %>% 
-#   dplyr::mutate(
-#     household = tidyr::replace_na(household, 0))
+  dplyr::rename(obs_household="T001100035")%>%
+  dplyr::mutate(KEY_CODE=as.character(KEY_CODE),obs_household=as.numeric(obs_household))
+obs_household<-obs_household[-1,]
 
-zone_pop_sf=left_join(key_code_sf,zone_population,by="KEY_CODE") %>% 
-  left_join(household,by="KEY_CODE") %>% 
+#hh比較
+hhC=left_join(key_code_sf,est_household,by="KEY_CODE") %>% 
+  left_join(obs_household,by="KEY_CODE") %>% 
   dplyr::mutate(
-    household = tidyr::replace_na(household, 0))
+    obs_household = tidyr::replace_na(obs_household, 0))
 
-plot(zone_pop_sf$household,zone_pop_sf$zone_population)
+plot(hhC$obs_household,hhC$est_household)
 abline(0,1,col="red")
-sum(zone_pop_sf$household)
-sum(zone_pop_sf$zone_population)
-(cor(zone_pop_sf$household,zone_pop_sf$zone_population))^2
+sum(hhC$obs_household)
+sum(hhC$est_household)
+(cor(hhC$obs_household,hhC$est_household, use="complete.obs"))^2
+r_hh_weighted <- weightedCorr(
+  x = hhC$obs_household,
+  y = hhC$est_household,
+  weights = hhC$obs_household,
+  method = "Pearson"
+)
+cat("家賃 重みつきR²:", r_hh_weighted^2, "\n")
 
-
-
-#居住プロット zone_population , household 
-p_hh_obs   <- make_map(zone_pop_sf, "household",       "実データ：世帯数", "magma", c(0, 25000))
-p_hh_model <- make_map(zone_pop_sf, "zone_population", "モデル：世帯数",   "magma", c(0, 25000))
+#居住プロット 
+p_hh_obs   <- make_map(hhC, "comp_household",       "実データ：世帯数", "magma", c(0, 25000))
+p_hh_model <- make_map(hhC, "est_household", "モデル：世帯数",   "magma", c(0, 25000))
 print(p_hh_obs + p_hh_model)  # patchwork
 
 
@@ -1469,6 +1471,9 @@ rentC=data.frame(athome=athome_df$avg_rent,est=rent_map_data$market_rent) %>% na
 plot(rentC$athome,rentC$est)
 abline(0,1,col="red")
 (cor(rentC$athome, rentC$est))^2
+
+rentC <- rentC %>% 
+  left_join(obs_household, b)
 
 #家賃プロット　  
 p_rent_obs   <- make_map(athome_df, "avg_rent",       "実データ：家賃", "plasma", c(0, 3200))
