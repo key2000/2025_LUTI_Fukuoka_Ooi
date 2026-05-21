@@ -1443,8 +1443,8 @@ rent_df <- data.frame(
   market_rent = as.numeric(final_state$r_bar_i)
 ) %>%
   mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
-rent_map_data <- left_join(key_code_sf, rent_df, by = "KEY_CODE")
-rent_map_data <- rent_map_data %>% 
+est_rent <- left_join(key_code_sf, rent_df, by = "KEY_CODE")
+est_rent <- est_rent %>%
   mutate(market_rent=market_rent*1000)
 
 #実データ：家賃アットホームデータ
@@ -1467,7 +1467,19 @@ athome_df<-athome_df %>%
 athome_df<-key_code_sf %>% 
   left_join(athome_df, by="KEY_CODE")
 
-rentC=data.frame(athome=athome_df$avg_rent,est=rent_map_data$market_rent) %>% na.omit()
+#rent比較
+rentC=left_join(key_code_sf,est_rent,by="KEY_CODE") %>% 
+  left_join(obs_household,by="KEY_CODE") %>% 
+  dplyr::mutate(
+    obs_household = tidyr::replace_na(obs_household, 0))
+
+plot(hhC$obs_household,hhC$est_household)
+abline(0,1,col="red")
+sum(hhC$obs_household)
+sum(hhC$est_household)
+(cor(hhC$obs_household,hhC$est_household, use="complete.obs"))^2
+
+rentC=data.frame(athome=athome_df$avg_rent,est=est_rent$market_rent) %>% na.omit()
 plot(rentC$athome,rentC$est)
 abline(0,1,col="red")
 (cor(rentC$athome, rentC$est))^2
@@ -1477,7 +1489,7 @@ rentC <- rentC %>%
 
 #家賃プロット　  
 p_rent_obs   <- make_map(athome_df, "avg_rent",       "実データ：家賃", "plasma", c(0, 3200))
-p_rent_model <- make_map(rent_map_data, "market_rent", "モデル：家賃",   "plasma", c(0, 3200))
+p_rent_model <- make_map(est_rent, "market_rent", "モデル：家賃",   "plasma", c(0, 3200))
 print(p_rent_obs + p_rent_model)  # patchwork
 
 
