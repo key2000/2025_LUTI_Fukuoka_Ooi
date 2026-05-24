@@ -1021,9 +1021,9 @@ household <- read.csv(
   na.strings = c("", "NA")
 ) %>%
   dplyr::select(KEY_CODE, T001100035) %>%
-  dplyr::rename(obs_household = "T001100035") %>%
+  dplyr::rename(obs_hh = "T001100035") %>%
   dplyr::mutate(KEY_CODE = as.character(KEY_CODE),
-                obs_household = as.numeric(obs_household))
+                obs_hh = as.numeric(obs_hh))
 household <- household[-1, ]
 
 # --- 家賃・床面積（@homeデータ）---
@@ -1175,9 +1175,10 @@ calibration_fitness <- function(x) {
     )
     comp_hh <- household %>%
       left_join(est_hh_df, by = "KEY_CODE") %>%
-      filter(!is.na(household), !is.na(est_hh),
-             household > 0, est_hh > 0)
-    f_hh <- sum(comp_hh$household*(log(comp_hh$est_hh) - log(comp_hh$household)) ^ 2) #ここを変えた,まhouseholdじゃなくてobs_householdにしなきゃか
+      filter(!is.na(obs_hh), !is.na(est_hh),
+             obs_hh > 0, est_hh > 0)
+    w_hh_i <- comp_hh$obs_hh / sum(comp_hh$obs_hh)
+    f_hh <- sum(w_hh_i*(log(comp_hh$est_hh) - log(comp_hh$obs_hh)) ^ 2) #ここを変えた,まhouseholdじゃなくてobs_householdにしなきゃか
     
     # 家賃（r_bar_i は千円/m2 → ×1000 で円/m2 に換算）
     est_rent_df <- tibble(
@@ -1186,9 +1187,12 @@ calibration_fitness <- function(x) {
     )
     comp_rent <- athome_df %>%
       left_join(est_rent_df, by = "KEY_CODE") %>%
+      left_join(household, by = "KEY_CODE") %>%
       filter(!is.na(avg_rent), !is.na(est_rent),
-             avg_rent > 0, est_rent > 0)
-    f_rent <- sum((comp_hh$household*log(comp_rent$est_rent) - log(comp_rent$avg_rent)) ^ 2) #変えた
+             avg_rent > 0, est_rent > 0,
+            !is.na(obs_hh), obs_hh > 0)
+    w_rent_i <- comp_rent$obs_hh / sum(comp_rent$obs_hh))
+    f_rent <- sum(w_rent_i*(log(comp_rent$est_rent) - log(comp_rent$avg_rent)) ^ 2) #変えた
     
     # 床面積
     est_ar_vec <- rowSums(state_l$a_fij_H * state_l$l_i_j, na.rm = TRUE) /
@@ -1199,9 +1203,12 @@ calibration_fitness <- function(x) {
     )
     comp_ar <- athome_ar %>%
       left_join(est_ar_df, by = "KEY_CODE") %>%
+      left_join(household, by = "KEY_CODE") %>%
       filter(!is.na(avg_room_ar), !is.na(est_ar),
-             avg_room_ar > 0, est_ar > 0)
-    f_ar <- sum(comp_hh$househlold*(log(comp_ar$est_ar) - log(comp_ar$avg_room_ar)) ^ 2) #変えた
+             avg_room_ar > 0, est_ar > 0,
+            !is.na(obs_hh), obs_hh > 0)
+    w_ar_i <- comp_ar$obs_hh / sum(comp_ar$obs_hh)
+    f_ar <- sum(w_ar_i*(log(comp_ar$est_ar) - log(comp_ar$avg_room_ar)) ^ 2) #変えた
     
     # ---- ペナルティ項 ----
     x0      <- c(0.3, 0.2, 0.6, 0.1, 2.0)
@@ -1290,6 +1297,7 @@ system.time({
 })
 cat("GA終了:", format(Sys.time(), "%H:%M:%S"), "\n")
 
+closeAllConnections()
 stopCluster(cl)
 gc()
 gc()
