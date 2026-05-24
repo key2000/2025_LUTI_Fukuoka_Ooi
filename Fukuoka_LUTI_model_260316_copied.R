@@ -3,11 +3,11 @@ rm(list=ls())
 gc();gc();
 
 # Install required packages
-#install.packages("sf")
-#install.packages("dplyr")
-#install.packages("raster")
-#install.packages("terra")
-#install.packages("rgdal")
+# install.packages("sf")
+# install.packages("dplyr")
+# install.packages("raster")
+# install.packages("terra")
+# install.packages("rgdal")
 # install.packages("janitor")
 # install.packages("ggplot2")
 library(tidyr)
@@ -350,6 +350,13 @@ gc();gc();
 # install.packages("ggplot2")
 # install.packages("units")
 # install.packages("stringr")
+# install.packages("cppRouting")
+# install.packages("igraph")
+# install.packages("nleqslv")
+# install.packages("units")
+# install.packages("stringr")
+# install.packages("tidyr")
+
 
 library(tidyr)
 library(sf)
@@ -366,6 +373,8 @@ library(stringr)
 
 #メートル座標系、JGD2011 2011 福岡2系
 target_crs <- 6670
+
+
 load("data/dists0.xdr") # dists0
 # which(is.na(dists0))
 # 経済センサス従業員数1kmメッシュ
@@ -1014,7 +1023,7 @@ household <- read.csv(
   dplyr::select(KEY_CODE, T001100035) %>%
   dplyr::rename(obs_household = "T001100035") %>%
   dplyr::mutate(KEY_CODE = as.character(KEY_CODE),
-                obs_household = as.numeric(household))
+                obs_household = as.numeric(obs_household))
 household <- household[-1, ]
 
 # --- 家賃・床面積（@homeデータ）---
@@ -1168,7 +1177,7 @@ calibration_fitness <- function(x) {
       left_join(est_hh_df, by = "KEY_CODE") %>%
       filter(!is.na(household), !is.na(est_hh),
              household > 0, est_hh > 0)
-    f_hh <- sum((log(comp_hh$est_hh) - log(comp_hh$household)) ^ 2)
+    f_hh <- sum(comp_hh$household*(log(comp_hh$est_hh) - log(comp_hh$household)) ^ 2) #ここを変えた,まhouseholdじゃなくてobs_householdにしなきゃか
     
     # 家賃（r_bar_i は千円/m2 → ×1000 で円/m2 に換算）
     est_rent_df <- tibble(
@@ -1179,7 +1188,7 @@ calibration_fitness <- function(x) {
       left_join(est_rent_df, by = "KEY_CODE") %>%
       filter(!is.na(avg_rent), !is.na(est_rent),
              avg_rent > 0, est_rent > 0)
-    f_rent <- sum((log(comp_rent$est_rent) - log(comp_rent$avg_rent)) ^ 2)
+    f_rent <- sum((comp_hh$household*log(comp_rent$est_rent) - log(comp_rent$avg_rent)) ^ 2) #変えた
     
     # 床面積
     est_ar_vec <- rowSums(state_l$a_fij_H * state_l$l_i_j, na.rm = TRUE) /
@@ -1192,7 +1201,7 @@ calibration_fitness <- function(x) {
       left_join(est_ar_df, by = "KEY_CODE") %>%
       filter(!is.na(avg_room_ar), !is.na(est_ar),
              avg_room_ar > 0, est_ar > 0)
-    f_ar <- sum((log(comp_ar$est_ar) - log(comp_ar$avg_room_ar)) ^ 2)
+    f_ar <- sum(comp_hh$househlold*(log(comp_ar$est_ar) - log(comp_ar$avg_room_ar)) ^ 2) #変えた
     
     # ---- ペナルティ項 ----
     x0      <- c(0.3, 0.2, 0.6, 0.1, 2.0)
@@ -1426,7 +1435,7 @@ r_hh_weighted <- weightedCorr(
   weights = hhC$obs_household,
   method = "Pearson"
 )
-cat("家賃 重みつきR²:", r_hh_weighted^2, "\n")
+cat("従業世帯数 重みつきR²:", r_hh_weighted^2, "\n")
 
 #居住プロット 
 p_hh_obs   <- make_map(hhC, "comp_household",       "実データ：世帯数", "magma", c(0, 25000))
