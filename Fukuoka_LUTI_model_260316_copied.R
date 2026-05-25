@@ -196,7 +196,7 @@ st_write(bnd_mesh_wL10_wE,
          driver = "ESRI Shapefile",
          delete_layer = TRUE)
 
-bnd_mesh_wL10_wE=st_read("data/processed/bnd_mesh_wL10_wE.shp")
+bnd_mesh_wL10_wE=st_read("data/processed/bnd_mesh_wL10_wE")
 # #focal
 # emp_vect <- terra::vect(bnd_mesh_wL10_wE)
 # emp_template <- terra::rast(emp_vect, resolution = 1000)
@@ -220,7 +220,7 @@ bnd_mesh_wL10_wE=st_read("data/processed/bnd_mesh_wL10_wE.shp")
 
 #離島など不要メッシュを手動で除く
 bnd_mesh_wL10_filterd <- bnd_mesh_wL10_wE %>%
-  filter(!KEY_CODE %in%  c(50301053,50306454,50306393,50306383,50306373,50306384,50306374,50306385,50303254,50303244,50303234))
+  filter(!KEY_CODE %in%  c(50301053,50306454,50306393,50306383,50306373,50306384,50306374,50306385,50303254,50303244,50303234,50300426))　#260525 50300426を除外
 nrow(bnd_mesh_wL10_filterd)
 
 dsn_folder <- "data/processed/bnd_mesh_wL10_filterd"
@@ -1178,7 +1178,7 @@ calibration_fitness <- function(x) {
       filter(!is.na(obs_hh), !is.na(est_hh),
              obs_hh > 0, est_hh > 0)
     w_hh_i <- comp_hh$obs_hh / sum(comp_hh$obs_hh)
-    f_hh <- sum(w_hh_i*(log(comp_hh$est_hh) - log(comp_hh$obs_hh)) ^ 2) #ここを変えた,まhouseholdじゃなくてobs_householdにしなきゃか
+    f_hh <- sum(w_hh_i*(log(comp_hh$est_hh) - log(comp_hh$obs_hh)) ^ 2) #ここを変えた
     
     # 家賃（r_bar_i は千円/m2 → ×1000 で円/m2 に換算）
     est_rent_df <- tibble(
@@ -1191,7 +1191,7 @@ calibration_fitness <- function(x) {
       filter(!is.na(avg_rent), !is.na(est_rent),
              avg_rent > 0, est_rent > 0,
             !is.na(obs_hh), obs_hh > 0)
-    w_rent_i <- comp_rent$obs_hh / sum(comp_rent$obs_hh))
+    w_rent_i <- comp_rent$obs_hh / sum(comp_rent$obs_hh)
     f_rent <- sum(w_rent_i*(log(comp_rent$est_rent) - log(comp_rent$avg_rent)) ^ 2) #変えた
     
     # 床面積
