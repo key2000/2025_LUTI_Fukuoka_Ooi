@@ -1191,7 +1191,7 @@ calibration_fitness <- function(x) {
       filter(!is.na(avg_rent), !is.na(est_rent),
              avg_rent > 0, est_rent > 0,
             !is.na(obs_hh), obs_hh > 0)
-    w_rent_i <- comp_rent$obs_hh / sum(comp_rent$obs_hh))
+    w_rent_i <- comp_rent$obs_hh / sum(comp_rent$obs_hh)
     f_rent <- sum(w_rent_i*(log(comp_rent$est_rent) - log(comp_rent$avg_rent)) ^ 2) #変えた
     
     # 床面積
@@ -1446,7 +1446,7 @@ r_hh_weighted <- weightedCorr(
 cat("従業世帯数 重みつきR²:", r_hh_weighted^2, "\n")
 
 #居住プロット 
-p_hh_obs   <- make_map(hhC, "comp_household",       "実データ：世帯数", "magma", c(0, 25000))
+p_hh_obs   <- make_map(hhC, "obs_household",       "実データ：世帯数", "magma", c(0, 25000))
 p_hh_model <- make_map(hhC, "est_household", "モデル：世帯数",   "magma", c(0, 25000))
 print(p_hh_obs + p_hh_model)  # patchwork
 
@@ -1455,14 +1455,10 @@ print(p_hh_obs + p_hh_model)  # patchwork
 #モデル：家賃
 final_r_bar_i=final_state$r_bar_i
 final_r_ij_H=final_state$r_ij_H
-rent_df <- data.frame(
-  KEY_CODE = names(final_state$r_bar_i), 
-  market_rent = as.numeric(final_state$r_bar_i)
-) %>%
-  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
-est_rent <- left_join(key_code_sf, rent_df, by = "KEY_CODE")
-est_rent <- est_rent %>%
-  mutate(market_rent=market_rent*1000)
+rent_df <- tibble(
+  KEY_CODE = names(final_state$r_bar_i)%>%gsub("^mc_", "", .), 
+  est_rent = as.numeric(final_state$r_bar_i)*1000
+) 
 
 #実データ：家賃アットホームデータ
 if(F){
@@ -1474,39 +1470,42 @@ if(F){
   save(athome_crop,file="data/athome_crop.xdr")
 }
 load("data/athome_crop.xdr")
-athome_df <- athome_crop %>% 
-  dplyr::select(rent,room_ar,KEY_CODE) %>% 
-  mutate(rent_par_ar=rent/room_ar)
-athome_df<-athome_df %>% 
-  st_drop_geometry() %>% 
-  group_by(KEY_CODE) %>% 
-  summarise(avg_rent=mean(rent_par_ar, na.rm=TRUE)) 
-athome_df<-key_code_sf %>% 
+athome_df <- athome_crop %>%
+  dplyr::select(rent, room_ar, KEY_CODE) %>%
+  mutate(rent_par_ar = rent / room_ar) %>%
+  st_drop_geometry() %>%
+  group_by(KEY_CODE) %>%
+  summarise(obs_rent = mean(rent_par_ar, na.rm = TRUE))
+
+athome_sf<-key_code_sf %>% 
   left_join(athome_df, by="KEY_CODE")
 
+
 #rent比較
-rentC=left_join(key_code_sf,est_rent,by="KEY_CODE") %>% 
-  left_join(obs_household,by="KEY_CODE") %>% 
-  dplyr::mutate(
-    obs_household = tidyr::replace_na(obs_household, 0))
+rentC <- athome_sf %>% 
+  left_join(rent_df, by="KEY_CODE")%>%
+  left_join(obs_household,by="KEY_CODE") 
 
-plot(hhC$obs_household,hhC$est_household)
+rentC_flt <- rentC |> 
+  filter(!is.na(obs_rent), !is.na(est_rent), !is.na(obs_household),
+  est_rent>0, obs_rent>0,obs_household>0)
+  
+plot(rentC_flt$obs_rent,rentC_flt$est_rent)
 abline(0,1,col="red")
-sum(hhC$obs_household)
-sum(hhC$est_household)
-(cor(hhC$obs_household,hhC$est_household, use="complete.obs"))^2
+(cor(rentC_flt$obs_rent, rentC_flt$est_rent))^2
 
-rentC=data.frame(athome=athome_df$avg_rent,est=est_rent$market_rent) %>% na.omit()
-plot(rentC$athome,rentC$est)
-abline(0,1,col="red")
-(cor(rentC$athome, rentC$est))^2
+r_rent_weighted <- weightedCorr(
+  x = rentC_flt$obs_rent,
+  y = rentC_flt$est_rent,
+  weights = rentC_flt$obs_household,
+  method = "Pearson"
+)
+cat("家賃 重みつきR²:", r_rent_weighted^2, "\n")
 
-rentC <- rentC %>% 
-  left_join(obs_household, b)
 
 #家賃プロット　  
-p_rent_obs   <- make_map(athome_df, "avg_rent",       "実データ：家賃", "plasma", c(0, 3200))
-p_rent_model <- make_map(est_rent, "market_rent", "モデル：家賃",   "plasma", c(0, 3200))
+p_rent_obs   <- make_map(rentC, "obs_rent",       "実データ：家賃", "plasma", c(0, 3200))
+p_rent_model <- make_map(rentC, "est_rent", "モデル：家賃",   "plasma", c(0, 3200))
 print(p_rent_obs + p_rent_model)  # patchwork
 
 
@@ -1514,12 +1513,12 @@ print(p_rent_obs + p_rent_model)  # patchwork
 #モデル：a_fij_H
 final_a_fij_H=final_state$a_fij_H
 avg_floor_i <- rowSums(final_a_fij_H * final_state$l_i_j, na.rm=TRUE) / rowSums(final_state$l_i_j, na.rm=TRUE)
-avg_floor_i <- tibble(
+est_ar <- tibble(
   KEY_CODE=rownames(final_a_fij_H),
-  avg_floor_i=avg_floor_i
+  est_ar=avg_floor_i
 ) %>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
-ar_map_data <- left_join(key_code_sf, avg_floor_i , by = "KEY_CODE")
+
 
 #実データ：アットホームデータの面積
 load("data/athome_crop.xdr")
@@ -1527,12 +1526,32 @@ athome_ar <- athome_crop %>%
   dplyr::select(KEY_CODE,room_ar) %>% 
   st_drop_geometry() %>% 
   group_by(KEY_CODE)%>% 
-  summarise(avg_room_ar=mean(room_ar, na.rm=TRUE)) 
-athome_ar<-key_code_sf %>% 
+  summarise(obs_ar=mean(room_ar, na.rm=TRUE)) 
+obs_ar<-key_code_sf %>% 
   left_join(athome_ar, by="KEY_CODE")
 
-#床面積プロット　 
-arC=data.frame(athome=athome_ar$avg_room_ar,est=ar_map_data$avg_floor_i) %>% na.omit()
+#床面積比較プロット　 
+arC <- obs_ar %>% 
+  left_join(est_ar, by="KEY_CODE")%>%
+  left_join(obs_household,by="KEY_CODE") 
+
+arC_flt <- arC |> 
+  filter(!is.na(est_ar), !is.na(obs_ar), !is.na(obs_household),
+  est_ar>0, obs_ar>0,obs_household>0)
+  
+plot(arC_flt$obs_ar,arC_flt$est_ar)
+abline(0,1,col="red")
+(cor(arC_flt$obs_ar, arC_flt$est_ar))^2
+
+r_rent_weighted <- weightedCorr(
+  x = rentC_flt$obs_rent,
+  y = rentC_flt$est_rent,
+  weights = rentC_flt$obs_household,
+  method = "Pearson"
+)
+cat("家賃 重みつきR²:", r_rent_weighted^2, "\n")
+
+
 plot(arC$athome,arC$est)
 abline(0,1,col="red")
 (cor(arC$athome, arC$est))^2
