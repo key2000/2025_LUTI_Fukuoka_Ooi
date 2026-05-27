@@ -1310,8 +1310,10 @@ print(round(best_params, 4))
 cat("最良fitness（-Loss）:", ga_result_calib@fitnessValue, "\n\n")
 
 save(ga_result_calib, best_params, file = "ga_result_backup.RData")
-load("ga_result_backup.RData")
+load("ga_result_backup260527.RData")
 best_params <- ga_result_calib@solution[1, ]
+cat("\n最適パラメータ:\n")
+print(round(best_params, 4))
 names(best_params) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
 
 plot(ga_result_calib)  # 収束曲線
@@ -1543,21 +1545,16 @@ plot(arC_flt$obs_ar,arC_flt$est_ar)
 abline(0,1,col="red")
 (cor(arC_flt$obs_ar, arC_flt$est_ar))^2
 
-r_rent_weighted <- weightedCorr(
-  x = rentC_flt$obs_rent,
-  y = rentC_flt$est_rent,
-  weights = rentC_flt$obs_household,
+r_ar_weighted <- weightedCorr(
+  x = arC_flt$obs_ar,
+  y = arC_flt$est_ar,
+  weights = arC_flt$obs_household,
   method = "Pearson"
 )
-cat("家賃 重みつきR²:", r_rent_weighted^2, "\n")
+cat("床面積 重みつきR²:", r_ar_weighted^2, "\n")
 
-
-plot(arC$athome,arC$est)
-abline(0,1,col="red")
-(cor(arC$athome, arC$est))^2
-
-p_ar_obs   <- make_map(athome_ar, "avg_room_ar",       "実データ：床面積", "viridis", c(0, 200))
-p_ar_model <- make_map(ar_map_data, "avg_floor_i", "モデル：床面積",   "viridis", c(0, 200))
+p_ar_obs   <- make_map(arC, "obs_ar",       "実データ：床面積", "viridis", c(0, 200))
+p_ar_model <- make_map(arC, "est_ar", "モデル：床面積",   "viridis", c(0, 200))
 print(p_ar_obs + p_ar_model)  # patchwork
 
 
