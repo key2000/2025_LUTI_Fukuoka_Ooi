@@ -25,7 +25,7 @@ target_crs <- 6670
 # print(crs_info)
 
 # 福岡の都市雇用圏
-MEA <- st_read("data/raw/UEA") %>%
+MEA <- st_read("data/UEA") %>%
   st_transform(crs = target_crs)
 MEA_selected <- MEA %>% dplyr::select(mea_mea, geometry)
 UEA_Fukuoka <- MEA_selected %>%
@@ -220,7 +220,7 @@ bnd_mesh_wL10_wE=st_read("data/processed/bnd_mesh_wL10_wE")
 
 #離島など不要メッシュを手動で除く
 bnd_mesh_wL10_filterd <- bnd_mesh_wL10_wE %>%
-  filter(!KEY_CODE %in%  c(50301053,50306454,50306393,50306383,50306373,50306384,50306374,50306385,50303254,50303244,50303234,50300426))　#260525 50300426を除外
+  filter(!KEY_CODE %in%  c(50301053,50306454,50306393,50306383,50306373,50306384,50306374,50306385,50303254,50303244,50303234,50300426)) # 260525 50300426を除外
 nrow(bnd_mesh_wL10_filterd)
 
 dsn_folder <- "data/processed/bnd_mesh_wL10_filterd"
@@ -291,7 +291,7 @@ if(F){
   # dim(trips)
   zones=node10$ID[tI]
   # city certers
-  work_zone<-c(50303302,50303206,50303395,50303208,50302364,50302356,50303344,50303393,50302390,50302290,50302347,50302329,50305475,50305318,50304377,50302422,50301491,50302176)
+  work_zone<-c(50303302,50303206,50303395,50303208,50302364,50302356,50303344,50303393,50302390,50302290,50302347,50302329,50305475,50305318,50304377,50302422,50301491,50302176) 
   tI=which(node10$ID%in%paste0("mc_",work_zone))
   centers=node10$ID[tI]
   
@@ -1419,6 +1419,7 @@ est_household<-tibble(
   est_household=est_household
 )%>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
+est_household_sf
 
 #実データ：メッシュごと世帯数
 csv.household<-"data/raw/国勢調査_人口及び世帯数_1kmメッシュ/tblT001100S5030.csv"
@@ -1721,7 +1722,7 @@ scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
 #plot
 household_plot <- diff_household %>%
   ggplot() +
-  geom_sf(aes(fill = diff_household), color = "gray50",　linewidth = 0.1 ) + 
+  geom_sf(aes(fill = diff_household), color = "gray50", linewidth = 0.1 ) + 
   scale_fill_viridis_c(
     option = "magma",         # 'viridis', 'plasma', 'cividis', 'magma' etc
     name = "居住世帯数",
