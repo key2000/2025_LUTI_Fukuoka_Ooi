@@ -458,10 +458,15 @@ L_j_hat<-voronoi_points%>%
 #dist0のNAメッシュを除く
 # 列 (従業地 j) の選別
 valid_res_rows <- apply(dists0, 1, function(x) sum(!is.na(x)) > 1)
+ # mc_50300426を除外対象に追加
+valid_res_rows["mc_50300426"] <- FALSE
 dists0 <- dists0[valid_res_rows, ]
 # 行 (居住地 i) の選別
 valid_work_cols <- apply(dists0, 2, function(x) sum(!is.na(x)) > 1)
 dists0 <- dists0[, valid_work_cols]
+
+"mc_50300426" %in% rownames(dists0)
+
 
 # dists00=dists0
 # save(dists0,file="dists00.xdr")
@@ -470,6 +475,7 @@ dists0 <- dists0[, valid_work_cols]
 
 print(paste("削除された孤立居住地数:", sum(!valid_res_rows)))
 print(paste("削除された孤立従業地数:", sum(!valid_work_cols)))
+dim(dists0)
 
 # 関連データの同期 (work_zone, omega_j, L_j_hat を修正) 
 # 残った従業地のIDリストを取得
@@ -570,7 +576,7 @@ dists0.road=dists0
 # which(colnames(dists0.road)!=colnames(dists00))
 
 # E:/WorkDir01/prog/R/2025/2025_LUTI_Fukuoka_Ooi/Fukuoka_OSM_03.R
-load("data/railway_dist.xdr") # dists0, minutes per one way: do not depend on traffic
+load("data/railway_dist.xdr") # dists0, minutes per one way: do not depend on traffic　ここでdists0filter前に戻ってる
 dists0.rail=dists0
 dists0.rail <- dists0.rail[valid_res_rows, ]
 dists0.rail <- dists0.rail[, valid_work_cols]
@@ -1419,7 +1425,6 @@ est_household<-tibble(
   est_household=est_household
 )%>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
-est_household_sf
 
 #実データ：メッシュごと世帯数
 csv.household<-"data/raw/国勢調査_人口及び世帯数_1kmメッシュ/tblT001100S5030.csv"
@@ -1579,6 +1584,12 @@ hist(Gi_map_data$habit_ar)
 scn0_v <- result_nleqslv$x  
 scn0_state <- caluculate_model_state(exp(scn0_v))
 
+# scn0のモード分担率を保存
+V.car_scn0  <- para[1] * dists0.road + para[2] + para[4] * parkPrice / 2
+den_scn0    <- exp(V.bike) + exp(V.car_scn0) + exp(V.rail)
+P.car_scn0  <- exp(V.car_scn0) / den_scn0
+P.rail_scn0 <- exp(V.rail)     / den_scn0
+
 names(scn0_state)
 scn0_rent <- scn0_state$r_bar_i       
 scn0_pop  <- rowSums(scn0_state$l_i_j, na.rm=TRUE) 
@@ -1593,7 +1604,7 @@ diff_Lj_target <- 15000 #調べて変える！
 scn0_Lj_target <-scn0_L_j_hat[target_zone_id, "L_j_hat"]
 
 #scn1
-if(T){
+if(F){
 scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
 
 total_L <- sum(scn0_L_j_hat$L_j_hat,na.rm = TRUE)
@@ -1609,7 +1620,7 @@ scn1_total_L <- sum(L_j_hat,na.rm = TRUE) # OK
 }
 
 #scn2 CBD距離と元の雇用者数
-if(F){
+if(T){
   all_zones <- rownames(scn0_L_j_hat)
   other_zones <- setdiff(all_zones,target_zone_id)
   
@@ -1681,6 +1692,11 @@ print(scn1_nleqslv$x)      # 均衡効用
 v_equilibrium <- scn1_nleqslv$x %>% exp()
 scn1_state <- caluculate_model_state(v_equilibrium)
 
+V.car_scn1  <- para[1] * dists0.road + para[2] + para[4] * parkPrice / 2
+den_scn1    <- exp(V.bike) + exp(V.car_scn1) + exp(V.rail)
+P.car_scn1  <- exp(V.car_scn1) / den_scn1
+P.rail_scn1 <- exp(V.rail)     / den_scn1
+
 #グローバル変数を元に戻す 
 L_j_hat <- scn0_L_j_hat
 omega_j_matrix <- scn0_omega_j_matrix
@@ -1703,8 +1719,9 @@ scn1_state$l_i_j
 
 
 #比較　世帯数
-# scn0_household <- zone_population %>% rename(scn0_household=zone_population)
-scn0_household <- zone_pop_sf %>% rename(scn0_household=zone_population)
+scn0_household <- key_code_sf |> 
+  left_join(est_household, by ="KEY_CODE") |> 
+  rename(scn0_household=est_household)
 scn1_household <- rowSums(scn1_state$l_i_j,na.rm=TRUE)
 scn1_household<-tibble(
   KEY_CODE=rownames(scn1_state$l_i_j),
@@ -1720,20 +1737,9 @@ scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
 # diff_household$diff_household %>% hist()
 
 #plot
-household_plot <- diff_household %>%
-  ggplot() +
-  geom_sf(aes(fill = diff_household), color = "gray50", linewidth = 0.1 ) + 
-  scale_fill_viridis_c(
-    option = "magma",         # 'viridis', 'plasma', 'cividis', 'magma' etc
-    name = "居住世帯数",
-    direction = -1,
-    limits = c(-500, 300), 
-    labels = scales::label_comma()
-  ) +
-  labs(title = "モデル：居住世帯数 ") +
-  theme_minimal() +
-  coord_sf(datum = NA) 
-print(household_plot)
+p_hh_scn <- make_map(diff_household, "diff_household", "居住世帯数 変化量", "magma", c(-500,300) )
+plot(p_hh_scn)
+
 
 #比較　家賃
 scn0_rent <- rent_map_data %>% rename(scn0_rent=market_rent)#単位：円
@@ -1823,21 +1829,60 @@ Benefit.2=sum(Benefit.1) # 千円/月
 # scn1_total_dist <- sum(scn1_state$l_i_j * dists0, na.rm=TRUE)
 
 # 時速を仮定して走行距離を推定：今後は交通モデルと連動
-dist.km=dists0*40/60　#km/人・片道 40:時速
-scn0_total_dist <- sum(scn0_state$l_i_j * dist.km*2, na.rm=TRUE) # dists0は片道の所要時間(分）
-scn1_total_dist <- sum(scn1_state$l_i_j * dist.km*2, na.rm=TRUE)
-scn1_total_dist-scn0_total_dist # km/日・全員
-(scn1_total_dist-scn0_total_dist)/scn0_total_dist
-# 260127 127gCO2/kmと仮定
-eCO2=127
-eCO2*scn0_total_dist/10^6
-eCO2*scn1_total_dist/10^6
-dCO2=eCO2*(scn1_total_dist-scn0_total_dist)/10^6 #(tCO2/day)：CO2排出は減少
-dCO2/(eCO2*scn0_total_dist/10^6)
+# dist.km=dists0.road*40/60 #km/人・片道 40:時速
+# dim(scn1_state$l_i_j)
+# dim(dist.km)
 
-print(paste("現況の総移動距離:", round(scn0_total_dist, 0), "人km"))
-print(paste("シナリオの総移動距離:", round(scn1_total_dist, 0), "人km"))
-print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
+# scn0_total_dist <- sum(scn0_state$l_i_j * dist.km*2, na.rm=TRUE) # dists0は片道の所要時間(分）
+# scn1_total_dist <- sum(scn1_state$l_i_j * dist.km*2, na.rm=TRUE)
+# scn1_total_dist-scn0_total_dist # km/日・全員
+# (scn1_total_dist-scn0_total_dist)/scn0_total_dist
+# # 260127 127gCO2/kmと仮定
+# eCO2=127
+# eCO2*scn0_total_dist/10^6
+# eCO2*scn1_total_dist/10^6
+# dCO2=eCO2*(scn1_total_dist-scn0_total_dist)/10^6 #(tCO2/day)：CO2排出は減少
+# dCO2/(eCO2*scn0_total_dist/10^6)
+
+
+eCO2_car  <- 125  # g-CO2/人・km（自動車） 国土交通省：https://www.mlit.go.jp/sogoseisaku/environment/sosei_environment_tk_000007.html
+eCO2_rail <- 17   # g-CO2/人・km（鉄道）
+
+# --- 移動距離行列 (km, 片道) ---
+dist_car.km  <- dists0.road * 40 / 60   # 道路：時速40km仮定
+dist_rail.km <- dists0.rail * 40 / 60   # 鉄道：表定速度40km仮定
+
+# --- モード分担率行列（l_i_jと同次元であること確認）---
+
+# シナリオ0
+scn0_lij_car  <- scn0_state$l_i_j * P.car_scn0   # 自動車通勤世帯数
+scn0_lij_rail <- scn0_state$l_i_j * P.rail_scn0  # 鉄道通勤世帯数
+
+scn0_CO2_car  <- sum(scn0_lij_car  * dist_car.km  * 2, na.rm=TRUE) * eCO2_car  / 1e6  # tCO2/日
+scn0_CO2_rail <- sum(scn0_lij_rail * dist_rail.km * 2, na.rm=TRUE) * eCO2_rail / 1e6  # tCO2/日
+scn0_CO2_total <- scn0_CO2_car + scn0_CO2_rail
+
+# シナリオ1（同様）
+scn1_lij_car  <- scn1_state$l_i_j * P.car_scn1
+scn1_lij_rail <- scn1_state$l_i_j * P.rail_scn1
+
+scn1_CO2_car  <- sum(scn1_lij_car  * dist_car.km  * 2, na.rm=TRUE) * eCO2_car  / 1e6
+scn1_CO2_rail <- sum(scn1_lij_rail * dist_rail.km * 2, na.rm=TRUE) * eCO2_rail / 1e6
+scn1_CO2_total <- scn1_CO2_car + scn1_CO2_rail
+
+# --- 比較 ---
+print(paste("scn0 自動車CO2:", round(scn0_CO2_car,  1), "tCO2/日"))
+print(paste("scn0 鉄道CO2:",   round(scn0_CO2_rail, 1), "tCO2/日"))
+print(paste("scn0 合計CO2:",   round(scn0_CO2_total,1), "tCO2/日"))
+print(paste("scn1 自動車CO2:", round(scn1_CO2_car,  1), "tCO2/日"))
+print(paste("scn1 鉄道CO2:",   round(scn1_CO2_rail, 1), "tCO2/日"))
+print(paste("scn1 合計CO2:",   round(scn1_CO2_total,1), "tCO2/日"))
+print(paste("変化率（合計）:", round((scn1_CO2_total - scn0_CO2_total) / scn0_CO2_total, 4)))
+
+
+# print(paste("現況の総移動距離:", round(scn0_total_dist, 0), "人km"))
+# print(paste("シナリオの総移動距離:", round(scn1_total_dist, 0), "人km"))
+# print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
 
 #total ar
 scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn0_state$l_i_j, na.rm = TRUE)
