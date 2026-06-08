@@ -1,4 +1,4 @@
-#####
+#init####
 rm(list=ls())
 gc();gc();
 
@@ -140,36 +140,6 @@ st_write(bnd_mesh_wL10,
          delete_layer = TRUE)
 
 
-
-# #飛び地メッシュを除く、by労働力人口
-# csv_path <- "data/raw/国勢調査労働力人口等1kmメッシュ/tblT001189S5030.csv" 
-# laborpop <- read.csv(csv_path, fileEncoding = "CP932", stringsAsFactors = FALSE, na.strings = c("", "NA")) 
-# 
-# laborpop <- laborpop %>%
-#   dplyr::select(KEY_CODE, T001189001)%>%
-#   mutate(across(everything(), ~{
-#     numeric_value <- as.numeric(.)
-#     ifelse(is.na(numeric_value), 0, numeric_value)
-#   }))%>%
-#   mutate(KEY_CODE = as.character(KEY_CODE))
-# 
-# bnd_mesh_wL10_wLP <- left_join(bnd_mesh_wL10, laborpop, by = "KEY_CODE") %>%
-#   mutate(T001189001=replace_na(T001189001, 0))
-# 
-# # bnd_mesh_wL10_wLP <- bnd_mesh_wL10_wE %>%
-# #   mutate(
-# #     emp_category = ifelse(T001189001 <10, "less10", "over10") #10人で分類
-# #   )
-# 
-# dsn_folder <- "data/processed/労働力人口"
-# layer_name <- "bnd_mesh_wL10_wLP"
-# st_write(bnd_mesh_wL10_wLP,
-#          dsn = dsn_folder,
-#          layer = layer_name,
-#          driver = "ESRI Shapefile",
-#          delete_layer = TRUE)
-
-
 #従業者数
 # 経済センサス従業員数1kmメッシュ
 csv_path2 <- "data/raw/経済センサス従業員数1kmメッシュ/tblT000841S5030.csv" 
@@ -197,25 +167,6 @@ st_write(bnd_mesh_wL10_wE,
          delete_layer = TRUE)
 
 bnd_mesh_wL10_wE=st_read("data/processed/bnd_mesh_wL10_wE")
-# #focal
-# emp_vect <- terra::vect(bnd_mesh_wL10_wE)
-# emp_template <- terra::rast(emp_vect, resolution = 1000)
-# emp_rst <- terra::rasterize(emp_vect, emp_template, field = "T000841002")
-# 
-# kernel_5X5 <- matrix(1, nrow = 5, ncol = 5)
-# 
-# emp_focal_sum <- terra::focal(emp_rst, w = kernel_5X5, fun ="sum", na.rm = TRUE)
-# 
-# output_folder <- "data/processed/平均化フィルター"
-# output_filename <- "emp_focal_sum.tif" 
-# terra::writeRaster(
-#   emp_focal_sum,
-#   filename = file.path(output_folder, output_filename),
-#   filetype = "GTiff",  
-#   overwrite = TRUE     
-# )
-# 
-# plot(emp_focal_sum, main ="5X5 Focal mean (Employment)")
 
 
 #離島など不要メッシュを手動で除く
@@ -242,107 +193,10 @@ save(bnd_mesh_crop,file="data/bnd_mesh_crop.xdr")
 save(UEA_Fukuoka,file="data/UEA_Fukuoka.xdr")
 
 
-if(F){
-  # source("tntp.R")
-  load("data/osm/link10.xdr") # link10
-  load("data/osm/node10.xdr") # node10
-  
-  # st_write(link10,dsn="data/osm/link10.shp")
-  # which(is.na(link10$maxspeed))
-  
-  # capacity, alpha, beta, free.flow.time
-  
-  # capacity: pcu/hour
-  # https://www.nilim.go.jp/lab/bcg/siryou/tnn/tnn0317pdf/ks0317005.pdf
-  cap.df=data.frame(hwy=unique(link10$highway) %>% sort(),
-                    cap=c(10^4,2500,1700,2500,1700,1500,1500,1250,1250,2500,1700))
-  # 1500pcu/lane/hour
-  # 日換算係数の考え方
-  # https://www.nilim.go.jp/lab/bcg/siryou/tnn/tnn0317pdf/ks0317006.pdf
-  KK=0.1
-  # capacity pcu/day
-  # cap.df$cap/KK
-  
-  # http://library.jsce.or.jp/jsce/open/00037/2002/695-0091.pdf
-  # alpha=0.15;beta=4 #BPR
-  # alpha=0.96;beta=1.2 # mizokami/matsui, 1989
-  
-  # https://bin.t.u-tokyo.ac.jp/kaken/pdf/traffic_assign%20tutrial%20for%20C.pdf
-  # alpha=0.48;beta=2.82
-  
-  #https://www.jstage.jst.go.jp/article/thagis/17/2/17_203/_pdf
-  alpha=0.48;beta=2.89 # yamada/matsui (1998)
-  
-  
-  link10=link10 %>% mutate(FFtime=linklen/maxspeed*60/10^3) %>%  # fftime (minutes)
-    merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
-  
-  
-  nodes=data.frame(node10$ID,st_coordinates(node10))
-  names(nodes)=c("Node","X","Y")
-  
-  # E:/WorkDir01/prog/R/2024/2024_TAP/cppRouting01.R
-  
-  
-  tI=grep("mc_",node10$ID)
-  # tM=expand.grid(node10$ID[tI],node10$ID[tI])
-  # # head(tM)
-  # trips=data.frame(from=tM[,1],to=tM[,2],demand=5)
-  # dim(trips)
-  zones=node10$ID[tI]
-  # city certers
-  work_zone<-c(50303302,50303206,50303395,50303208,50302364,50302356,50303344,50303393,50302390,50302290,50302347,50302329,50305475,50305318,50304377,50302422,50301491,50302176) 
-  tI=which(node10$ID%in%paste0("mc_",work_zone))
-  centers=node10$ID[tI]
-  
-  save(work_zone,file="data/work_zone.xdr")
-  
-  sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(), 
-                   directed = TRUE,
-                   # capacity = 10^4,
-                   capacity = link10$cap/KK,
-                   alpha = alpha,
-                   beta = beta,
-                   coords = nodes)
-  
-  
-  # estimate OD travel time under user zero traffic : minutes
-  system.time({ # 0.13 
-    dists0<-get_distance_matrix(sgr,
-                                from=zones,
-                                to=centers,
-                                algorithm = "mch") # because of the rectangular shape of the matrix
-  })
-  
-  save(dists0,file="data/dists0.xdr")
-  
-  
-  # travel time for bike (15km/h, no congestion)
-  link11=link10 %>% mutate(FFtime=linklen/15*60/10^3) %>%  # fftime (minutes)
-    merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
-  sgr.bike <- makegraph(df = link11[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(), 
-                        directed = TRUE,
-                        # capacity = 10^4,
-                        capacity = link10$cap/KK,
-                        alpha = alpha,
-                        beta = beta,
-                        coords = nodes)
-  
-  system.time({ # 0.13 
-    dists0.bike<-get_distance_matrix(sgr.bike,
-                                     from=zones,
-                                     to=centers,
-                                     algorithm = "mch") # because of the rectangular shape of the matrix
-  })
-  save(dists0.bike,file="data/dists0.bike.xdr")
-  
-}
-
-
 #####
 
 
-#####
+#ここから####
 
 rm(list=ls())
 gc();gc();
@@ -455,7 +309,7 @@ L_j_hat<-voronoi_points%>%
 # sum(L_j_hat)  
 
 
-#dist0のNAメッシュを除く
+#dist0のNAメッシュを除く####
 # 列 (従業地 j) の選別
 valid_res_rows <- apply(dists0, 1, function(x) sum(!is.na(x)) > 1)
  # mc_50300426を除外対象に追加
@@ -502,7 +356,7 @@ key_code_sf <- key_code_sf %>%
 
 
 
-#parameter
+#parameter####
 alpha_a = 0.3  #
 alpha_z = 0.7 #  (α_z + α_a = 1 と仮定)
 p = 1          # 財価格  p=1 と仮定
@@ -578,6 +432,7 @@ dists0.road=dists0
 # E:/WorkDir01/prog/R/2025/2025_LUTI_Fukuoka_Ooi/Fukuoka_OSM_03.R
 load("data/railway_dist.xdr") # dists0, minutes per one way: do not depend on traffic　ここでdists0filter前に戻ってる
 dists0.rail=dists0
+dists0 <- dists0.road 
 dists0.rail <- dists0.rail[valid_res_rows, ]
 dists0.rail <- dists0.rail[, valid_work_cols]
 # which(rownames(dists0.rail)!=rownames(dists0.road))
@@ -606,186 +461,11 @@ parkPrice=outer(LR.o$mean_value*0.03/365*12.5,LR.d$mean_value*0.03/365*12.5,FUN=
 
 
 
-if(F){
-  # estimate initial disposable income
-  para=result$estimate
-  # para[1]/para[4] # yen/minutes
-  V.bike=para[1]*dists0.bike
-  V.car=para[1]*dists0.road+para[2]+para[4]*parkPrice/2
-  V.rail=para[1]*dists0.rail+para[3]
-  
-  den=exp(V.bike)+exp(V.car)+exp(V.rail)
-  # emc=-log(den)/para[1]
-  # transportation model
-  P.bike=exp(V.bike)/den
-  P.car=exp(V.car)/den
-  P.rail=exp(V.rail)/den
-  
-  
-  # average generalized converted cost (minutes/trip)
-  agcc=(P.bike*V.bike+P.car*V.car+P.rail*V.rail)/para[1]
-  
-  # c_ij <- dists0*1.600 #時間費用掛け算：千円単位1.600から変更：：distは分単位の所要時間．月の時間費用（千円/月）であってますか？ OK
-  c_ij <- agcc*1.600 #時間費用掛け算：千円単位1.600から変更：：distは分単位の所要時間．月の時間費用（千円/月）であってますか？ OK
-  # hist(c_ij)
-  disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
-  
-  # dim(omega_j_matrix)
-  # dim(c_ij)
-  
-  
-  # initial utilty vector
-  v_j_vec0=rep(270,nz_work) #50→500→100→80→60
-  v_start=log(v_j_vec0)
-  # v_j_vec2=v_start
-  # v_j_vec=exp(v_start)
-  # gapf_vj(v_start)
-  
-  
-  #均衡解の推定
-  result_nleqslv <- nleqslv(
-    x = v_start,
-    fn = gapf_vj,
-    global = "dbldog",
-    control = list(ftol=1e-8, xtol=1e-8, maxit=200)
-  )
-  
-  # result_nleqslv$x
-  # gapf_vj(result_nleqslv$x)
-  # 
-  # print(result_nleqslv$termcd) # 1なら成功
-  # print(result_nleqslv$x)      # 均衡効用
-  
-  #最終状態カクニン
-  v_equilibrium <- result_nleqslv$x %>% exp()
-  final_state <- caluculate_model_state(v_equilibrium)
-  
-  # final_state$r_bar_i
-  # final_state$r_ij_H
-  # 
-  # final_state$L_j_tilde
-  # L_j_hat
-  # final_state$a_fij_H
-  # final_rgi <- final_state$rg_i
-  
-  # final_state$l_i_j       # residence i, work place j
-  
-  # car OD demand
-  ODD.car=final_state$l_i_j*P.car
-  
-  sum(final_state$l_i_j)
-  sum(ODD.car)
-  
-  # traffic assignment
-  
-  library(cppRouting)
-  library(dplyr)
-  library(sf)
-  library(igraph)
-  
-  
-  
-  # source("tntp.R")
-  # E:/WorkDir01/prog/R/2025/2025_LUTI_Fukuoka_Ooi/Fukuoka_OSM_03.R
-  load("data/osm/link10.xdr") # link10
-  load("data/osm/node10.xdr") # node10
-  
-  # capacity: pcu/hour
-  # https://www.nilim.go.jp/lab/bcg/siryou/tnn/tnn0317pdf/ks0317005.pdf
-  cap.df=data.frame(hwy=unique(link10$highway) %>% sort(),
-                    cap=c(10^4,2500,1700,2500,1700,1500,1500,1250,1250,2500,1700))
-  # 1500pcu/lane/hour
-  # 日換算係数の考え方
-  # https://www.nilim.go.jp/lab/bcg/siryou/tnn/tnn0317pdf/ks0317006.pdf
-  KK=0.1
-  
-  #https://www.jstage.jst.go.jp/article/thagis/17/2/17_203/_pdf
-  alpha=0.48;beta=2.89 # yamada/matsui (1998)
-  
-  link10=link10 %>% mutate(FFtime=linklen/maxspeed*60/10^3) %>%  # fftime (minutes)
-    merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
-  
-  nodes=data.frame(node10$ID,st_coordinates(node10))
-  names(nodes)=c("Node","X","Y")
-  
-  # commuting OD
-  if(F){
-    final_state$l_i_j %>% class()
-    colnames(final_state$l_i_j)
-    rownames(final_state$l_i_j)
-    
-    tI=grep("mc_",node10$ID)
-    tM=expand.grid(node10$ID[tI],node10$ID[tI])
-    # head(tM)
-    trips=data.frame(from=tM[,1],to=tM[,2],demand=5)
-    dim(trips)
-    
-    zones=node10$ID[tI]
-    # city certers
-    tI=which(node10$ID%in%paste0("mc_",c(50303303,50303385,50305465,50302165,50302401)))
-    centers=node10$ID[tI]
-    
-    # estimate OD travel time under user zero traffic 
-    system.time({ # 0.13 
-      dists0<-get_distance_matrix(sgr,
-                                  from=zones,
-                                  to=centers,
-                                  algorithm = "mch") # because of the rectangular shape of the matrix
-    })
-    
-    ## codes for traffic assignment
-    tM=expand.grid(zones,centers)
-    trips=data.frame(from=tM[,1],to=tM[,2],demand=10)
-  }
-  
-  trips <- as.data.frame.table(ODD.car, responseName = "demand")
-  names(trips) <- c("from", "to", "demand")
-  
-  sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(), 
-                   directed = TRUE,
-                   # capacity = 10^4,
-                   capacity = link10$cap/KK,
-                   alpha = alpha,
-                   beta = beta,
-                   coords = nodes)
-  
-  
-  # traffic assignment
-  system.time({ # 2.03   
-    traffic01 <- assign_traffic(Graph = sgr,  from = trips$from, to = trips$to, demand = trips$demand, 
-                                max_gap = 1e-2, algorithm = "bfw", verbose = FALSE)
-  })
-  # save(traffic01,file="data/temp_traffic_01.xdr")
-  
-  # create graph with speed under assigned traffic
-  sgr2 <- makegraph(df = traffic01$data[,c("from","to","cost")], 
-                    directed = TRUE,
-                    capacity = 10^4,
-                    alpha = alpha,
-                    beta = beta,
-                    coords = nodes)
-  
-  
-  zones=rownames(final_state$l_i_j)
-  centers=colnames(final_state$l_i_j)
-  # estimate OD travel time under user equilibrium traffic assignment
-  dists0.road.b=dists0.road
-  system.time({ # 0.13 
-    dists0.road<-get_distance_matrix(sgr2,
-                                     from=zones,
-                                     to=centers,
-                                     algorithm = "mch") # because of the rectangular shape of the matrix
-  })
-  
-  sum((dists0.road.b-dists0.road)^2)
-}
-
-
 # initial utilty vector
 v_j_vec0=rep(270,nz_work) #50→500→100→80→60
 v_start=log(v_j_vec0)
 
-# functions for LU model
+# functions for LU model####
 #土地利用モデル：与えられた効用水準下での立地，消費量
 caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(v_start), v_j_vec=v_equilibrium
   v_j_matrix = matrix(v_j_vec, nrow = nz_res, ncol = nz_work, byrow = TRUE)
@@ -974,45 +654,6 @@ while(flag01==0){
 }
 proc.time()-tt0
 }
-
-# head(dists)
-# head(dists0)
-
-
-# # 行・列名が参照集合に含まれるものだけにフィルタ
-# rows_keep <- rownames(dists0.road) %in% rownames(dists)
-# cols_keep <- colnames(dists0.road) %in% colnames(dists)
-# dists.road <- dists0.road[rows_keep, cols_keep, drop = FALSE]
-# dim(dists.road)
-# save(dists.road,file="dists.road00.xdr")
-# 
-# rows_keep <- rownames(dists0.rail) %in% rownames(dists)
-# cols_keep <- colnames(dists0.rail) %in% colnames(dists)
-# dists.rail <- dists0.rail[rows_keep, cols_keep, drop = FALSE]
-# dim(dists.rail)
-# # save(dists.rail,file="data/dists.rail00.xdr")
-# 
-# plot(as.vector(dists.road),as.vector(dists))
-# abline(0,1,col="red")
-# 
-# plot(as.vector(dists),as.vector(dists.rail))
-# abline(0,1,col="red")
-# 
-# plot(as.vector(dists.road),as.vector(dists.rail))
-# abline(0,1,col="red")
-# 
-# dim(dists)
-# dim(dists0.rail)
-# 
-# 
-# # estimated link trafic
-# estM.df=traffic$data %>% left_join(link10 %>%
-#                                      st_drop_geometry() %>%
-#                                      dplyr::select(highway,linkID,ID1,ID2,maxspeed,linklen),
-#                                    by=c("from"="ID1","to"="ID2"))
-# 
-# # merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
-# dim(estM.df)
 
 
 
@@ -1235,7 +876,7 @@ calibration_fitness <- function(x) {
   })
 }
 
-
+if(F){
 # ---- クラスター準備 ----
 cl <- makeCluster(detectCores() - 1)
 # registerDoParallel(cl)
@@ -1316,6 +957,8 @@ print(round(best_params, 4))
 cat("最良fitness（-Loss）:", ga_result_calib@fitnessValue, "\n\n")
 
 save(ga_result_calib, best_params, file = "ga_result_backup.RData")
+}
+
 load("ga_result_backup260527.RData")
 best_params <- ga_result_calib@solution[1, ]
 cat("\n最適パラメータ:\n")
@@ -1579,143 +1222,275 @@ hist(Gi_map_data$habit_ar)
 #宅地割合プロット　  
 
 
+#シナリオ分析 ####
 
-#シナリオ分析####
+# === Base Scenario (scn0) Setup ===
 scn0_v <- result_nleqslv$x  
 scn0_state <- caluculate_model_state(exp(scn0_v))
 
-# scn0のモード分担率を保存
+# Save scn0 mode shares
 V.car_scn0  <- para[1] * dists0.road + para[2] + para[4] * parkPrice / 2
 den_scn0    <- exp(V.bike) + exp(V.car_scn0) + exp(V.rail)
 P.car_scn0  <- exp(V.car_scn0) / den_scn0
-P.rail_scn0 <- exp(V.rail)     / den_scn0
+P.rail_scn0 <- exp(V.rail) / den_scn0
+P.bike_scn0 <- exp(V.bike) / den_scn0
 
-names(scn0_state)
-scn0_rent <- scn0_state$r_bar_i       
-scn0_pop  <- rowSums(scn0_state$l_i_j, na.rm=TRUE) 
-scn0_welfare <- mean(exp(scn0_v))
-
-scn0_L_j_hat <- L_j_hat # 従業者数        
-
-target_zone_id <- "50303344" # 九大跡地ゾーンのKEY_CODE
-
-#Lj
-diff_Lj_target <- 15000 #調べて変える！
-scn0_Lj_target <-scn0_L_j_hat[target_zone_id, "L_j_hat"]
-
-#scn1
-if(F){
-scn1_Lj_target <- scn0_Lj_target+diff_Lj_target
-
-total_L <- sum(scn0_L_j_hat$L_j_hat,na.rm = TRUE)
-reduction_ratio <- (total_L - scn0_Lj_target - diff_Lj_target)/(total_L-scn0_Lj_target)
-
-all_zones <- rownames(scn0_L_j_hat)
-other_zones <- setdiff(all_zones,target_zone_id)
-L_j_hat[other_zones,"L_j_hat"] <- round(scn0_L_j_hat[other_zones, "L_j_hat"]*reduction_ratio)
-L_j_hat[target_zone_id, "L_j_hat"] <- scn1_Lj_target
-
-scn1_L_j_hat <- L_j_hat
-scn1_total_L <- sum(L_j_hat,na.rm = TRUE) # OK
-}
-
-#scn2 CBD距離と元の雇用者数
-if(T){
-  all_zones <- rownames(scn0_L_j_hat)
-  other_zones <- setdiff(all_zones,target_zone_id)
-  
-  scn2_Lj_target <- scn0_Lj_target + diff_Lj_target
-  cbd_code <- "50303302"
-  colnames(dists0) <- gsub("mc_","",colnames(dists0)) #dists0からmc_抜く、もっと前にやるべき
-  rownames(dists0) <- gsub("mc_","",rownames(dists0))
-  dist_from_cbd <- dists0[other_zones, cbd_code]
-  reduction_weight <- dist_from_cbd*1/(scn0_L_j_hat[other_zones,"L_j_hat"]+1)
-  reduction_amount<- diff_Lj_target*(reduction_weight/sum(reduction_weight))
-  
-  L_j_hat[other_zones,"L_j_hat"] <- round(scn0_L_j_hat[other_zones,"L_j_hat"]-reduction_amount)
-  L_j_hat[target_zone_id,"L_j_hat"] <- scn2_Lj_target
-  
-  scn2_Lj_target <- L_j_hat
-  scn2_total_L <- sum(L_j_hat,na.rm = TRUE)
-}
-
-
-
-#omega_j
-target_col_idx <- which(colnames(omega_j_matrix) == target_zone_id)
+# Save base scenario employment and wages
+scn0_L_j_hat <- L_j_hat
 scn0_omega_j <- omega_j
 scn0_omega_j_matrix <- omega_j_matrix
 scn0_disposable_income_ij <- disposable_income_ij
 
-# 総所得
-sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat) # base scenario
-sum(omega_j$omega_j*L_j_hat$L_j_hat)  # scenario 
-# scenarioの方が総所得が低くなっている．
 
-k01 <- sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat)/sum(omega_j$omega_j*L_j_hat$L_j_hat)
+# === Scenario 1: Uniform Employment Redistribution ===
+target_zone_id <- "50303344"  # Kyushu University redevelopment site
+diff_Lj_target <- 15000       # Employment increase (+15,000 jobs)
+
+all_zones <- rownames(scn0_L_j_hat)
+other_zones <- setdiff(all_zones, target_zone_id)
+
+scn1_Lj_target <- scn0_L_j_hat[target_zone_id, "L_j_hat"] + diff_Lj_target
+
+# Maintain total employment by uniform reduction in other zones
+total_L <- sum(scn0_L_j_hat$L_j_hat, na.rm = TRUE)
+reduction_ratio <- (total_L - scn0_L_j_hat[target_zone_id, "L_j_hat"] - diff_Lj_target) / 
+                   (total_L - scn0_L_j_hat[target_zone_id, "L_j_hat"])
+
+scn1_L_j_hat <- scn0_L_j_hat
+scn1_L_j_hat[other_zones, "L_j_hat"] <- round(scn0_L_j_hat[other_zones, "L_j_hat"] * reduction_ratio)
+scn1_L_j_hat[target_zone_id, "L_j_hat"] <- scn1_Lj_target
+total_L_scn1 <- sum(scn1_L_j_hat$L_j_hat, na.rm = TRUE)
+
+
+# Adjust wages to maintain total payroll (payroll-neutral)
+k01 <- sum(omega_j$omega_j * scn0_L_j_hat$L_j_hat, na.rm = TRUE) / 
+       sum(omega_j$omega_j * scn1_L_j_hat$L_j_hat, na.rm = TRUE)
+
 scn1_omega_j <- omega_j %>% 
-  mutate(scn1_omega_j = omega_j*k01, KEY_CODE=KEY_CODE) %>% dplyr::select(KEY_CODE,scn1_omega_j)
+  mutate(scn1_omega_j = omega_j * k01) %>% 
+  dplyr::select(KEY_CODE, scn1_omega_j)
 
-sum(scn1_omega_j$scn1_omega_j*L_j_hat$L_j_hat)# scenario 1
-sum(omega_j$omega_j*scn0_L_j_hat$L_j_hat) # base scenario 更新完了
+sum(scn0_omega_j$omega_j * scn0_L_j_hat$L_j_hat, na.rm = TRUE)  # 確認：総給与は同じはず
+sum(scn1_omega_j$scn1_omega_j * scn1_L_j_hat$L_j_hat, na.rm = TRUE)  # 確認：総給与は同じはず
 
-  mesh_names <- as.character(scn1_omega_j$KEY_CODE)
-omega_j_matrix <- matrix(as.numeric(scn1_omega_j$scn1_omega_j), 
+scn1_omega_j_matrix <- matrix(as.numeric(scn1_omega_j$scn1_omega_j), 
                               nrow = nz_res, 
                               ncol = nrow(scn1_omega_j), 
                               byrow = TRUE)
-  colnames(omega_j_matrix) <- mesh_names
-disposable_income_ij <-pmax(-c_ij+omega_j_matrix, 0)
+colnames(scn1_omega_j_matrix) <- scn1_omega_j$KEY_CODE 
 
-scn1_omega_j_matrix <- omega_j_matrix
-scn1_disposable_income_ij = pmax(-c_ij+omega_j_matrix, 0)
 
-#nleqslv
-v_start=scn0_v
-v_j_vec2=v_start
-v_j_vec=exp(v_start)
-gapf_vj(v_start)
 
-scn1_nleqslv <- nleqslv(
-  x = v_start,  
-  fn = gapf_vj,
-  global = "dbldog",
-  control = list(ftol=1e-8, xtol=1e-8, maxit=200, allowSingular=TRUE)
+# === Scenario 2: CBD-Distance Weighted Employment Redistribution ===
+# Employment redistributed inversely to CBD distance × current employment
+
+scn2_L_j_hat <- scn0_L_j_hat
+scn2_Lj_target <- scn0_L_j_hat[target_zone_id, "L_j_hat"] + diff_Lj_target
+
+# Ensure dists0 has zone names without "mc_" prefix
+colnames(dists0) <- gsub("^mc_", "", colnames(dists0))
+rownames(dists0) <- gsub("^mc_", "", rownames(dists0))
+
+cbd_code <- "50303302"
+dist_from_cbd <- dists0[other_zones, cbd_code] # dists0.roadで距離を取るべきか、、、no!
+
+# Weight by distance and inverse employment
+reduction_weight <- dist_from_cbd / (scn0_L_j_hat[other_zones, "L_j_hat"] + 1)
+reduction_amount <- diff_Lj_target * (reduction_weight / sum(reduction_weight))
+
+scn2_L_j_hat[other_zones, "L_j_hat"] <- round(scn0_L_j_hat[other_zones, "L_j_hat"] - reduction_amount)
+scn2_L_j_hat[target_zone_id, "L_j_hat"] <- scn2_Lj_target
+sum(scn2_L_j_hat$L_j_hat, na.rm = TRUE)  # 確認：総雇用は同じはず
+
+# Apply same wage adjustment as scn1 (payroll-neutral)
+k02 <- sum(omega_j$omega_j * scn0_L_j_hat$L_j_hat, na.rm = TRUE) / 
+       sum(omega_j$omega_j * scn2_L_j_hat$L_j_hat, na.rm = TRUE)
+
+scn2_omega_j <- omega_j %>% 
+  mutate(scn2_omega_j = omega_j * k02) %>% 
+  dplyr::select(KEY_CODE, scn2_omega_j)
+
+sum(scn0_omega_j$omega_j * scn0_L_j_hat$L_j_hat, na.rm = TRUE)  # 確認：総給与は同じはず
+sum(scn2_omega_j$scn2_omega_j * scn2_L_j_hat$L_j_hat, na.rm = TRUE)  # 確認：総給与は同じはず
+
+scn2_omega_j_matrix <- matrix(as.numeric(scn2_omega_j$scn2_omega_j), 
+                              nrow = nz_res, 
+                              ncol = nrow(scn2_omega_j), 
+                              byrow = TRUE)
+colnames(scn2_omega_j_matrix) <- scn2_omega_j$KEY_CODE
+
+
+# === Consolidate All Scenario Definitions ===
+scenarios <- list(
+  scn0 = list(
+    name = "Base Scenario (Current Conditions)",
+    L_j_hat = scn0_L_j_hat,
+    omega_j_matrix = scn0_omega_j_matrix,
+    description = "Calibrated baseline equilibrium"
+  ),
+  scn1 = list(
+    name = "Scenario 1: Uniform Distribution",
+    L_j_hat = scn1_L_j_hat,
+    omega_j_matrix = scn1_omega_j_matrix,
+    description = paste0("15,000 jobs to ", target_zone_id, ", uniform reduction elsewhere")
+  ),
+  scn2 = list(
+    name = "Scenario 2: CBD-Distance Weighted",
+    L_j_hat = scn2_L_j_hat,
+    omega_j_matrix = scn2_omega_j_matrix,
+    description = paste0("15,000 jobs to ", target_zone_id, ", distance-weighted reduction")
+  )
 )
 
-scn1_v <- scn1_nleqslv$x
-gapf_vj(scn1_nleqslv$x)
-
-print(scn1_nleqslv$termcd) # 1なら成功
-print(scn1_nleqslv$x)      # 均衡効用
-
-v_equilibrium <- scn1_nleqslv$x %>% exp()
-scn1_state <- caluculate_model_state(v_equilibrium)
-
-V.car_scn1  <- para[1] * dists0.road + para[2] + para[4] * parkPrice / 2
-den_scn1    <- exp(V.bike) + exp(V.car_scn1) + exp(V.rail)
-P.car_scn1  <- exp(V.car_scn1) / den_scn1
-P.rail_scn1 <- exp(V.rail)     / den_scn1
-
-#グローバル変数を元に戻す 
-L_j_hat <- scn0_L_j_hat
-omega_j_matrix <- scn0_omega_j_matrix
-disposable_income_ij <- scn0_disposable_income_ij
+cat("=== Scenario Definitions ===\n")
+for (scn in names(scenarios)) {
+  cat(scn, ":", scenarios[[scn]]$name, "\n")
+  cat("  Total employment:", sum(scenarios[[scn]]$L_j_hat$L_j_hat, na.rm = TRUE), "\n")
+}
 
 
+# シナリオ実行関数 ####
+# Converted to while loop; passes parameters explicitly
+# Returns comprehensive result set including P.bike
+run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn, 
+                        v_init, max_iter = 50, msa = 0.5, tol = 100) {
+  
+  # Initialize loop control
+  flag <- 0
+  it <- 1
+  
+  # Local copies to avoid reference issues
+  dists_road <- dists0.road * 1  # local copy
+  v_l <- v_init
+  
+  while (flag == 0) {
+    # Mode choice: recalculate for each updated dists_road
+    V.car_l <- para[1] * dists_road + para[2] + para[4] * parkPrice / 2
+    den_l   <- exp(V.bike) + exp(V.car_l) + exp(V.rail)
+    P.car_l <- exp(V.car_l) / den_l
+    P.rail_l <- exp(V.rail) / den_l
+    P.bike_l <- exp(V.bike) / den_l
+    
+    # Calculate accessibility-adjusted generalized cost
+    agcc_l <- (P.bike_l * V.bike + P.car_l * V.car_l + P.rail_l * V.rail) / para[1]
+    c_ij_local <- agcc_l * 1.600
+    disposable_income_ij_local <- pmax(-c_ij_local + omega_j_matrix_scn, 0)
+    
+    # Solve land use equilibrium
+    # Update global environment for gapf_vj to access parameters
+    assign("L_j_hat", L_j_hat_scn, envir = .GlobalEnv)
+    assign("c_ij", c_ij_local, envir = .GlobalEnv)
+    assign("disposable_income_ij", disposable_income_ij_local, envir = .GlobalEnv)
+    
+    sol <- nleqslv(x = v_l, fn = gapf_vj, 
+                   global = "dbldog",
+                   control = list(ftol = 1e-8, xtol = 1e-8, maxit = 200, allowSingular = TRUE))
+    v_l <- sol$x
+    state <- caluculate_model_state(exp(v_l))
+    
+    # Traffic assignment
+    ODD.car <- state$l_i_j * P.car_l
+    trips <- as.data.frame.table(ODD.car, responseName = "demand")
+    names(trips) <- c("from", "to", "demand")
+    
+    ta <- assign_traffic(Graph = sgr, from = trips$from, to = trips$to, 
+                         demand = trips$demand, max_gap = 1e-2, 
+                         algorithm = "bfw", verbose = FALSE)
+    
+    sgr2 <- makegraph(df = ta$data[, c("from", "to", "cost")], 
+                      directed = TRUE, capacity = 1e4, 
+                      alpha = alpha, beta = beta, coords = nodes)
+    
+    dists_road_new <- get_distance_matrix(sgr2, from = zones, to = centers, algorithm = "mch")
+    
+    # MSA averaging for convergence
+    diff <- sum((dists_road_new - dists_road)^2)
+    dists_road <- msa * dists_road_new + (1 - msa) * dists_road
+    
+    cat("Scenario:", scenario_name, " | Iter:", it, " | diff:", 
+        formatC(diff, format = "e", digits = 2), "\n")
+    
+    # Check stopping conditions
+    it <- it + 1
+    if (diff < tol | it > max_iter) flag <- 1
+  }
+  
+  # Return comprehensive result set
+  list(
+    scenario = scenario_name,
+    v = v_l,
+    state = state,
+    dists_road = dists_road,
+    disposable_income_ij = disposable_income_ij_local,  
+    P.car = P.car_l,
+    P.rail = P.rail_l,
+    P.bike = P.bike_l,
+    iterations = it - 1,
+    converged = (diff < tol),
+    final_diff = diff
+  )
+}
+
+# === Execute All Scenarios ===
+# Initialize results list
+results <- list()
+
+# Use base scenario utilities as starting point for all scenarios
+v_init_all <- scn0_v
+
+# Run each scenario
+for (scn_name in names(scenarios)) {
+  cat("\n=== Running:", scenarios[[scn_name]]$name, "===\n")
+  
+  results[[scn_name]] <- run_scenario(
+    scenario_name = scn_name,
+    L_j_hat_scn = scenarios[[scn_name]]$L_j_hat,
+    omega_j_matrix_scn = scenarios[[scn_name]]$omega_j_matrix,
+    v_init = v_init_all,
+    max_iter = 50,
+    msa = 0.5,
+    tol = 100
+  )
+  
+  cat("Converged:", results[[scn_name]]$converged, 
+      " in ", results[[scn_name]]$iterations, " iterations\n\n")
+}
+
+# === Extract Results for Comparison ===
+scn0_v <- results$scn0$v
+scn1_v <- results$scn1$v
+scn2_v <- results$scn2$v
+
+scn0_state <- results$scn0$state
+scn1_state <- results$scn1$state
+scn2_state <- results$scn2$state
+
+# Mode shares
+P.car_scn1 <- results$scn1$P.car
+P.rail_scn1 <- results$scn1$P.rail
+P.bike_scn1 <- results$scn1$P.bike
+
+P.car_scn2 <- results$scn2$P.car
+P.rail_scn2 <- results$scn2$P.rail
+P.bike_scn2 <- results$scn2$P.bike
+
+
+scn0_disposable_income_ij <- results$scn0$disposable_income_ij
+scn1_disposable_income_ij <- results$scn1$disposable_income_ij
+scn2_disposable_income_ij <- results$scn2$disposable_income_ij
+
+# # forループ後に復元
+# disposable_income_ij <- results$scn0$disposable_income_ij
+# L_j_hat <- scenarios$scn0$L_j_hat
 
 #シナリオ比較####
-scn0_v
-scn1_v
-
-scn0_state
-scn1_state
-
 exp(scn0_v)
 exp(scn1_v)
+exp(scn2_v)
 
 scn0_state$l_i_j
 scn1_state$l_i_j
+scn2_state$l_i_j
 
 
 #比較　世帯数
@@ -1728,17 +1503,27 @@ scn1_household<-tibble(
   scn1_household=scn1_household
 )%>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
+scn2_household <- rowSums(scn2_state$l_i_j,na.rm=TRUE)
+scn2_household<-tibble(
+  KEY_CODE=rownames(scn2_state$l_i_j),
+  scn2_household=scn2_household
+)%>%
+  mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
+
 diff_household <- scn0_household %>% 
   left_join(scn1_household,by="KEY_CODE") %>% 
-  mutate(diff_household=scn1_household-scn0_household) %>% 
-  dplyr::select(KEY_CODE,diff_household,geometry)
-scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
-
-# diff_household$diff_household %>% hist()
+  left_join(scn2_household,by="KEY_CODE") %>%
+  mutate(diff_household_01=scn1_household-scn0_household) %>% 
+  mutate(diff_household_02=scn2_household-scn0_household) %>% 
+  dplyr::select(KEY_CODE,diff_household_01,diff_household_02,geometry)
 
 #plot
-p_hh_scn <- make_map(diff_household, "diff_household", "居住世帯数 変化量", "magma", c(-500,300) )
-plot(p_hh_scn)
+p_hh_scn1 <- make_map(diff_household, "diff_household_01", "居住世帯数 変化量", "magma", c(-500,300))
+p_hh_scn2 <- make_map(diff_household, "diff_household_02", "居住世帯数 変化量", "magma", c(-500,300))
+plot(p_hh_scn1 + p_hh_scn2) # patchwork
+
+scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
+scn2_household<-left_join(key_code_sf,scn2_household,by="KEY_CODE")
 
 
 #比較　家賃
@@ -1801,25 +1586,58 @@ print(ar_plot)
 #welfare
 scn0_welfare <- mean(exp(scn0_v)) #260116厚生の計算、調べる!
 scn1_welfare <- mean(exp(scn1_v))
-welfare_change_rate <- scn1_welfare / scn0_welfare
-print(paste("平均厚生の変化率:", round(welfare_change_rate, 4)))
+scn2_welfare <- mean(exp(scn2_v))
+welfare_change_rate1 <- scn1_welfare / scn0_welfare
+welfare_change_rate2 <- scn2_welfare / scn0_welfare
+print(paste("scn1平均厚生の変化率:", round(welfare_change_rate1, 4)))
+print(paste("scn2平均厚生の変化率:", round(welfare_change_rate2, 4)))
 
 # calculated indirect utility
-vij.sc0=alpha_0*scn0_disposable_income_ij/scn0_state$r_ij_H^alpha_a
-vj.sc0=vij.sc0[1,] %>% as.vector()
+# vij.sc0=alpha_0*scn0_disposable_income_ij/scn0_state$r_ij_H^alpha_a
+# vj.sc0=vij.sc0[1,] %>% as.vector()
 
-vij.sc1=alpha_0*scn1_disposable_income_ij/scn0_state$r_ij_H^alpha_a
-vj.sc1=vij.sc1[1,] %>% as.vector()
+# vij.sc1=alpha_0*scn1_disposable_income_ij/scn0_state$r_ij_H^alpha_a
+# vj.sc1=vij.sc1[1,] %>% as.vector()
 
-EV=(vj.sc1-vj.sc0)/alpha_0*scn0_state$r_ij_H^alpha_a
+# vij.sc2=alpha_0*scn2_disposable_income_ij/scn0_state$r_ij_H^alpha_a
+# vj.sc2=vij.sc2[1,] %>% as.vector()
 
-scn0_household
-scn1_household
+# EV1=(vj.sc1-vj.sc0)/alpha_0*scn0_state$r_ij_H^alpha_a
+# EV2=(vj.sc2-vj.sc0)/alpha_0*scn0_state$r_ij_H^alpha_a
 
-# 台形公式
-Benefit.0=(scn0_household$scn0_household+scn1_household$scn1_household)/2*EV
-Benefit.1=apply(Benefit.0,2,sum)
-Benefit.2=sum(Benefit.1) # 千円/月
+
+# scn0_household
+# scn1_household
+# scn2_household 
+
+# # 台形公式
+# Benefit.0_1=(scn0_household$scn0_household+scn1_household$scn1_household)/2*EV1
+# Benefit.1_1=apply(Benefit.0_1,2,sum)
+# Benefit.2_1=sum(Benefit.1_1) # 千円/月
+
+# Benefit.0_2=(scn0_household$scn0_household+scn2_household$scn2_household)/2*EV2
+# Benefit.1_2=apply(Benefit.0_2,2,sum)
+# Benefit.2_2=sum(Benefit.1_2) # 千円/月
+
+
+# Δv_j = 均衡効用の差（これがシンプルかつ正確）
+delta_vj_1 <- exp(scn1_v) - exp(scn0_v)  # 長さnz_workのベクトル
+delta_vj_2 <- exp(scn2_v) - exp(scn0_v)
+
+# EV (式23): i×j行列に展開（byrow=TRUEでjがcolumnに対応）
+delta_vj_1_mat <- matrix(delta_vj_1, nrow=nz_res, ncol=nz_work, byrow=TRUE)
+delta_vj_2_mat <- matrix(delta_vj_2, nrow=nz_res, ncol=nz_work, byrow=TRUE)
+
+EV1_mat <- (1/alpha_0) * scn0_state$r_ij_H^alpha_a * delta_vj_1_mat
+EV2_mat <- (1/alpha_0) * scn0_state$r_ij_H^alpha_a * delta_vj_2_mat
+
+# 台形公式 (式24): l_i_j行列をそのまま使う
+Benefit.2_1 <- sum((scn0_state$l_i_j + scn1_state$l_i_j) / 2 * EV1_mat, na.rm=TRUE)
+Benefit.2_2 <- sum((scn0_state$l_i_j + scn2_state$l_i_j) / 2 * EV2_mat, na.rm=TRUE)
+
+
+
+
 # aa=c(1,2)
 # bb=matrix(1:4,2,2)
 # aa*bb
@@ -1870,38 +1688,51 @@ scn1_CO2_car  <- sum(scn1_lij_car  * dist_car.km  * 2, na.rm=TRUE) * eCO2_car  /
 scn1_CO2_rail <- sum(scn1_lij_rail * dist_rail.km * 2, na.rm=TRUE) * eCO2_rail / 1e6
 scn1_CO2_total <- scn1_CO2_car + scn1_CO2_rail
 
+# シナリオ２
+scn2_lij_car  <- scn2_state$l_i_j * P.car_scn2
+scn2_lij_rail <- scn2_state$l_i_j * P.rail_scn2
+
+scn2_CO2_car  <- sum(scn2_lij_car  * dist_car.km  * 2, na.rm=TRUE) * eCO2_car  / 1e6
+scn2_CO2_rail <- sum(scn2_lij_rail * dist_rail.km * 2, na.rm=TRUE) * eCO2_rail / 1e6
+scn2_CO2_total <- scn2_CO2_car + scn2_CO2_rail
+
+
+
 # --- 比較 ---
 print(paste("scn0 自動車CO2:", round(scn0_CO2_car,  1), "tCO2/日"))
-print(paste("scn0 鉄道CO2:",   round(scn0_CO2_rail, 1), "tCO2/日"))
-print(paste("scn0 合計CO2:",   round(scn0_CO2_total,1), "tCO2/日"))
 print(paste("scn1 自動車CO2:", round(scn1_CO2_car,  1), "tCO2/日"))
-print(paste("scn1 鉄道CO2:",   round(scn1_CO2_rail, 1), "tCO2/日"))
-print(paste("scn1 合計CO2:",   round(scn1_CO2_total,1), "tCO2/日"))
-print(paste("変化率（合計）:", round((scn1_CO2_total - scn0_CO2_total) / scn0_CO2_total, 4)))
+print(paste("scn2 自動車CO2:", round(scn2_CO2_car,  1), "tCO2/日"))
 
+print(paste("scn0 鉄道CO2:", round(scn0_CO2_rail, 1), "tCO2/日"))
+print(paste("scn1 鉄道CO2:", round(scn1_CO2_rail, 1), "tCO2/日"))
+print(paste("scn2 鉄道CO2:", round(scn2_CO2_rail, 1), "tCO2/日"))
 
-# print(paste("現況の総移動距離:", round(scn0_total_dist, 0), "人km"))
-# print(paste("シナリオの総移動距離:", round(scn1_total_dist, 0), "人km"))
-# print(paste("変化率:", round(scn1_total_dist / scn0_total_dist, 4)))
 
 #total ar
 scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn0_state$l_i_j, na.rm = TRUE)
-scn1_total_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm=TRUE) 
+scn1_total_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm = TRUE)
+scn2_total_ar <- rowSums(scn2_state$a_fij_H * scn2_state$l_i_j, na.rm = TRUE)
 (sum(scn1_total_ar) - sum(scn0_total_ar))/sum(scn0_total_ar) # 住宅面積は増加
+(sum(scn2_total_ar) - sum(scn0_total_ar))/sum(scn0_total_ar) # 住宅面積は減少
 
 
 #co2 by ar
 co20=(sum(scn0_total_ar)*296/3.6/4.17+(1193*1.99))*0.57/1000/365 #tCO2\day
 co21=(sum(scn1_total_ar)*296/3.6/4.17+(1193*1.99))*0.57/1000/365 #tCO2\day
+co22=(sum(scn2_total_ar)*296/3.6/4.17+(1193*1.99))*0.57/1000/365 #tCO2\day
 (co21-co20)/co20
+(co22-co20)/co20
 
 # 地代収入
 GI0=scn0_state$rg_i*scn0_state$G_i+(G0_i-scn0_state$G_i)*rr_a
 GI1=scn1_state$rg_i*scn1_state$G_i+(G0_i-scn1_state$G_i)*rr_a
+GI2=scn2_state$rg_i*scn2_state$G_i+(G0_i-scn2_state$G_i)*rr_a
 (sum(GI1)-sum(GI0))/sum(GI0) # 千円/月
+(sum(GI2)-sum(GI0))/sum(GI0) # 千円/月
 
 # 宅地面積変化
 (sum(scn1_state$G_i)-sum(scn0_state$G_i))/sum(scn0_state$G_i)
+(sum(scn2_state$G_i)-sum(scn0_state$G_i))/sum(scn0_state$G_i)
 
 # 床面積
 
@@ -1911,7 +1742,7 @@ GI1=scn1_state$rg_i*scn1_state$G_i+(G0_i-scn1_state$G_i)*rr_a
 
 #####
 
-###論文用プロット
+#論文用プロット
 ## 分析対象範囲プロットの作成
 library(ggplot2)
 library(ggspatial)
@@ -2046,126 +1877,33 @@ ggplot(zone_pop_sf, aes(x = household, y = zone_population)) +
 
 
 #シナリオ分析のplot
-#household
-# library(scales)
-# limit_val <- max(abs(diff_household$diff_household), na.rm = TRUE)
-# scn_plot <- diff_household %>%
-#   ggplot() +
-#   geom_sf(aes(fill = diff_household), color = "gray60",　linewidth = 0.1 ) + 
-#   annotation_north_arrow(
-#     location = "tl",             # tl=Top Left (左上), tr=Top Right (右上)
-#     which_north = "true",
-#     # pad_x = unit(0.2, "cm"),     # 端からの余白
-#     # pad_y = unit(0.2, "cm"),
-#     style = north_arrow_fancy_orienteering(), # デザインはお好みで
-#     # height = unit(0.8, "cm"),    # 矢印の大きさ
-#     # width = unit(0.8, "cm")
-#   )+
-#   annotation_scale(
-#     location = "bl",             # br=Bottom Right (右下), bl=Bottom Left (左下)
-#     width_hint = 0.3,            # バーの幅（地図全体の何割くらいにするか）
-#     bar_cols = c("grey40", "white"),
-#     # line_width = 1,
-#     text_cex = 0.8,              # 文字サイズ
-#     height = unit(0.15, "cm")    # バーの太さ（細めにする）
-#   )+
-#   
-#   scale_fill_gradient2(
-#     low = "blue",          # マイナス側の色（青）
-#     mid = "white",         # ゼロ付近の色（白）
-#     high = "red",          # プラス側の色（赤）
-#     midpoint = 0,          # 色が切り替わる値（通常は0）
-#     limits = c(-210, 210), # 範囲を対称にする
-#     labels = label_comma() # 凡例にカンマを入れる
-#   ) + 
-#   labs(
-#        fill="変化量\n(世帯)") +
-#   theme_void()+
-#   theme(
-#     plot.background = element_rect(fill = "white", color = NA), 
-#     panel.background = element_rect(fill = "gray80", color = NA),
-#     plot.margin = margin(10, 10, 10, 10) 
-#   )
-# print(scn_plot)
-# 
-# 
-# ratio_household <- scn1_household/scn0_household
-# 
-# ar_plot <- ggplot(scn0_household) +
-#   geom_sf(aes(fill = scn0_household), color = "gray50",  linewidth = 0.1) +
-#   scale_fill_viridis_c(
-#     option = "magma",      
-#     name = "(世帯)", 
-#     direction = -1,             
-#     labels = scales::label_comma(),
-#     limits = c(0, 25000), 
-#   ) +
-#   labs(title = "現状：居住世帯数") +
-#   theme_void()
-# print(ar_plot)
-# 
-# 
-# 
-# 
-# 
+make_diff_map <- function(data, fill_var, title, limits, breaks) {
+  ggplot(data) +
+    geom_sf(aes(fill = .data[[fill_var]]), color = "gray60", linewidth = 0.1) +
+    annotation_north_arrow(location = "tl", which_north = "true",
+                           style = north_arrow_fancy_orienteering()) +
+    annotation_scale(location = "bl", width_hint = 0.3,
+                     bar_cols = c("grey40", "white"),
+                     text_cex = 0.8, height = unit(0.15, "cm")) +
+    scale_fill_steps2(
+      low = "blue", mid = "white", high = "red", midpoint = 0,
+      limits = limits, breaks = breaks,
+      labels = label_comma(), show.limits = TRUE
+    ) +
+    labs(fill = "変化量\n(世帯)") +
+    theme_void() +
+    theme(
+      plot.background  = element_rect(fill = "white", color = NA),
+      panel.background = element_rect(fill = "gray80", color = NA),
+      plot.margin      = margin(10, 10, 10, 10),
+      legend.key.height = unit(1.5, "cm")
+    )
+}
 
+# 使い方
+p_scn1 <- make_diff_map(diff_hh_scn1, "diff_household", "シナリオ1：世帯数変化",
+                         limits = c(-210, 210), breaks = c(-100, -30, -5, 5, 30, 100))
+p_scn2 <- make_diff_map(diff_hh_scn2, "diff_household", "シナリオ2：世帯数変化",
+                         limits = c(-210, 210), breaks = c(-100, -30, -5, 30, 100))
 
-
-# アプローチ2：ステップカラー（階級区分）を使う方法
-scn_plot <- diff_household %>%
-  ggplot() +
-  geom_sf(aes(fill = diff_household), color = "gray60", linewidth = 0.1 ) + 
-  annotation_north_arrow(
-    location = "tl", which_north = "true",
-    style = north_arrow_fancy_orienteering()
-  )+
-  annotation_scale(
-    location = "bl", width_hint = 0.3, bar_cols = c("grey40", "white"),
-    text_cex = 0.8, height = unit(0.15, "cm")
-  )+
-  scale_fill_steps2(
-    low = "blue",
-    mid = "white",
-    high = "red",
-    midpoint = 0,
-    limits = c(-210, 210),
-    # ↓ここを追加：色の切り替わり（区切り）を非線形に細かく設定する
-    breaks = c(-100, -30, -5, 5, 30, 100), 
-    labels = label_comma(),
-    show.limits = TRUE # 凡例の端まで表示する
-  ) + 
-  labs(fill="変化量\n(世帯)") +
-  theme_void() +
-  theme(
-    plot.background = element_rect(fill = "white", color = NA), 
-    panel.background = element_rect(fill = "gray80", color = NA),
-    plot.margin = margin(10, 10, 10, 10),
-    legend.key.height = unit(1.5, "cm") # 凡例を少し縦長にすると見やすい
-  )
-print(scn_plot)
-
-
-
-
-
-
-#公共交通の所要時間
-load("data/railway_dist.xdr")
-
-
-
-
-#PT調査
-pt_zone <- st_read("data/raw/H29_Hokubukyusyu_Bzone")
-csv_path3 <- "data/raw/pt/t1266_1000002.csv"
-pt <- read.csv(csv_path3, fileEncoding = "CP932", stringsAsFactors = FALSE, na.strings = c("", "NA"))
-
-pt <- pt %>% 
-  dplyr::select(-c(都市圏pt, 代表交通手段)) %>% 
-  rename(
-    O=発ゾーン,
-    D=着ゾーン,
-    total_trip=トリップ数,
-    accuracy=データ精度_トリップ数
-  )
-
+print(p_scn1 + p_scn2)
