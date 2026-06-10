@@ -708,7 +708,7 @@ sum(zone_pop_sf$zone_population)
 #居住プロットlij_plot zone_pop_sf fill=zone_population , household 
 lij_plot_R <- zone_pop_sf %>%
   ggplot() +
-  geom_sf(aes(fill = household), color = "gray50",　linewidth = 0.1 ) + 
+  geom_sf(aes(fill = household), color = "gray50",linewidth = 0.1 ) + 
   scale_fill_viridis_c(
     option = "magma",         # 'viridis', 'plasma', 'cividis', 'magma' etc
     name = "(世帯)",
