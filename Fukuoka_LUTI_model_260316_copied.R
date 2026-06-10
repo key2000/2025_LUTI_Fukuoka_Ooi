@@ -1492,6 +1492,34 @@ scn0_state$l_i_j
 scn1_state$l_i_j
 scn2_state$l_i_j
 
+# シナリオ比較関数
+make_diff_map2 <- function(data, fill_vars, titles, unit_label = "変化量") {
+  # 共通スケール（全変数の最大絶対値）
+  lim <- sapply(fill_vars, function(v) max(abs(data[[v]]), na.rm = TRUE)) %>% max()
+  
+  plots <- Map(function(var, title) {
+    ggplot(data) +
+      geom_sf(aes(fill = .data[[var]]), color = "gray70", linewidth = 0.1) +
+      scale_fill_gradient2(
+        low = "blue", mid = "white", high = "red", midpoint = 0,
+        limits = c(-lim, lim),
+        labels = scales::label_comma(),
+        name = unit_label
+      ) +
+      labs(title = title) +
+      theme_void() +
+      theme(
+        plot.title      = element_text(size = 10, hjust = 0.5),
+        legend.title    = element_text(size = 8),
+        legend.text     = element_text(size = 7),
+        plot.background = element_rect(fill = "white", color = NA),
+        panel.background = element_rect(fill = "gray80", color = NA)
+      )
+  }, fill_vars, titles)
+  
+  Reduce(`+`, plots)  # patchwork で結合
+}
+
 
 #比較　世帯数
 scn0_household <- key_code_sf |> 
@@ -1522,12 +1550,17 @@ p_hh_scn1 <- make_map(diff_household, "diff_household_01", "居住世帯数 変�
 p_hh_scn2 <- make_map(diff_household, "diff_household_02", "居住世帯数 変化量", "magma", c(-500,300))
 plot(p_hh_scn1 + p_hh_scn2) # patchwork
 
+print(make_diff_map2(diff_household, c("diff_household_01", "diff_household_02"), 
+                        c("ScenarioB", "ScenarioC"), "(Households)"))
+
 scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
 scn2_household<-left_join(key_code_sf,scn2_household,by="KEY_CODE")
 
 
 #比較　家賃
-scn0_rent <- rent_map_data %>% rename(scn0_rent=market_rent)#単位：円
+scn0_rent <- key_code_sf %>% 
+  left_join(rent_df, by="KEY_CODE") %>% 
+  rename(scn0_rent=est_rent) #単位：円
 scn1_rent <- data.frame(
   KEY_CODE = names(scn1_state$r_bar_i), 
   scn1_rent = as.numeric(scn1_state$r_bar_i)
@@ -1535,52 +1568,99 @@ scn1_rent <- data.frame(
   mutate(
     KEY_CODE = gsub("^mc_", "", KEY_CODE),
     scn1_rent=scn1_rent*1000)#単位：千円→円
+scn2_rent <- data.frame(
+  KEY_CODE = names(scn2_state$r_bar_i), 
+  scn2_rent = as.numeric(scn2_state$r_bar_i)
+) %>%
+  mutate(
+    KEY_CODE = gsub("^mc_", "", KEY_CODE),
+    scn2_rent=scn2_rent*1000)#単位：千円→円
 diff_rent <- scn0_rent %>% 
   left_join(scn1_rent,by="KEY_CODE") %>% 
-  mutate(diff_rent=scn1_rent-scn0_rent) %>% 
-  dplyr::select(KEY_CODE,diff_rent,geometry)
+  left_join(scn2_rent,by="KEY_CODE") %>%
+  mutate(diff_rent_01=scn1_rent-scn0_rent) %>% 
+  mutate(diff_rent_02=scn2_rent-scn0_rent) %>% 
+  dplyr::select(KEY_CODE,diff_rent_01,diff_rent_02,geometry)
+
+#plot
+p_rent_scn1 <- make_map(diff_rent, "diff_rent_01", "平均付値地代 変化量", "plasma", c(-50, 20))
+p_rent_scn2 <- make_map(diff_rent, "diff_rent_02", "平均付値地代 変化量", "plasma", c(- 50, 20))
+plot(p_rent_scn1 + p_rent_scn2) # patchwork
+
+print(make_diff_map2(diff_rent, c("diff_rent_01", "diff_rent_02"), 
+                        c("ScenarioB", "ScenarioC"), "(Yen/Month)")) 
+
+
 scn1_rent <- left_join(key_code_sf, scn1_rent, by = "KEY_CODE")
-#家賃プロット　  
-rent_plot <- ggplot(diff_rent) +
-  geom_sf(aes(fill = diff_rent), color = "gray50",  linewidth = 0.1) +
-  scale_fill_viridis_c(
-    option = "plasma",      
-    name = "平均付値地代\n(円/m2)", 
-    direction = -1,             
-    labels = scales::label_comma(),
-    limits = c(-50, 20), 
-  ) +
-  labs(title = "モデル：平均付値地代") +
-  theme_void()
-print(rent_plot)
+scn2_rent <- left_join(key_code_sf, scn2_rent, by = "KEY_CODE")
+
 
 
 #比較　床面積
-scn0_ar <- ar_map_data %>% rename(scn0_ar=avg_floor_i)
+scn0_ar <- key_code_sf %>% 
+  left_join(est_ar, by="KEY_CODE") %>% 
+  rename(scn0_ar=est_ar) #単位：m2
 scn1_ar <- rowSums(scn1_state$a_fij_H * scn1_state$l_i_j, na.rm=TRUE) / rowSums(scn1_state$l_i_j, na.rm=TRUE)
 scn1_ar <- tibble(
   KEY_CODE=rownames(scn1_state$a_fij_H),
   scn1_ar =scn1_ar
 ) %>%
   mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
+scn2_ar <- rowSums(scn2_state$a_fij_H * scn2_state$l_i_j, na.rm=TRUE) / rowSums(scn2_state$l_i_j, na.rm=TRUE)
+scn2_ar <- tibble(
+  KEY_CODE=rownames(scn2_state$a_fij_H),
+  scn2_ar =scn2_ar
+) %>%
+  mutate(KEY_CODE=gsub("^mc_","",KEY_CODE))
 diff_ar <- scn0_ar %>% 
   left_join(scn1_ar,by="KEY_CODE") %>% 
-  mutate(diff_ar=scn1_ar-scn0_ar) %>% 
-  dplyr::select(KEY_CODE,diff_ar,geometry)
+  left_join(scn2_ar,by="KEY_CODE") %>% 
+  mutate(diff_ar_01=scn1_ar-scn0_ar) %>% 
+  mutate(diff_ar_02=scn2_ar-scn0_ar) %>% 
+  dplyr::select(KEY_CODE,diff_ar_01,diff_ar_02,geometry)
+
 scn1_ar <- left_join(key_code_sf, scn1_ar , by = "KEY_CODE")
-#床面積プロット　  
-ar_plot <- ggplot(diff_ar) +
-  geom_sf(aes(fill = diff_ar), color = "gray50",  linewidth = 0.1) +
-  scale_fill_viridis_c(
-    option = "viridis",      
-    name = "平均床面積\n(m2)", 
-    direction = -1,             
-    labels = scales::label_comma(),
-    limits = c(-0.5, 1.3), 
-  ) +
-  labs(title = "モデル：平均床面積") +
-  theme_void()
-print(ar_plot)
+scn2_ar <- left_join(key_code_sf, scn2_ar , by = "KEY_CODE")
+
+p_ar_scn1 <- make_map(diff_ar, "diff_ar_01", "平均床面積 変化量", "viridis", c(-20, 20))
+p_ar_scn2 <- make_map(diff_ar, "diff_ar_02", "平均床面積 変化量", "viridis", c(-20, 20))
+plot(p_ar_scn1 + p_ar_scn2) # patchwork
+
+
+make_diff_map2(diff_ar, c("diff_ar_01", "diff_ar_02"), 
+                        c("ScenarioB", "ScenarioC"), "(m^2)")
+
+# 比較　宅地割合
+scn0_Gi <- key_code_sf %>% 
+  left_join(Gi_df, by="KEY_CODE") %>% 
+  rename(scn0_Gi=habit_ar) #単位：割合
+scn1_Gi <- data.frame(
+  KEY_CODE = names(scn1_state$G_i), 
+  scn1_Gi = as.numeric(scn1_state$G_i)
+) %>%
+  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
+scn2_Gi <- data.frame(
+  KEY_CODE = names(scn2_state$G_i), 
+  scn2_Gi = as.numeric(scn2_state$G_i)
+) %>%
+  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
+
+diff_Gi <- scn0_Gi %>% 
+  left_join(scn1_Gi,by="KEY_CODE") %>% 
+  left_join(scn2_Gi,by="KEY_CODE") %>%
+  mutate(diff_Gi_01=scn1_Gi-scn0_Gi) %>% 
+  mutate(diff_Gi_02=scn2_Gi-scn0_Gi) %>% 
+  dplyr::select(KEY_CODE,diff_Gi_01,diff_Gi_02,geometry)
+
+p_Gi_scn1 <- make_map(diff_Gi, "diff_Gi_01", "宅地割合 変化量", "mako", c(-3500, 3500))
+p_Gi_scn2 <- make_map(diff_Gi, "diff_Gi_02", "宅地割合 変化量", "mako", c(-3500, 3500))
+plot(p_Gi_scn1 + p_Gi_scn2) # patchwork
+
+scn1_Gi <- left_join(key_code_sf, scn1_Gi , by = "KEY_CODE")
+scn2_Gi <- left_join(key_code_sf, scn2_Gi , by = "KEY_CODE")
+
+print(make_diff_map2(diff_Gi, c("diff_Gi_01", "diff_Gi_02"), 
+                        c("ScenarioB", "ScenarioC"), "(m^2)"))
 
 
 #welfare
@@ -1631,9 +1711,13 @@ delta_vj_2_mat <- matrix(delta_vj_2, nrow=nz_res, ncol=nz_work, byrow=TRUE)
 EV1_mat <- (1/alpha_0) * scn0_state$r_ij_H^alpha_a * delta_vj_1_mat
 EV2_mat <- (1/alpha_0) * scn0_state$r_ij_H^alpha_a * delta_vj_2_mat
 
-# 台形公式 (式24): l_i_j行列をそのまま使う
+# 台形公式 (式24): l_i_j行列をそのまま使う　千円/月
 Benefit.2_1 <- sum((scn0_state$l_i_j + scn1_state$l_i_j) / 2 * EV1_mat, na.rm=TRUE)
 Benefit.2_2 <- sum((scn0_state$l_i_j + scn2_state$l_i_j) / 2 * EV2_mat, na.rm=TRUE)
+
+# 万円・月　単位に変換
+Benefit.2_1 / 10
+Benefit.2_2 / 10
 
 
 
@@ -1727,17 +1811,54 @@ co22=(sum(scn2_total_ar)*296/3.6/4.17+(1193*1.99))*0.57/1000/365 #tCO2\day
 GI0=scn0_state$rg_i*scn0_state$G_i+(G0_i-scn0_state$G_i)*rr_a
 GI1=scn1_state$rg_i*scn1_state$G_i+(G0_i-scn1_state$G_i)*rr_a
 GI2=scn2_state$rg_i*scn2_state$G_i+(G0_i-scn2_state$G_i)*rr_a
+sum(GI0) # 千円/月 億は10^4千円
+sum(GI1) # 千円/月
+sum(GI2) # 千円/月
+
 (sum(GI1)-sum(GI0))/sum(GI0) # 千円/月
 (sum(GI2)-sum(GI0))/sum(GI0) # 千円/月
 
 # 宅地面積変化
-(sum(scn1_state$G_i)-sum(scn0_state$G_i))/sum(scn0_state$G_i)
-(sum(scn2_state$G_i)-sum(scn0_state$G_i))/sum(scn0_state$G_i)
+sum(scn0_state$G_i) # m2
+sum(scn1_state$G_i) # m2
+sum(scn2_state$G_i) # m2
+(sum(scn1_state$G_i)-sum(scn0_state$G_i))/sum(scn0_state$G_i) # 宅地面積は増加
+(sum(scn2_state$G_i)-sum(scn0_state$G_i))/sum(scn0_state$G_i) # 宅地面積は減少
 
-# 床面積
 
 
+d_rg_1 <- scn1_state$rg_i - scn0_state$rg_i
+d_G_1  <- scn1_state$G_i  - scn0_state$G_i
 
+contrib_price_1 <- sum(d_rg_1 * scn0_state$G_i) #地代単価減少効果が大きい
+contrib_area_1  <- sum(scn0_state$rg_i * d_G_1)
+
+# GI の変化を単価変化と面積変化に分解（積の近似分解）
+d_rg_2 <- scn2_state$rg_i - scn0_state$rg_i
+d_G_2  <- scn2_state$G_i  - scn0_state$G_i
+
+contrib_price_2 <- sum(d_rg_2 * scn0_state$G_i)   # 単価効果　
+contrib_area_2  <- sum(scn0_state$rg_i * d_G_2)   # 面積効果　宅地面積増加効果がより大きい
+
+# scn2 総床面積減、総地代収入増
+# 地代が安い郊外で面積減り、地代が高い中心部で面積増えるので、地代収入増
+# 宅地面積が増えたゾーンと減ったゾーンに分けて集計
+increased_2 <- d_G_2 > 0
+sum(d_G_2[increased_2])   # 増加分の総量
+sum(d_G_2[!increased_2])  # 減少分の総量
+
+# 増加ゾーンの平均地代単価（ベースライン）
+mean(scn0_state$rg_i[increased_2]) # 増加ゾーンは単価高い
+mean(scn0_state$rg_i[!increased_2]) # 減少ゾーンは単価低い
+
+# あんまり意味ないかも
+increased_1 <- d_G_1 > 0 
+sum(d_G_1[increased_1])   # 増加分の総量
+sum(d_G_1[!increased_1])  # 減少分の総量
+
+# 増加ゾーンの平均地代単価（ベースライン）
+mean(scn0_state$rg_i[increased_1]) # 増加ゾーンは単価ちょい高い
+mean(scn0_state$rg_i[!increased_1]) # 減少ゾーンは単価ちょい低い
 
 
 #####
