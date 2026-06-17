@@ -1261,7 +1261,6 @@ scn1_L_j_hat[other_zones, "L_j_hat"] <- round(scn0_L_j_hat[other_zones, "L_j_hat
 scn1_L_j_hat[target_zone_id, "L_j_hat"] <- scn1_Lj_target
 total_L_scn1 <- sum(scn1_L_j_hat$L_j_hat, na.rm = TRUE)
 
-
 # Adjust wages to maintain total payroll (payroll-neutral)
 k01 <- sum(omega_j$omega_j * scn0_L_j_hat$L_j_hat, na.rm = TRUE) / 
        sum(omega_j$omega_j * scn1_L_j_hat$L_j_hat, na.rm = TRUE)
@@ -1279,6 +1278,11 @@ scn1_omega_j_matrix <- matrix(as.numeric(scn1_omega_j$scn1_omega_j),
                               byrow = TRUE)
 colnames(scn1_omega_j_matrix) <- scn1_omega_j$KEY_CODE 
 
+
+# ゾーン別の賃金増えた
+scn1_omega_j$scn1_omega_j - scn0_omega_j$omega_j
+scn1_L_j_hat$L_j_hat - scn0_L_j_hat$L_j_hat
+scn1_omega_j$scn1_omega_j * scn1_L_j_hat$L_j_hat - scn0_omega_j$omega_j * scn0_L_j_hat$L_j_hat
 
 
 # === Scenario 2: CBD-Distance Weighted Employment Redistribution ===
@@ -1478,6 +1482,26 @@ P.bike_scn2 <- results$scn2$P.bike
 scn0_disposable_income_ij <- results$scn0$disposable_income_ij
 scn1_disposable_income_ij <- results$scn1$disposable_income_ij
 scn2_disposable_income_ij <- results$scn2$disposable_income_ij
+
+# forループ後にscn0を正しい条件で再計算
+disposable_income_ij <- scn0_disposable_income_ij
+L_j_hat <- scn0_L_j_hat
+
+scn0_state <- caluculate_model_state(exp(scn0_v))
+
+# 確認
+mean(scn0_state$rg_i)  # 0.1579291 になるはず
+
+# 現在のグローバル環境のdisposable_income_ijを確認
+mean(disposable_income_ij, na.rm=TRUE)
+mean(scn0_disposable_income_ij, na.rm=TRUE)
+# この2つが一致しているか？
+identical(disposable_income_ij, scn0_disposable_income_ij)
+
+mean(exp(scn0_v))
+mean(exp(results$scn0$v))
+identical(scn0_v, results$scn0$v)
+
 
 # # forループ後に復元
 # disposable_income_ij <- results$scn0$disposable_income_ij
@@ -1751,7 +1775,9 @@ eCO2_car  <- 125  # g-CO2/人・km（自動車） 国土交通省：https://www.
 eCO2_rail <- 17   # g-CO2/人・km（鉄道）
 
 # --- 移動距離行列 (km, 片道) ---
-dist_car.km  <- dists0.road * 40 / 60   # 道路：時速40km仮定
+dist_car.km_0  <- results$scn0$dists_road * 40 / 60   # 道路：時速40km仮定
+dist_car.km_1  <- results$scn1$dists_road * 40 / 60   # シナリオ1の道路距離
+dist_car.km_2  <- results$scn2$dists_road * 40 / 60   # シナリオ2の道路距離
 dist_rail.km <- dists0.rail * 40 / 60   # 鉄道：表定速度40km仮定
 
 # --- モード分担率行列（l_i_jと同次元であること確認）---
@@ -1760,7 +1786,7 @@ dist_rail.km <- dists0.rail * 40 / 60   # 鉄道：表定速度40km仮定
 scn0_lij_car  <- scn0_state$l_i_j * P.car_scn0   # 自動車通勤世帯数
 scn0_lij_rail <- scn0_state$l_i_j * P.rail_scn0  # 鉄道通勤世帯数
 
-scn0_CO2_car  <- sum(scn0_lij_car  * dist_car.km  * 2, na.rm=TRUE) * eCO2_car  / 1e6  # tCO2/日
+scn0_CO2_car  <- sum(scn0_lij_car  * dist_car.km_0  * 2, na.rm=TRUE) * eCO2_car  / 1e6  # tCO2/日
 scn0_CO2_rail <- sum(scn0_lij_rail * dist_rail.km * 2, na.rm=TRUE) * eCO2_rail / 1e6  # tCO2/日
 scn0_CO2_total <- scn0_CO2_car + scn0_CO2_rail
 
@@ -1768,7 +1794,7 @@ scn0_CO2_total <- scn0_CO2_car + scn0_CO2_rail
 scn1_lij_car  <- scn1_state$l_i_j * P.car_scn1
 scn1_lij_rail <- scn1_state$l_i_j * P.rail_scn1
 
-scn1_CO2_car  <- sum(scn1_lij_car  * dist_car.km  * 2, na.rm=TRUE) * eCO2_car  / 1e6
+scn1_CO2_car  <- sum(scn1_lij_car  * dist_car.km_1  * 2, na.rm=TRUE) * eCO2_car  / 1e6
 scn1_CO2_rail <- sum(scn1_lij_rail * dist_rail.km * 2, na.rm=TRUE) * eCO2_rail / 1e6
 scn1_CO2_total <- scn1_CO2_car + scn1_CO2_rail
 
@@ -1776,7 +1802,7 @@ scn1_CO2_total <- scn1_CO2_car + scn1_CO2_rail
 scn2_lij_car  <- scn2_state$l_i_j * P.car_scn2
 scn2_lij_rail <- scn2_state$l_i_j * P.rail_scn2
 
-scn2_CO2_car  <- sum(scn2_lij_car  * dist_car.km  * 2, na.rm=TRUE) * eCO2_car  / 1e6
+scn2_CO2_car  <- sum(scn2_lij_car  * dist_car.km_2  * 2, na.rm=TRUE) * eCO2_car  / 1e6
 scn2_CO2_rail <- sum(scn2_lij_rail * dist_rail.km * 2, na.rm=TRUE) * eCO2_rail / 1e6
 scn2_CO2_total <- scn2_CO2_car + scn2_CO2_rail
 
@@ -1791,6 +1817,10 @@ print(paste("scn0 鉄道CO2:", round(scn0_CO2_rail, 1), "tCO2/日"))
 print(paste("scn1 鉄道CO2:", round(scn1_CO2_rail, 1), "tCO2/日"))
 print(paste("scn2 鉄道CO2:", round(scn2_CO2_rail, 1), "tCO2/日"))
 
+# 自動車トリップ距離を直接比較
+sum(scn0_lij_car * dist_car.km_0 * 2, na.rm=TRUE)
+sum(scn1_lij_car * dist_car.km_1 * 2, na.rm=TRUE)
+sum(scn2_lij_car * dist_car.km_2 * 2, na.rm=TRUE)
 
 #total ar
 scn0_total_ar <- rowSums(scn0_state$a_fij_H * scn0_state$l_i_j, na.rm = TRUE)
@@ -1860,6 +1890,15 @@ sum(d_G_1[!increased_1])  # 減少分の総量
 mean(scn0_state$rg_i[increased_1]) # 増加ゾーンは単価ちょい高い
 mean(scn0_state$rg_i[!increased_1]) # 減少ゾーンは単価ちょい低い
 
+
+# scn0とscn1の可処分所得を比較
+mean(scn0_disposable_income_ij, na.rm=TRUE)
+mean(scn1_disposable_income_ij, na.rm=TRUE)
+
+# scn0_stateが本当にscn0の条件で計算されているか確認
+scn0_state_check <- caluculate_model_state(exp(scn0_v))
+mean(scn0_state_check$rg_i)
+mean(scn0_state$rg_i)
 
 #####
 
