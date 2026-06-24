@@ -709,6 +709,8 @@ calibration_fitness <- function(x) {
   gamma_1_c <- x[3]
   theta_H_c <- x[4]
   theta_L_c <- x[5]
+  k_i_c <- x[6:(5 + nz_res)]
+  
   
   tryCatch({
     
@@ -741,10 +743,10 @@ calibration_fitness <- function(x) {
         pg       <- gamma_1_c / (1 - gamma_1_c)
         rg_i     <- phi * (1 - gamma_1_c) *
           (r_bar_i * gamma_0_c) ^ (1 / (1 - gamma_1_c)) *
-          (gamma_1_c / k_i) ^ pg
+          (gamma_1_c / k_i_c) ^ pg
         G_i_l    <- G0_i * exp(theta_L_c * (rg_i - rr_a)) /
           (1 + exp(theta_L_c * (rg_i - rr_a))) * phi_pub * phi
-        A_Fi_S   <- gamma_0_c * ((r_bar_i * gamma_0_c * gamma_1_c) / k_i) ^ pg * G_i_l
+        A_Fi_S   <- gamma_0_c * ((r_bar_i * gamma_0_c * gamma_1_c) / k_i_c) ^ pg * G_i_l
         A_Fi_S[is.nan(A_Fi_S)] <- 0
         A_fij_S  <- A_Fi_S * P_j_i
         a_fij_H  <- alpha_a_c * disp_inc_l / pmax(r_ij_H, 1e-9)
@@ -768,7 +770,7 @@ calibration_fitness <- function(x) {
         global  = "dbldog",
         control = list(ftol = 1e-6, xtol = 1e-6, maxit = 100)
       )
-      if (!(res_lu$termcd %in% c(1, 2))) return(-1e10)
+      if (!(res_lu$termcd %in% c(1, 2))) return(-200)
       
       state_l <- calc_state_local(exp(res_lu$x))
       
@@ -858,7 +860,7 @@ calibration_fitness <- function(x) {
     f_ar <- sum(w_ar_i*(log(comp_ar$est_ar) - log(comp_ar$avg_room_ar)) ^ 2) #変えた
     
     # ---- ペナルティ項 ----
-    x0      <- c(0.3, 0.2, 0.6, 0.1, 2.0)
+    x0      <- c(0.3, 0.2, 0.6, 0.1, 2.0, rep(0.1, nz_res))
     lambda  <- 0.05
     penalty <- lambda * sum(((x - x0) / x0) ^ 2)
     
@@ -872,11 +874,19 @@ calibration_fitness <- function(x) {
     return(-total_loss)  # GAは最大化 → 符号反転
     
   }, error = function(e) {
-    return(-1e10)
+    return(-200)
   })
 }
 
-if(F){
+
+# k_iの探索範囲（元の定数0.1を基準に、現実的な範囲を設定）
+k_lower <- 0.01   # 下限：供給コストが極端に低い
+k_upper <- 0.3    # 上限：供給コストが極端に高い
+
+lower_vec <- c(0.1,  0.05, 0.3,  0.02, 0.5,  rep(k_lower, nz_res))
+upper_vec <- c(0.5,  0.8,  0.9,  0.5,  5.0,  rep(k_upper, nz_res))
+
+# if(T){
 # ---- クラスター準備 ----
 cl <- makeCluster(detectCores() - 1)
 # registerDoParallel(cl)
@@ -893,7 +903,7 @@ clusterExport(cl, varlist = c(
   # 経済データ
   "omega_j_matrix", "L_j_hat",
   # 土地利用（固定）
-  "G0_i", "k_i", "phi", "phi_pub", "rr_a",
+  "G0_i", "phi", "phi_pub", "rr_a",
   # 均衡計算
   "nz_res", "nz_work", "v_start",
   # 観測値（元コードと同じ変数名）
@@ -909,20 +919,19 @@ clusterEvalQ(cl, {
   library(tibble)
 })
 
-# 初期パラメータ（元コードの値）
-x_test <- c(0.3, 0.2, 0.6, 0.1, 2.0)
-
-# 単発で fitness を呼ぶ（並列化なし）
-test_result <- calibration_fitness(x_test)
-cat("fitness 値:", test_result, "\n")
-
-# ワーカー側で fitness が動くかテスト
-test_in_worker <- parLapply(cl, 1:1, function(i) {
-  r1 <- calibration_fitness(c(0.3, 0.2, 0.6, 0.1, 2.0))
-  r2 <- calibration_fitness(c(0.3, 0.2, 0.6, 0.1, 2.0))  # 同じパラメータで2回目
-  c(r1, r2)
+# ---- 単発テスト（800次元でも動くか先に確認）----
+x0_test <- c(0.3, 0.2, 0.6, 0.1, 2.0, rep(0.1, nz_res))
+test_result <- calibration_fitness(x0_test)
+cat("単発テスト fitness値:", test_result, "\n")
+# ここで正常な値（-10や-1e10ではない数値）が返ることを確認してから
+# 次のGA本番実行に進むこと
+# これをまず確認してほしい
+set.seed(1)
+test_vals <- sapply(1:10, function(i) {
+  x_random <- c(0.3, 0.2, 0.6, 0.1, 2.0, runif(nz_res, k_lower, k_upper))
+  calibration_fitness(x_random)
 })
-cat("1回目:", test_in_worker[[1]][1], "  2回目:", test_in_worker[[1]][2], "\n")
+print(round(test_vals, 2))
 
 # ---- GA実行 ----
 cat("GA開始:", format(Sys.time(), "%H:%M:%S"), "\n")
@@ -932,8 +941,8 @@ system.time({
     fitness = calibration_fitness,
 
     #         alpha_a  gamma_0  gamma_1  theta_H  theta_L
-    lower   = c(0.1,    0.05,    0.3,     0.02,    0.5),
-    upper   = c(0.5,    0.8,     0.9,     0.5,     5.0),
+    lower   = lower_vec,
+    upper   = upper_vec,
 
     popSize = 50,    # 個体数、動作確認用：本番は50程度に増やす
     maxiter = 100,    # 世代数、動作確認用：本番は100程度に増やす
@@ -944,38 +953,64 @@ system.time({
 })
 cat("GA終了:", format(Sys.time(), "%H:%M:%S"), "\n")
 
+
 closeAllConnections()
 stopCluster(cl)
 gc()
 gc()
+# 接続数が正常に戻ったか確認
+showConnections(all = TRUE)
 
 # ---- 結果の確認 ----
-best_params <- ga_result_calib@solution[1, ]
-names(best_params) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
-cat("\n最適パラメータ:\n")
-print(round(best_params, 4))
+# save(ga_result_calib, best_x, file = "ga_result800dim_backup.RData")
+# }
+# load("ga_result800dim_backup.RData")
+
+best_x <- ga_result_calib@solution[1, ]
+best_params_global <- best_x[1:5]
+names(best_params_global) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
+best_k_i <- best_x[6:(5 + nz_res)]   # ← ゾーンごとのk_iの最適値
+cat("\n最適グローバルパラメータ:\n")
+print(round(best_params_global, 4))
 cat("最良fitness（-Loss）:", ga_result_calib@fitnessValue, "\n\n")
 
-save(ga_result_calib, best_params, file = "ga_result_backup.RData")
-}
-
-load("ga_result_backup260527.RData")
-best_params <- ga_result_calib@solution[1, ]
-cat("\n最適パラメータ:\n")
-print(round(best_params, 4))
-names(best_params) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
-
 plot(ga_result_calib)  # 収束曲線
+cat("\nk_iの分布（要約統計）:\n")
+print(summary(best_k_i))
+# k_iの空間分布を確認（都心と郊外で値が分かれているか）
+hist(best_k_i, main = "GA最適化後の k_i 分布", xlab = "k_i")
+
+best_x_now <- ga_result_calib@solution[1, ]
+# fitness関数の中身を一部再現して、各項の値を確認
+best_k_i <- best_x_now[6:(5+nz_res)]
+summary(best_k_i)
+hist(best_k_i)
+
+
+k_i_df <- tibble(
+  KEY_CODE = rownames(habz) %>% gsub("^mc_", "", .),  # ゾーンのKEY_CODE
+  best_k_i = best_k_i
+)
+
+# key_code_sfに結合して地図化
+k_i_map_data <- left_join(key_code_sf, k_i_df, by = "KEY_CODE")
+
+ggplot(k_i_map_data) +
+  geom_sf(aes(fill = best_k_i), color = "gray50", linewidth = 0.1) +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  labs(title = "GA最適化後の k_i 空間分布") +
+  theme_void()
+
 
 # ---- グローバル変数に反映 ----
-alpha_a <- best_params["alpha_a"]
+alpha_a <- best_x["alpha_a"]
 alpha_z <- 1 - alpha_a
 alpha_0 <- (alpha_z ^ alpha_z) * (alpha_a ^ alpha_a)
-gamma_0 <- best_params["gamma_0"]
-gamma_1 <- best_params["gamma_1"]
+gamma_0 <- best_x["gamma_0"]
+gamma_1 <- best_x["gamma_1"]
 
-theta_H <- best_params["theta_H"]
-theta_L <- best_params["theta_L"]
+theta_H <- best_x["theta_H"]
+theta_L <- best_x["theta_L"]
 
 
 # ---- LUTIループを最適パラメータで再実行 ----
