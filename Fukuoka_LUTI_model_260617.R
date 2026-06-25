@@ -469,6 +469,7 @@ v_start=log(v_j_vec0)
 #土地利用モデル：与えられた効用水準下での立地，消費量
 caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(v_start), v_j_vec=v_equilibrium
   v_j_matrix = matrix(v_j_vec, nrow = nz_res, ncol = nz_work, byrow = TRUE)
+  # v_j_matrix = matrix(v_equilibrium, nrow = nz_res, ncol = nz_work, byrow = TRUE)
   
   #eq.11
   r_ij_H=(alpha_0*disposable_income_ij/v_j_matrix)^(1/alpha_a)
@@ -886,7 +887,7 @@ k_upper <- 0.3    # 上限：供給コストが極端に高い
 lower_vec <- c(0.1,  0.05, 0.3,  0.02, 0.5,  rep(k_lower, nz_res))
 upper_vec <- c(0.5,  0.8,  0.9,  0.5,  5.0,  rep(k_upper, nz_res))
 
-# if(T){
+if(F){
 # ---- クラスター準備 ----
 cl <- makeCluster(detectCores() - 1)
 # registerDoParallel(cl)
@@ -962,9 +963,10 @@ gc()
 showConnections(all = TRUE)
 
 # ---- 結果の確認 ----
-# save(ga_result_calib, best_x, file = "ga_result800dim_backup.RData")
-# }
-# load("ga_result800dim_backup.RData")
+save(ga_result_calib, best_x, file = "ga_result800dim_backup.RData")
+}
+
+load("ga_result800dim_backup.RData")
 
 best_x <- ga_result_calib@solution[1, ]
 best_params_global <- best_x[1:5]
@@ -980,15 +982,15 @@ print(summary(best_k_i))
 # k_iの空間分布を確認（都心と郊外で値が分かれているか）
 hist(best_k_i, main = "GA最適化後の k_i 分布", xlab = "k_i")
 
-best_x_now <- ga_result_calib@solution[1, ]
+
 # fitness関数の中身を一部再現して、各項の値を確認
-best_k_i <- best_x_now[6:(5+nz_res)]
 summary(best_k_i)
 hist(best_k_i)
 
+zone_ids <- rownames(dists0) %>% gsub("^mc_","", .)
 
 k_i_df <- tibble(
-  KEY_CODE = rownames(habz) %>% gsub("^mc_", "", .),  # ゾーンのKEY_CODE
+  KEY_CODE = zone_ids,
   best_k_i = best_k_i
 )
 
@@ -1003,15 +1005,21 @@ ggplot(k_i_map_data) +
 
 
 # ---- グローバル変数に反映 ----
-alpha_a <- best_x["alpha_a"]
+alpha_a <- best_params_global["alpha_a"]
 alpha_z <- 1 - alpha_a
 alpha_0 <- (alpha_z ^ alpha_z) * (alpha_a ^ alpha_a)
-gamma_0 <- best_x["gamma_0"]
-gamma_1 <- best_x["gamma_1"]
+gamma_0 <- best_params_global["gamma_0"]
+gamma_1 <- best_params_global["gamma_1"]
 
-theta_H <- best_x["theta_H"]
-theta_L <- best_x["theta_L"]
+theta_H <- best_params_global["theta_H"]
+theta_L <- best_params_global["theta_L"]
 
+k_i <- best_k_i
+# k_iが正しく代入されているか確認
+length(k_i)
+range(k_i, na.rm = TRUE)
+sum(is.na(k_i))
+nz_res
 
 # ---- LUTIループを最適パラメータで再実行 ----
 # 元コードL.882〜954と同じ処理を最適パラメータで実行する
