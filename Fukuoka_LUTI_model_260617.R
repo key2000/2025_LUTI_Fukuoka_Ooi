@@ -1202,6 +1202,15 @@ p_rent_obs   <- make_map(rentC, "obs_rent",       "実データ：家賃", "plas
 p_rent_model <- make_map(rentC, "est_rent", "モデル：家賃",   "plasma", c(0, 3200))
 print(p_rent_obs + p_rent_model)  # patchwork
 
+# diff_rent
+rentC_flt_diff <- rentC_flt %>% 
+  mutate(
+    diff_rent = est_rent - obs_rent
+  )
+
+p_rentC_diff <- make_diff_map2(rentC_flt_diff, "diff_rent", 
+                             "diff_rent", "(Yen/Month)")
+plot(p_rentC_diff)
 
 ##　床面積の比較
 #モデル：a_fij_H
@@ -1249,8 +1258,18 @@ p_ar_obs   <- make_map(arC, "obs_ar",       "実データ：床面積", "viridis
 p_ar_model <- make_map(arC, "est_ar", "モデル：床面積",   "viridis", c(0, 200))
 print(p_ar_obs + p_ar_model)  # patchwork
 
+# diff_ar
+arC_flt_diff <- arC_flt %>% 
+  mutate(
+    diff_ar = est_ar - obs_ar
+  )
 
-## 宅地割合
+p_arC_diff <- make_diff_map2(arC_flt_diff, "diff_ar", 
+               "diff_ar", "(m^2)")
+plot(p_arC_diff)
+
+
+#宅地面積
 final_Gi <- final_state$G_i
 Gi_df <- data.frame(
   KEY_CODE = names(final_state$G_i), 
@@ -1564,7 +1583,7 @@ make_diff_map2 <- function(data, fill_vars, titles, unit_label = "変化量") {
 }
 
 
-#比較　世帯数
+ #比較　世帯数
 scn0_household <- key_code_sf |> 
   left_join(est_household, by ="KEY_CODE") |> 
   rename(scn0_household=est_household)
