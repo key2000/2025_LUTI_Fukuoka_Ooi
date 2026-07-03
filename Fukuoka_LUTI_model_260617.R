@@ -254,6 +254,7 @@ emp_by_ind <- emp_by_ind %>%
   mutate(KEY_CODE = as.character(KEY_CODE))
 colnames(emp_by_ind)<-c("KEY_CODE","all","Ind_C","Ind_D","Ind_E","Ind_F","Ind_G","Ind_H","Ind_I","Ind_J","Ind_K","Ind_L","Ind_M","Ind_N","Ind_O","Ind_P","Ind_Q","Ind_R")
 
+
 M<-emp_by_ind%>%
   dplyr::select(starts_with("Ind_"))%>%
   as.matrix()
@@ -714,28 +715,22 @@ calibration_fitness <- function(x) {
   
   
   tryCatch({
-    
-    # ---- LUTIループをfitness内部で完走させる ----
-    dists_road_local <- dists0.road*1
-    flag_local <- 0
-    ii_local   <- 1
-    
-    while (flag_local == 0) {
       
       # ① モード選択
-      V.car_l  <- para[1] * dists_road_local + para[2] + para[4] * parkPrice / 2
-      den_l    <- exp(V.bike) + exp(V.car_l) + exp(V.rail)
-      P.bike_l <- exp(V.bike)  / den_l
-      P.car_l  <- exp(V.car_l) / den_l
-      P.rail_l <- exp(V.rail)  / den_l
-      agcc_l   <- (P.bike_l * V.bike + P.car_l * V.car_l + P.rail_l * V.rail) / para[1]
-      c_ij_l   <- agcc_l * 1.600
-      disp_inc_l <- pmax(-c_ij_l + omega_j_matrix, 0)
+    V.car_fixed  <- para[1] * dists0.road + para[2] + para[4] * parkPrice / 2
+    den_fixed    <- exp(V.bike) + exp(V.car_fixed) + exp(V.rail)
+    P.bike_fixed <- exp(V.bike)       / den_fixed
+    P.car_fixed  <- exp(V.car_fixed)  / den_fixed
+    P.rail_fixed <- exp(V.rail)       / den_fixed
+    agcc_fixed   <- (P.bike_fixed * V.bike + P.car_fixed * V.car_fixed +
+                       P.rail_fixed * V.rail) / para[1]
+    c_ij_fixed   <- agcc_fixed * 1.600
+    disp_inc_fixed <- pmax(-c_ij_fixed + omega_j_matrix, 0)
       
       # ② 土地利用均衡（ローカルパラメータ版）
       calc_state_local <- function(v_j_vec) {
         v_j_mat  <- matrix(v_j_vec, nrow = nz_res, ncol = nz_work, byrow = TRUE)
-        r_ij_H   <- (alpha_0_c * disp_inc_l / v_j_mat) ^ (1 / alpha_a_c)
+        r_ij_H   <- (alpha_0_c * disp_inc_fixed / v_j_mat) ^ (1 / alpha_a_c)
         r_ij_H[is.nan(r_ij_H)] <- 0
         exp_r    <- exp(theta_H_c * r_ij_H)
         exp_r[r_ij_H == 0] <- 0
@@ -750,7 +745,7 @@ calibration_fitness <- function(x) {
         A_Fi_S   <- gamma_0_c * ((r_bar_i * gamma_0_c * gamma_1_c) / k_i_c) ^ pg * G_i_l
         A_Fi_S[is.nan(A_Fi_S)] <- 0
         A_fij_S  <- A_Fi_S * P_j_i
-        a_fij_H  <- alpha_a_c * disp_inc_l / pmax(r_ij_H, 1e-9)
+        a_fij_H  <- alpha_a_c * disp_inc_fixed / pmax(r_ij_H, 1e-9)
         l_i_j    <- A_fij_S / pmax(a_fij_H, 1e-9)
         l_i_j[is.nan(l_i_j)] <- 0
         l_i_j[a_fij_H == 0]  <- 0
@@ -775,46 +770,7 @@ calibration_fitness <- function(x) {
       
       state_l <- calc_state_local(exp(res_lu$x))
       
-      # ③ 交通配分
-      ODD.car_l <- state_l$l_i_j * P.car_l
-      trips_l   <- as.data.frame.table(ODD.car_l, responseName = "demand")
-      names(trips_l) <- c("from", "to", "demand")
-      
-      traffic_l <- assign_traffic(
-        Graph     = sgr,
-        from      = trips_l$from,
-        to        = trips_l$to,
-        demand    = trips_l$demand,
-        max_gap   = 1e-2,
-        algorithm = "bfw",
-        verbose   = FALSE
-      )
-      sgr2_l <- makegraph(
-        df       = traffic_l$data[, c("from", "to", "cost")],
-        directed = TRUE,
-        capacity = 1e4,
-        alpha    = alpha,
-        beta     = beta,
-        coords   = nodes
-      )
-      dists_road_prev  <- dists_road_local
-      dists_road_new   <- get_distance_matrix(sgr2_l,
-                                              from      = zones,
-                                              to        = centers,
-                                              algorithm = "mch")
-      dists_road_local <- 0.5 * dists_road_new + 0.5 * dists_road_prev
-      
-      diff_local <- sum((dists_road_prev - dists_road_local) ^ 2)
-      ii_local   <- ii_local + 1
-      
-      # GA評価中は反復回数を制限（本番LUTIは ii>1000 まで）
-      if (diff_local < 1000 | ii_local > 20) {
-        cat("ii=", ii_local, "diff=", diff_local, "\n")  # 何回目で打ち切られたか確認
-        flag_local <- 1
-      }
-    }
-    # ---- LUTIループここまで ----
-    
+     
     
     # ---- 観測値との誤差計算（全指標を対数変換）----
     
@@ -887,7 +843,7 @@ k_upper <- 0.3    # 上限：供給コストが極端に高い
 lower_vec <- c(0.1,  0.05, 0.3,  0.02, 0.5,  rep(k_lower, nz_res))
 upper_vec <- c(0.5,  0.8,  0.9,  0.5,  5.0,  rep(k_upper, nz_res))
 
-if(F){
+if(T){
 # ---- クラスター準備 ----
 cl <- makeCluster(detectCores() - 1)
 # registerDoParallel(cl)
@@ -896,9 +852,9 @@ clusterExport(cl, varlist = c(
   # fitness関数本体
   "calibration_fitness",
   # 距離行列・ネットワーク
-  "dists0.road", "dists0.bike", "dists0.rail",
-  "sgr", "nodes", "zones", "centers",
-  "alpha", "beta",
+  # "dists0.road", "dists0.bike", "dists0.rail",
+  # "sgr", "nodes", "zones", "centers",
+  # "alpha", "beta",
   # モード選択（固定）
   "V.bike", "V.rail", "para", "parkPrice",
   # 経済データ
@@ -908,9 +864,9 @@ clusterExport(cl, varlist = c(
   # 均衡計算
   "nz_res", "nz_work", "v_start",
   # 観測値（元コードと同じ変数名）
-  "household", "athome_df", "athome_ar",
+  "household", "athome_df", "athome_ar"
 
-  "assign_traffic", "makegraph", "get_distance_matrix"
+  # "assign_traffic", "makegraph", "get_distance_matrix"
 ))
 
 clusterEvalQ(cl, {
@@ -922,7 +878,9 @@ clusterEvalQ(cl, {
 
 # ---- 単発テスト（800次元でも動くか先に確認）----
 x0_test <- c(0.3, 0.2, 0.6, 0.1, 2.0, rep(0.1, nz_res))
-test_result <- calibration_fitness(x0_test)
+system.time({
+  test_result <- calibration_fitness(x0_test)
+})
 cat("単発テスト fitness値:", test_result, "\n")
 # ここで正常な値（-10や-1e10ではない数値）が返ることを確認してから
 # 次のGA本番実行に進むこと
@@ -933,6 +891,21 @@ test_vals <- sapply(1:10, function(i) {
   calibration_fitness(x_random)
 })
 print(round(test_vals, 2))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ---- GA実行 ----
 cat("GA開始:", format(Sys.time(), "%H:%M:%S"), "\n")
@@ -945,8 +918,8 @@ system.time({
     lower   = lower_vec,
     upper   = upper_vec,
 
-    popSize = 50,    # 個体数、動作確認用：本番は50程度に増やす
-    maxiter = 100,    # 世代数、動作確認用：本番は100程度に増やす
+    popSize = 150,    # 個体数、動作確認用：本番は50程度に増やす
+    maxiter = 800,    # 世代数、動作確認用：本番は100程度に増やす
 
     parallel = cl,
     monitor  = TRUE
@@ -963,10 +936,11 @@ gc()
 showConnections(all = TRUE)
 
 # ---- 結果の確認 ----
-save(ga_result_calib, best_x, file = "ga_result800dim_backup.RData")
+save(ga_result_calib, best_x, file = "ga_result800dimLU_backup.RData")
 }
 
-load("ga_result800dim_backup.RData")
+load("ga_result800dimLU_backup.RData")
+
 
 best_x <- ga_result_calib@solution[1, ]
 best_params_global <- best_x[1:5]
@@ -1129,6 +1103,7 @@ hhC=left_join(key_code_sf,est_household,by="KEY_CODE") %>%
 plot(hhC$obs_household,hhC$est_household)
 abline(0,1,col="red")
 sum(hhC$obs_household)
+
 sum(hhC$est_household)
 (cor(hhC$obs_household,hhC$est_household, use="complete.obs"))^2
 r_hh_weighted <- weightedCorr(
