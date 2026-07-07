@@ -693,6 +693,217 @@ athome_ar <- athome_crop %>%
   summarise(avg_room_ar = mean(room_ar, na.rm = TRUE))
   # 単位：m2
 
+
+# calculate backward k_i
+# ---- Step 1：k_i を逆算 ----
+
+# 観測総床面積の作成
+# athome_ar$avg_room_ar：ゾーンごとの平均床面積（m²/戸）
+# household$obs_hh     ：ゾーンごとの世帯数（戸）
+obs_floor_total <- athome_ar %>%
+  left_join(household, by = "KEY_CODE") %>%
+  mutate(obs_A_Fi = avg_room_ar * obs_hh) %>%   # 平均床面積 × 世帯数
+  dplyr::select(KEY_CODE, obs_A_Fi, avg_room_ar)
+
+# r_bar_i として観測家賃を使う（単位を合わせる：円/m2 → 千円/m2）
+obs_rent_ki <- athome_df %>%
+  mutate(r_bar_i_obs = avg_rent / 1000) %>%      # 円/m2 → 千円/m2
+  dplyr::select(KEY_CODE, r_bar_i_obs)
+
+# ゾーン順序（dists0の行順）でデータを整理
+zone_ids <- rownames(dists0) %>% gsub("^mc_", "", .)
+
+ki_input <- tibble(KEY_CODE = zone_ids) %>%
+  left_join(obs_floor_total, by = "KEY_CODE") %>%
+  left_join(obs_rent_ki,     by = "KEY_CODE")
+
+cat("obs_A_Fi が存在するゾーン数:", sum(!is.na(ki_input$obs_A_Fi)), "\n")
+cat("r_bar_i_obs が存在するゾーン数:", sum(!is.na(ki_input$r_bar_i_obs)), "\n")
+
+# ---- uniroot で各ゾーンの k_i を逆算 ----
+k_i_estimated <- numeric(nz_res)
+
+for (i in seq_len(nz_res)) {
+  
+  r_bar_i_i  <- ki_input$r_bar_i_obs[i]
+  G0_i_i     <- G0_i[i]
+  obs_A_Fi_i <- ki_input$obs_A_Fi[i]
+  
+  if (is.na(obs_A_Fi_i) | is.na(r_bar_i_i) |
+      obs_A_Fi_i <= 0   | r_bar_i_i <= 0   | G0_i_i <= 0) {
+    k_i_estimated[i] <- 0.1
+    next
+  }
+  
+  # f(k_i) = A_Fi(k_i) - A_Fi_obs = 0 を解く
+  # local() で環境を固定し、クロージャの問題を回避
+  result <- local({
+    r   <- r_bar_i_i
+    G   <- G0_i_i
+    obs <- obs_A_Fi_i
+    
+    f <- function(ki) {
+      pg   <- gamma_1 / (1 - gamma_1)
+      rg_i <- phi * (1 - gamma_1) *
+              (r * gamma_0) ^ (1 / (1 - gamma_1)) *
+              (gamma_1 / ki) ^ pg
+      G_i  <- G * exp(theta_L * (rg_i - rr_a)) /
+               (1 + exp(theta_L * (rg_i - rr_a))) * phi_pub * phi
+      A_Fi <- gamma_0 * (r * gamma_0 * gamma_1 / ki) ^ pg * G_i
+      return(A_Fi - obs)
+    }
+    
+    tryCatch(
+      uniroot(f, interval = c(0.01, 0.5), tol = 1e-8),
+      error = function(e) NULL
+    )
+  })
+  
+  k_i_estimated[i] <- if (!is.null(result)) result$root else 0.1
+}
+
+cat("解が求まったゾーン数:", sum(k_i_estimated != 0.1), "\n")
+cat("k_i_estimatedの範囲:", range(k_i_estimated), "\n")
+
+cat("k_i_estimated の範囲:", range(k_i_estimated), "\n")
+cat("uniroot 失敗（初期値0.1のまま）のゾーン数:",
+    sum(k_i_estimated == 0.1), "\n")
+
+hist(k_i_estimated, main = "逆算したk_iの分布", xlab = "k_i")
+
+
+
+# ki クリギング####
+# install.packages("gstat")
+# install.packages("sp")
+library(gstat)
+library(sp)
+library(sf)
+
+# ---- クリギングの準備 ----
+
+# k_i_estimated とゾーンのKEY_CODEを対応づける
+zone_ids <- rownames(dists0) %>% gsub("^mc_", "", .)
+
+k_i_df <- tibble(
+  KEY_CODE = zone_ids,
+  k_i      = k_i_estimated,
+  # uniroot成功したゾーン（=観測データあり）かどうかのフラグ
+  has_data = (k_i_estimated != 0.1) & !is.na(k_i_estimated)
+)
+cat("has_data = TRUE のゾーン数:", sum(k_i_df$has_data), "\n") # OK, データあり341ゾーン
+
+# key_code_sfにk_iを結合（空間情報を持たせる）
+k_i_sf <- key_code_sf %>%
+  left_join(k_i_df, by = "KEY_CODE") %>%
+  mutate(centroid = st_centroid(geometry))  # メッシュの重心座標
+
+# 重心座標を取り出す
+coords <- st_coordinates(st_centroid(k_i_sf))
+k_i_sf <- k_i_sf %>%
+  mutate(x = coords[, 1], y = coords[, 2])
+
+# ---- 観測あり・なしに分ける ----
+k_i_obs <- k_i_sf %>%
+  filter(has_data == TRUE, !is.na(k_i)) %>%
+  st_drop_geometry()
+
+k_i_pred <- k_i_sf %>%
+  filter(has_data == FALSE | is.na(k_i)) %>%
+  st_drop_geometry()
+
+cat("観測あり（クリギングの入力）:", nrow(k_i_obs), "ゾーン\n")
+cat("観測なし（補間対象）:", nrow(k_i_pred), "ゾーン\n")
+
+# ---- sp形式に変換（gstatが必要とする形式）----
+coordinates(k_i_obs)  <- ~x + y
+coordinates(k_i_pred) <- ~x + y
+
+# ---- バリオグラムの推定 ----
+# k_iの空間的ばらつきのパターンを学習する
+vgm_emp <- variogram(k_i ~ 1, data = k_i_obs)
+plot(vgm_emp, main = "経験バリオグラム")
+
+# バリオグラムモデルをフィット（球面モデルが一般的）
+# vgm_fit <- fit.variogram(vgm_emp,
+#                           model = vgm(psill = var(k_i_obs$k_i),
+#                                       model = "Sph",
+#                                       range = 10000,   # 空間的相関の距離（m）
+#                                       nugget = 0))
+
+# vgm_fit <- fit.variogram(vgm_emp,
+#                           model = vgm(psill = 0.0015,
+#                                       model = "Sph",
+#                                       range = 20000,   # 空間的相関の距離（m）
+#                                       nugget = 0.001))
+
+# # 指数モデル
+# vgm_fit <- fit.variogram(
+#   vgm_emp,
+#   model = vgm(psill=0.0015, model="Exp", range=10000, nugget=0.001)
+# )
+
+# ガウシアンモデル これだけうまくいった。
+vgm_fit <- fit.variogram(
+  vgm_emp,
+  model = vgm(psill=0.0015, model="Gau", range=20000, nugget=0.001)
+)
+
+print(vgm_fit)
+plot(vgm_emp, vgm_fit, main = "バリオグラムモデルのフィット")
+
+# ---- クリギング補間 ----
+k_i_kriged <- krige(
+  formula   = k_i ~ 1,      # 通常クリギング（トレンドなし）
+  locations = k_i_obs,       # 観測データ（入力）
+  newdata   = k_i_pred,      # 補間対象ゾーン
+  model     = vgm_fit
+)
+
+cat("クリギング補間完了\n")
+cat("補間値の範囲:", range(k_i_kriged$var1.pred), "\n")
+
+# ---- 補間値をk_i_estimatedに反映 ----
+# 観測ありゾーン：逆算値をそのまま使う
+# 観測なしゾーン：クリギング補間値を使う
+
+k_i_pred_df <- tibble(
+  KEY_CODE = k_i_pred$KEY_CODE,
+  k_i_kriged = pmax(k_i_kriged$var1.pred, 0.01)  # 負の値を防ぐ下限
+)
+
+k_i_final <- k_i_df %>%
+  left_join(k_i_pred_df, by = "KEY_CODE") %>%
+  mutate(
+    k_i_final = case_when(
+      has_data == TRUE  ~ k_i,            # 観測あり：逆算値
+      has_data == FALSE ~ k_i_kriged,     # 観測なし：クリギング補間値
+      TRUE              ~ 0.1             # それ以外：初期値
+    )
+  )
+
+# k_iのベクトルとして取り出す（dists0の行順）
+k_i_estimated_final <- k_i_final$k_i_final
+cat("最終的なk_iの範囲:", range(k_i_estimated_final, na.rm=TRUE), "\n")
+
+# 空間分布を確認
+k_i_map <- key_code_sf %>%
+  left_join(k_i_final %>% dplyr::select(KEY_CODE, k_i_final, has_data),
+            by = "KEY_CODE")
+# k_i_map_obs <- k_i_map %>%
+#   filter(has_data == TRUE)
+
+ggplot(k_i_map) +
+  geom_sf(aes(fill = k_i_final), color = "gray50", linewidth = 0.1) +
+  scale_fill_viridis_c(option = "plasma", direction = -1,
+                        name = "k_i") +
+  labs(title = "k_iの空間分布（逆算＋クリギング補完）") +
+  theme_void()
+
+# k_iをグローバル変数として固定
+k_i <- k_i_estimated_final
+
+
 # install.packages("GA")
 # install.packages("doParallel")
 library(GA)
@@ -710,7 +921,7 @@ calibration_fitness <- function(x) {
   gamma_1_c <- x[3]
   theta_H_c <- x[4]
   theta_L_c <- x[5]
-  k_i_c <- x[6:(5 + nz_res)]
+  k_i_c     <- k_i_estimated_final   # グローバルから参照
   
   
   tryCatch({
@@ -861,7 +1072,7 @@ calibration_fitness <- function(x) {
     f_ar <- sum(w_ar_i*(log(comp_ar$est_ar) - log(comp_ar$avg_room_ar)) ^ 2) #変えた
     
     # ---- ペナルティ項 ----
-    x0      <- c(0.3, 0.2, 0.6, 0.1, 2.0, rep(0.1, nz_res))
+    x0      <- c(0.3, 0.2, 0.6, 0.1, 2.0)
     lambda  <- 0.05
     penalty <- lambda * sum(((x - x0) / x0) ^ 2)
     
@@ -882,12 +1093,12 @@ calibration_fitness <- function(x) {
 
 # k_iの探索範囲（元の定数0.1を基準に、現実的な範囲を設定）
 k_lower <- 0.01   # 下限：供給コストが極端に低い
-k_upper <- 0.3    # 上限：供給コストが極端に高い
+k_upper <- 0.4    # 上限：供給コストが極端に高い
 
-lower_vec <- c(0.1,  0.05, 0.3,  0.02, 0.5,  rep(k_lower, nz_res))
-upper_vec <- c(0.5,  0.8,  0.9,  0.5,  5.0,  rep(k_upper, nz_res))
+lower_vec <- c(0.1,  0.05, 0.3,  0.02, 0.5)
+upper_vec <- c(0.5,  0.8,  0.9,  0.5,  5.0)
 
-if(F){
+if(T){
 # ---- クラスター準備 ----
 cl <- makeCluster(detectCores() - 1)
 # registerDoParallel(cl)
@@ -895,6 +1106,7 @@ cl <- makeCluster(detectCores() - 1)
 clusterExport(cl, varlist = c(
   # fitness関数本体
   "calibration_fitness",
+  "k_i_estimated_final", 
   # 距離行列・ネットワーク
   "dists0.road", "dists0.bike", "dists0.rail",
   "sgr", "nodes", "zones", "centers",
@@ -913,6 +1125,8 @@ clusterExport(cl, varlist = c(
   "assign_traffic", "makegraph", "get_distance_matrix"
 ))
 
+exists("sgr")  # TRUE が返るか確認
+
 clusterEvalQ(cl, {
   library(nleqslv)
   library(cppRouting)
@@ -921,7 +1135,7 @@ clusterEvalQ(cl, {
 })
 
 # ---- 単発テスト（800次元でも動くか先に確認）----
-x0_test <- c(0.3, 0.2, 0.6, 0.1, 2.0, rep(0.1, nz_res))
+x0_test <- c(0.3, 0.2, 0.6, 0.1, 2.0)
 test_result <- calibration_fitness(x0_test)
 cat("単発テスト fitness値:", test_result, "\n")
 # ここで正常な値（-10や-1e10ではない数値）が返ることを確認してから
@@ -963,10 +1177,10 @@ gc()
 showConnections(all = TRUE)
 
 # ---- 結果の確認 ----
-save(ga_result_calib, best_x, file = "ga_result800dim_backup.RData")
+save(ga_result_calib, best_x, file = "ga_ki_calculate_backward_backup.RData")
 }
 
-load("ga_result800dim_backup.RData")
+load("ga_ki_calculate_backward_backup.RData")
 
 best_x <- ga_result_calib@solution[1, ]
 best_params_global <- best_x[1:5]
