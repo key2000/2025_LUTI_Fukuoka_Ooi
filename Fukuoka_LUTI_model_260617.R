@@ -254,6 +254,7 @@ emp_by_ind <- emp_by_ind %>%
   mutate(KEY_CODE = as.character(KEY_CODE))
 colnames(emp_by_ind)<-c("KEY_CODE","all","Ind_C","Ind_D","Ind_E","Ind_F","Ind_G","Ind_H","Ind_I","Ind_J","Ind_K","Ind_L","Ind_M","Ind_N","Ind_O","Ind_P","Ind_Q","Ind_R")
 
+
 M<-emp_by_ind%>%
   dplyr::select(starts_with("Ind_"))%>%
   as.matrix()
@@ -469,6 +470,7 @@ v_start=log(v_j_vec0)
 #土地利用モデル：与えられた効用水準下での立地，消費量
 caluculate_model_state<-function(v_j_vec){ # v_j_vec=exp(v_j_vec2); v_j_vec=exp(v_start), v_j_vec=v_equilibrium
   v_j_matrix = matrix(v_j_vec, nrow = nz_res, ncol = nz_work, byrow = TRUE)
+  # v_j_matrix = matrix(v_equilibrium, nrow = nz_res, ncol = nz_work, byrow = TRUE)
   
   #eq.11
   r_ij_H=(alpha_0*disposable_income_ij/v_j_matrix)^(1/alpha_a)
@@ -709,30 +711,26 @@ calibration_fitness <- function(x) {
   gamma_1_c <- x[3]
   theta_H_c <- x[4]
   theta_L_c <- x[5]
+  k_i_c <- x[6:(5 + nz_res)]
+  
   
   tryCatch({
-    
-    # ---- LUTIループをfitness内部で完走させる ----
-    dists_road_local <- dists0.road*1
-    flag_local <- 0
-    ii_local   <- 1
-    
-    while (flag_local == 0) {
       
       # ① モード選択
-      V.car_l  <- para[1] * dists_road_local + para[2] + para[4] * parkPrice / 2
-      den_l    <- exp(V.bike) + exp(V.car_l) + exp(V.rail)
-      P.bike_l <- exp(V.bike)  / den_l
-      P.car_l  <- exp(V.car_l) / den_l
-      P.rail_l <- exp(V.rail)  / den_l
-      agcc_l   <- (P.bike_l * V.bike + P.car_l * V.car_l + P.rail_l * V.rail) / para[1]
-      c_ij_l   <- agcc_l * 1.600
-      disp_inc_l <- pmax(-c_ij_l + omega_j_matrix, 0)
+    V.car_fixed  <- para[1] * dists0.road + para[2] + para[4] * parkPrice / 2
+    den_fixed    <- exp(V.bike) + exp(V.car_fixed) + exp(V.rail)
+    P.bike_fixed <- exp(V.bike)       / den_fixed
+    P.car_fixed  <- exp(V.car_fixed)  / den_fixed
+    P.rail_fixed <- exp(V.rail)       / den_fixed
+    agcc_fixed   <- (P.bike_fixed * V.bike + P.car_fixed * V.car_fixed +
+                       P.rail_fixed * V.rail) / para[1]
+    c_ij_fixed   <- agcc_fixed * 1.600
+    disp_inc_fixed <- pmax(-c_ij_fixed + omega_j_matrix, 0)
       
       # ② 土地利用均衡（ローカルパラメータ版）
       calc_state_local <- function(v_j_vec) {
         v_j_mat  <- matrix(v_j_vec, nrow = nz_res, ncol = nz_work, byrow = TRUE)
-        r_ij_H   <- (alpha_0_c * disp_inc_l / v_j_mat) ^ (1 / alpha_a_c)
+        r_ij_H   <- (alpha_0_c * disp_inc_fixed / v_j_mat) ^ (1 / alpha_a_c)
         r_ij_H[is.nan(r_ij_H)] <- 0
         exp_r    <- exp(theta_H_c * r_ij_H)
         exp_r[r_ij_H == 0] <- 0
@@ -741,13 +739,13 @@ calibration_fitness <- function(x) {
         pg       <- gamma_1_c / (1 - gamma_1_c)
         rg_i     <- phi * (1 - gamma_1_c) *
           (r_bar_i * gamma_0_c) ^ (1 / (1 - gamma_1_c)) *
-          (gamma_1_c / k_i) ^ pg
+          (gamma_1_c / k_i_c) ^ pg
         G_i_l    <- G0_i * exp(theta_L_c * (rg_i - rr_a)) /
           (1 + exp(theta_L_c * (rg_i - rr_a))) * phi_pub * phi
-        A_Fi_S   <- gamma_0_c * ((r_bar_i * gamma_0_c * gamma_1_c) / k_i) ^ pg * G_i_l
+        A_Fi_S   <- gamma_0_c * ((r_bar_i * gamma_0_c * gamma_1_c) / k_i_c) ^ pg * G_i_l
         A_Fi_S[is.nan(A_Fi_S)] <- 0
         A_fij_S  <- A_Fi_S * P_j_i
-        a_fij_H  <- alpha_a_c * disp_inc_l / pmax(r_ij_H, 1e-9)
+        a_fij_H  <- alpha_a_c * disp_inc_fixed / pmax(r_ij_H, 1e-9)
         l_i_j    <- A_fij_S / pmax(a_fij_H, 1e-9)
         l_i_j[is.nan(l_i_j)] <- 0
         l_i_j[a_fij_H == 0]  <- 0
@@ -768,50 +766,11 @@ calibration_fitness <- function(x) {
         global  = "dbldog",
         control = list(ftol = 1e-6, xtol = 1e-6, maxit = 100)
       )
-      if (!(res_lu$termcd %in% c(1, 2))) return(-1e10)
+      if (!(res_lu$termcd %in% c(1, 2))) return(-200)
       
       state_l <- calc_state_local(exp(res_lu$x))
       
-      # ③ 交通配分
-      ODD.car_l <- state_l$l_i_j * P.car_l
-      trips_l   <- as.data.frame.table(ODD.car_l, responseName = "demand")
-      names(trips_l) <- c("from", "to", "demand")
-      
-      traffic_l <- assign_traffic(
-        Graph     = sgr,
-        from      = trips_l$from,
-        to        = trips_l$to,
-        demand    = trips_l$demand,
-        max_gap   = 1e-2,
-        algorithm = "bfw",
-        verbose   = FALSE
-      )
-      sgr2_l <- makegraph(
-        df       = traffic_l$data[, c("from", "to", "cost")],
-        directed = TRUE,
-        capacity = 1e4,
-        alpha    = alpha,
-        beta     = beta,
-        coords   = nodes
-      )
-      dists_road_prev  <- dists_road_local
-      dists_road_new   <- get_distance_matrix(sgr2_l,
-                                              from      = zones,
-                                              to        = centers,
-                                              algorithm = "mch")
-      dists_road_local <- 0.5 * dists_road_new + 0.5 * dists_road_prev
-      
-      diff_local <- sum((dists_road_prev - dists_road_local) ^ 2)
-      ii_local   <- ii_local + 1
-      
-      # GA評価中は反復回数を制限（本番LUTIは ii>1000 まで）
-      if (diff_local < 1000 | ii_local > 20) {
-        cat("ii=", ii_local, "diff=", diff_local, "\n")  # 何回目で打ち切られたか確認
-        flag_local <- 1
-      }
-    }
-    # ---- LUTIループここまで ----
-    
+     
     
     # ---- 観測値との誤差計算（全指標を対数変換）----
     
@@ -858,7 +817,7 @@ calibration_fitness <- function(x) {
     f_ar <- sum(w_ar_i*(log(comp_ar$est_ar) - log(comp_ar$avg_room_ar)) ^ 2) #変えた
     
     # ---- ペナルティ項 ----
-    x0      <- c(0.3, 0.2, 0.6, 0.1, 2.0)
+    x0      <- c(0.3, 0.2, 0.6, 0.1, 2.0, rep(0.1, nz_res))
     lambda  <- 0.05
     penalty <- lambda * sum(((x - x0) / x0) ^ 2)
     
@@ -872,11 +831,19 @@ calibration_fitness <- function(x) {
     return(-total_loss)  # GAは最大化 → 符号反転
     
   }, error = function(e) {
-    return(-1e10)
+    return(-200)
   })
 }
 
-if(F){
+
+# k_iの探索範囲（元の定数0.1を基準に、現実的な範囲を設定）
+k_lower <- 0.01   # 下限：供給コストが極端に低い
+k_upper <- 0.3    # 上限：供給コストが極端に高い
+
+lower_vec <- c(0.1,  0.05, 0.3,  0.02, 0.5,  rep(k_lower, nz_res))
+upper_vec <- c(0.5,  0.8,  0.9,  0.5,  5.0,  rep(k_upper, nz_res))
+
+if(T){
 # ---- クラスター準備 ----
 cl <- makeCluster(detectCores() - 1)
 # registerDoParallel(cl)
@@ -885,21 +852,21 @@ clusterExport(cl, varlist = c(
   # fitness関数本体
   "calibration_fitness",
   # 距離行列・ネットワーク
-  "dists0.road", "dists0.bike", "dists0.rail",
-  "sgr", "nodes", "zones", "centers",
-  "alpha", "beta",
+  # "dists0.road", "dists0.bike", "dists0.rail",
+  # "sgr", "nodes", "zones", "centers",
+  # "alpha", "beta",
   # モード選択（固定）
   "V.bike", "V.rail", "para", "parkPrice",
   # 経済データ
   "omega_j_matrix", "L_j_hat",
   # 土地利用（固定）
-  "G0_i", "k_i", "phi", "phi_pub", "rr_a",
+  "G0_i", "phi", "phi_pub", "rr_a",
   # 均衡計算
   "nz_res", "nz_work", "v_start",
   # 観測値（元コードと同じ変数名）
-  "household", "athome_df", "athome_ar",
+  "household", "athome_df", "athome_ar"
 
-  "assign_traffic", "makegraph", "get_distance_matrix"
+  # "assign_traffic", "makegraph", "get_distance_matrix"
 ))
 
 clusterEvalQ(cl, {
@@ -909,20 +876,36 @@ clusterEvalQ(cl, {
   library(tibble)
 })
 
-# 初期パラメータ（元コードの値）
-x_test <- c(0.3, 0.2, 0.6, 0.1, 2.0)
-
-# 単発で fitness を呼ぶ（並列化なし）
-test_result <- calibration_fitness(x_test)
-cat("fitness 値:", test_result, "\n")
-
-# ワーカー側で fitness が動くかテスト
-test_in_worker <- parLapply(cl, 1:1, function(i) {
-  r1 <- calibration_fitness(c(0.3, 0.2, 0.6, 0.1, 2.0))
-  r2 <- calibration_fitness(c(0.3, 0.2, 0.6, 0.1, 2.0))  # 同じパラメータで2回目
-  c(r1, r2)
+# ---- 単発テスト（800次元でも動くか先に確認）----
+x0_test <- c(0.3, 0.2, 0.6, 0.1, 2.0, rep(0.1, nz_res))
+system.time({
+  test_result <- calibration_fitness(x0_test)
 })
-cat("1回目:", test_in_worker[[1]][1], "  2回目:", test_in_worker[[1]][2], "\n")
+cat("単発テスト fitness値:", test_result, "\n")
+# ここで正常な値（-10や-1e10ではない数値）が返ることを確認してから
+# 次のGA本番実行に進むこと
+# これをまず確認してほしい
+set.seed(1)
+test_vals <- sapply(1:10, function(i) {
+  x_random <- c(0.3, 0.2, 0.6, 0.1, 2.0, runif(nz_res, k_lower, k_upper))
+  calibration_fitness(x_random)
+})
+print(round(test_vals, 2))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ---- GA実行 ----
 cat("GA開始:", format(Sys.time(), "%H:%M:%S"), "\n")
@@ -932,11 +915,11 @@ system.time({
     fitness = calibration_fitness,
 
     #         alpha_a  gamma_0  gamma_1  theta_H  theta_L
-    lower   = c(0.1,    0.05,    0.3,     0.02,    0.5),
-    upper   = c(0.5,    0.8,     0.9,     0.5,     5.0),
+    lower   = lower_vec,
+    upper   = upper_vec,
 
-    popSize = 50,    # 個体数、動作確認用：本番は50程度に増やす
-    maxiter = 100,    # 世代数、動作確認用：本番は100程度に増やす
+    popSize = 150,    # 個体数、動作確認用：本番は50程度に増やす
+    maxiter = 800,    # 世代数、動作確認用：本番は100程度に増やす
 
     parallel = cl,
     monitor  = TRUE
@@ -944,39 +927,73 @@ system.time({
 })
 cat("GA終了:", format(Sys.time(), "%H:%M:%S"), "\n")
 
+
 closeAllConnections()
 stopCluster(cl)
 gc()
 gc()
+# 接続数が正常に戻ったか確認
+showConnections(all = TRUE)
 
 # ---- 結果の確認 ----
-best_params <- ga_result_calib@solution[1, ]
-names(best_params) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
-cat("\n最適パラメータ:\n")
-print(round(best_params, 4))
-cat("最良fitness（-Loss）:", ga_result_calib@fitnessValue, "\n\n")
-
-save(ga_result_calib, best_params, file = "ga_result_backup.RData")
+save(ga_result_calib, best_x, file = "ga_result800dimLU_backup.RData")
 }
 
-load("ga_result_backup260527.RData")
-best_params <- ga_result_calib@solution[1, ]
-cat("\n最適パラメータ:\n")
-print(round(best_params, 4))
-names(best_params) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
+load("ga_result800dimLU_backup.RData")
+
+
+best_x <- ga_result_calib@solution[1, ]
+best_params_global <- best_x[1:5]
+names(best_params_global) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
+best_k_i <- best_x[6:(5 + nz_res)]   # ← ゾーンごとのk_iの最適値
+cat("\n最適グローバルパラメータ:\n")
+print(round(best_params_global, 4))
+cat("最良fitness（-Loss）:", ga_result_calib@fitnessValue, "\n\n")
 
 plot(ga_result_calib)  # 収束曲線
+cat("\nk_iの分布（要約統計）:\n")
+print(summary(best_k_i))
+# k_iの空間分布を確認（都心と郊外で値が分かれているか）
+hist(best_k_i, main = "GA最適化後の k_i 分布", xlab = "k_i")
+
+
+# fitness関数の中身を一部再現して、各項の値を確認
+summary(best_k_i)
+hist(best_k_i)
+
+zone_ids <- rownames(dists0) %>% gsub("^mc_","", .)
+
+k_i_df <- tibble(
+  KEY_CODE = zone_ids,
+  best_k_i = best_k_i
+)
+
+# key_code_sfに結合して地図化
+k_i_map_data <- left_join(key_code_sf, k_i_df, by = "KEY_CODE")
+
+ggplot(k_i_map_data) +
+  geom_sf(aes(fill = best_k_i), color = "gray50", linewidth = 0.1) +
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  labs(title = "GA最適化後の k_i 空間分布") +
+  theme_void()
+
 
 # ---- グローバル変数に反映 ----
-alpha_a <- best_params["alpha_a"]
+alpha_a <- best_params_global["alpha_a"]
 alpha_z <- 1 - alpha_a
 alpha_0 <- (alpha_z ^ alpha_z) * (alpha_a ^ alpha_a)
-gamma_0 <- best_params["gamma_0"]
-gamma_1 <- best_params["gamma_1"]
+gamma_0 <- best_params_global["gamma_0"]
+gamma_1 <- best_params_global["gamma_1"]
 
-theta_H <- best_params["theta_H"]
-theta_L <- best_params["theta_L"]
+theta_H <- best_params_global["theta_H"]
+theta_L <- best_params_global["theta_L"]
 
+k_i <- best_k_i
+# k_iが正しく代入されているか確認
+length(k_i)
+range(k_i, na.rm = TRUE)
+sum(is.na(k_i))
+nz_res
 
 # ---- LUTIループを最適パラメータで再実行 ----
 # 元コードL.882〜954と同じ処理を最適パラメータで実行する
@@ -1086,6 +1103,7 @@ hhC=left_join(key_code_sf,est_household,by="KEY_CODE") %>%
 plot(hhC$obs_household,hhC$est_household)
 abline(0,1,col="red")
 sum(hhC$obs_household)
+
 sum(hhC$est_household)
 (cor(hhC$obs_household,hhC$est_household, use="complete.obs"))^2
 r_hh_weighted <- weightedCorr(
@@ -1159,6 +1177,15 @@ p_rent_obs   <- make_map(rentC, "obs_rent",       "実データ：家賃", "plas
 p_rent_model <- make_map(rentC, "est_rent", "モデル：家賃",   "plasma", c(0, 3200))
 print(p_rent_obs + p_rent_model)  # patchwork
 
+# diff_rent
+rentC_flt_diff <- rentC_flt %>% 
+  mutate(
+    diff_rent = est_rent - obs_rent
+  )
+
+p_rentC_diff <- make_diff_map2(rentC_flt_diff, "diff_rent", 
+                             "diff_rent", "(Yen/Month)")
+plot(p_rentC_diff)
 
 ##　床面積の比較
 #モデル：a_fij_H
@@ -1206,8 +1233,18 @@ p_ar_obs   <- make_map(arC, "obs_ar",       "実データ：床面積", "viridis
 p_ar_model <- make_map(arC, "est_ar", "モデル：床面積",   "viridis", c(0, 200))
 print(p_ar_obs + p_ar_model)  # patchwork
 
+# diff_ar
+arC_flt_diff <- arC_flt %>% 
+  mutate(
+    diff_ar = est_ar - obs_ar
+  )
 
-## 宅地割合
+p_arC_diff <- make_diff_map2(arC_flt_diff, "diff_ar", 
+               "diff_ar", "(m^2)")
+plot(p_arC_diff)
+
+
+#宅地面積
 final_Gi <- final_state$G_i
 Gi_df <- data.frame(
   KEY_CODE = names(final_state$G_i), 
@@ -1545,7 +1582,7 @@ make_diff_map2 <- function(data, fill_vars, titles, unit_label = "変化量") {
 }
 
 
-#比較　世帯数
+ #比較　世帯数
 scn0_household <- key_code_sf |> 
   left_join(est_household, by ="KEY_CODE") |> 
   rename(scn0_household=est_household)
