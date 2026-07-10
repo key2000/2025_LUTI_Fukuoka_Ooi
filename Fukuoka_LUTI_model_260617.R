@@ -693,6 +693,27 @@ athome_ar <- athome_crop %>%
   summarise(avg_room_ar = mean(room_ar, na.rm = TRUE))
   # 単位：m2
 
+# アットホームサンプル数確認
+athome_count <- athome_crop %>%
+  st_drop_geometry() %>%
+  group_by(KEY_CODE) %>%
+  summarise(n_sample = n())  # ゾーンごとのサンプル数
+
+athome_unreliable <- key_code_sf %>%
+  left_join(athome_count, by = "KEY_CODE") %>%
+  mutate(sample_status = if_else(n_sample < 5 , "less5", "over5")) 
+
+ggplot() +
+  geom_sf(data = athome_unreliable, aes(fill = sample_status), color = NA) +
+  scale_fill_manual(
+    values = c("less5" = "red", "over5" = "gray80")
+  ) +
+  labs(
+    title = "サンプル数に応じたゾーン判定", 
+    fill = "ステータス"
+  ) +
+  theme_minimal()
+
 
 # calculate backward k_i
 # ---- Step 1：k_i を逆算 ----
@@ -704,6 +725,16 @@ obs_floor_total <- athome_ar %>%
   left_join(household, by = "KEY_CODE") %>%
   mutate(obs_A_Fi = avg_room_ar * obs_hh) %>%   # 平均床面積 × 世帯数
   dplyr::select(KEY_CODE, obs_A_Fi, avg_room_ar)
+
+
+obs_floor_total_sf <- key_code_sf %>%
+  left_join(obs_floor_total, by = "KEY_CODE")
+
+ggplot2::ggplot() +
+  geom_sf(data = obs_floor_total_sf, aes(fill = obs_A_Fi), color = NA) +
+  scale_fill_viridis_c(option = "plasma", na.value = "gray90") +
+  labs(title = "観測総床面積（ゾーンごと）", fill = "総床面積 (m²)") +
+  theme_minimal()
 
 # r_bar_i として観測家賃を使う（単位を合わせる：円/m2 → 千円/m2）
 obs_rent_ki <- athome_df %>%
