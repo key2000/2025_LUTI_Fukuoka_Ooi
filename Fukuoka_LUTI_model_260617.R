@@ -1390,7 +1390,7 @@ for (scn in names(scenarios)) {
 }
 
 
-# 各シナリオの従業地別従業者数（棒グラフ）####
+# 各シナリオの従業地別従業者数（棒グラフ、対数軸）####
 # base Rで明示的にベクトルを取り出す（tidy evalでの列名衝突・意図しない型混入を避けるため）
 make_emp_df <- function(L_j_hat_df) {
   data.frame(
@@ -1403,73 +1403,110 @@ emp_scn0 <- make_emp_df(scn0_L_j_hat)
 emp_scn1 <- make_emp_df(scn1_L_j_hat)
 emp_scn2 <- make_emp_df(scn2_L_j_hat)
 
-# KEY_CODE順でゾーン順を固定し、3シナリオ間で横軸を揃える
-zone_order <- sort(emp_scn0$KEY_CODE)
+# KEY_CODEの昇順に w0, w1, ... というラベルを割り当て、全グラフで横軸を揃える
+zone_order  <- sort(emp_scn0$KEY_CODE)
+zone_labels <- paste0("w", seq_along(zone_order) - 1)
 
-# シナリオ0を基準にシナリオ1・2を比較できるよう1つの表にまとめる
+# シナリオ0を基準にシナリオ1・2・差分を1つの表にまとめる
 emp_compare <- data.frame(
-  KEY_CODE = factor(zone_order, levels = zone_order),
+  KEY_CODE   = zone_order,
+  zone_label = factor(zone_labels, levels = zone_labels),
   scn0 = emp_scn0$L_j_hat[match(zone_order, emp_scn0$KEY_CODE)],
   scn1 = emp_scn1$L_j_hat[match(zone_order, emp_scn1$KEY_CODE)],
   scn2 = emp_scn2$L_j_hat[match(zone_order, emp_scn2$KEY_CODE)]
 )
+emp_compare$diff1 <- emp_compare$scn1 - emp_compare$scn0  # scn1 - scn0
+emp_compare$diff2 <- emp_compare$scn2 - emp_compare$scn0  # scn2 - scn0
 
-base_color <- "#21908C"  # 従業者数の実績（ベース色）
-diff_color <- "#E8638C"  # シナリオ0からの増減（ピンク）
-y_max <- max(emp_compare$scn0, emp_compare$scn1, emp_compare$scn2, na.rm = TRUE)  # 3プロットで縦軸も統一
+level_color <- "#21908C"  # 従業者数（水準）のバー色
+inc_color   <- "#E8638C"  # 差分：増加（pink）
+dec_color   <- "#4F86C6"  # 差分：減少（blue）
 
-# シナリオ0（基準）：単純な棒グラフ
-p_emp_scn0 <- ggplot(emp_compare, aes(x = KEY_CODE, y = scn0)) +
-  geom_col(fill = base_color, width = 1) +
-  scale_y_continuous(labels = scales::label_comma(), limits = c(0, y_max)) +
-  labs(title = "シナリオ0（ベース）：従業地別従業者数", x = "従業地（KEY_CODE順）", y = "従業者数") +
-  theme_minimal() +
-  theme(
-    axis.text.x  = element_blank(),
-    axis.ticks.x = element_blank(),
-    plot.title   = element_text(hjust = 0.5)
-  )
+# シナリオ0-2を対数軸(log10)で表示。縦軸は3枚で共通にして比較しやすくする
+# scale_y_log10()のデフォルトは10のべき乗(1,10,100,...)にしか目盛りを打たないため、
+# データの範囲が1桁に収まっていると目盛りが1つも出ず軸が空白に見える。
+# breaks = scales::breaks_log(n=6) を指定し、範囲内に収まる目盛りを強制的に計算させる。
+y_range_log <- range(emp_compare$scn0, emp_compare$scn1, emp_compare$scn2, na.rm = TRUE)
 
-# シナリオ1・2：シナリオ0からの増減を重ねて可視化する棒グラフ
-# ・シナリオ0との共通部分（min(scn0, scnX)）はベース色
-# ・増加分（scnX > scn0）はピンクで上に積み重ねて表示
-# ・減少分（scnX < scn0）はシナリオ0の水準までピンクの点線で表示
-make_emp_bar_diff <- function(data, scn_col, title, base_color, diff_color, y_max) {
-  base_h  <- pmin(data$scn0, data[[scn_col]])
-  inc_h   <- pmax(data[[scn_col]] - data$scn0, 0)
-  d_long <- rbind(
-    data.frame(KEY_CODE = data$KEY_CODE, seg = "base", h = base_h),
-    data.frame(KEY_CODE = data$KEY_CODE, seg = "inc",  h = inc_h)
-  )
-  d_long$seg <- factor(d_long$seg, levels = c("base", "inc"))
-  d_dec <- data[data[[scn_col]] < data$scn0, ]
-
-  ggplot() +
-    geom_col(data = d_long, aes(x = KEY_CODE, y = h, fill = seg), width = 1) +
-    geom_segment(
-      data = d_dec,
-      aes(x = KEY_CODE, xend = KEY_CODE, y = .data[[scn_col]], yend = scn0),
-      color = diff_color, linetype = "dashed", linewidth = 0.35
+make_emp_bar_log <- function(data, y_col, title, fill_color, y_limits) {
+  ggplot(data, aes(x = zone_label, y = .data[[y_col]])) +
+    geom_col(fill = fill_color, width = 0.7) +
+    # scale側のlimitsは使わない：geom_colの下端(0 -> log10(0) = -Inf)が
+    # 常に範囲外(NA)扱いになりバーが消えてしまうため。
+    # expand_limits()なら描画をNA化せずにパネルの表示範囲だけを揃えられる。
+    expand_limits(y = y_limits) +
+    scale_y_log10(
+      labels = scales::label_comma(),
+      breaks = scales::breaks_log(n = 6)
     ) +
-    scale_fill_manual(values = c(base = base_color, inc = diff_color), guide = "none") +
-    scale_y_continuous(labels = scales::label_comma(), limits = c(0, y_max)) +
-    labs(title = title, x = "従業地（KEY_CODE順）", y = "従業者数") +
+    labs(title = title, x = "Workplace Zone", y = "Number of Workers (log10 scale)") +
     theme_minimal() +
     theme(
-      axis.text.x  = element_blank(),
-      axis.ticks.x = element_blank(),
-      plot.title   = element_text(hjust = 0.5)
+      axis.text.x = element_text(size = 7),
+      plot.title  = element_text(hjust = 0.5)
     )
 }
 
-p_emp_scn1 <- make_emp_bar_diff(emp_compare, "scn1", "シナリオ1：従業地別従業者数（シナリオ0比）",
-                                 base_color, diff_color, y_max)
-p_emp_scn2 <- make_emp_bar_diff(emp_compare, "scn2", "シナリオ2：従業地別従業者数（シナリオ0比）",
-                                 base_color, diff_color, y_max)
+p_emp_scn0 <- make_emp_bar_log(emp_compare, "scn0", "Scenario 0 (Base): Employment by Workplace Zone",
+                                level_color, y_range_log)
+p_emp_scn1 <- make_emp_bar_log(emp_compare, "scn1", "Scenario 1: Employment by Workplace Zone",
+                                level_color, y_range_log)
+p_emp_scn2 <- make_emp_bar_log(emp_compare, "scn2", "Scenario 2: Employment by Workplace Zone",
+                                level_color, y_range_log)
+
+
 print(p_emp_scn0)
 print(p_emp_scn1)
 print(p_emp_scn2)
-print(p_emp_scn0 / p_emp_scn1 / p_emp_scn2)  # patchwork（縦に並べて比較、横軸・縦軸を統一）
+
+
+print(p_emp_scn0 / p_emp_scn1 / p_emp_scn2)  # patchwork（縦に並べて比較）
+
+
+# シナリオ0のみ：対数ではない通常の棒グラフ####
+p_emp_scn0_linear <- ggplot(emp_compare, aes(x = zone_label, y = scn0)) +
+  geom_col(fill = level_color, width = 0.7) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(title = "Scenario 0 (Base): Employment by Workplace Zone",
+       x = "Workplace Zone", y = "Number of Workers") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 7),
+    plot.title  = element_text(hjust = 0.5)
+  )
+
+print(p_emp_scn0_linear)
+
+
+# シナリオ0からの差分だけを取り出した棒グラフ（線形軸）####
+# 増加=pink、減少=blue の2値塗り分け（対象ゾーンの増加が大きいので縦軸は2枚で共通化）
+make_emp_bar_diff_only <- function(data, diff_col, title, inc_color, dec_color, y_limits) {
+  d <- data
+  d$direction <- ifelse(d[[diff_col]] > 0, "increase", "decrease")
+  ggplot(d, aes(x = zone_label, y = .data[[diff_col]], fill = direction)) +
+    geom_col(width = 0.7) +
+    geom_hline(yintercept = 0, color = "gray40", linewidth = 0.3) +
+    scale_fill_manual(values = c(increase = inc_color, decrease = dec_color), guide = "none") +
+    scale_y_continuous(labels = scales::label_comma(), limits = y_limits) +
+    labs(title = title, x = "Workplace Zone", y = "Change in Number of Workers") +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(size = 7),
+      plot.title  = element_text(hjust = 0.5)
+    )
+}
+
+diff_y_limits <- range(emp_compare$diff1, emp_compare$diff2, na.rm = TRUE)
+
+p_diff_scn1 <- make_emp_bar_diff_only(emp_compare, "diff1", "Scenario 1 minus Scenario 0: Change in Employment",
+                                       inc_color, dec_color, diff_y_limits)
+p_diff_scn2 <- make_emp_bar_diff_only(emp_compare, "diff2", "Scenario 2 minus Scenario 0: Change in Employment",
+                                       inc_color, dec_color, diff_y_limits)
+
+print(p_diff_scn1)
+print(p_diff_scn2)
+
+print(p_diff_scn1 / p_diff_scn2)  # patchwork（縦に並べて比較）
 
 
 # シナリオ実行関数 ####
