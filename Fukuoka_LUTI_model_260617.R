@@ -1386,6 +1386,88 @@ for (scn in names(scenarios)) {
 }
 
 
+# 各シナリオの従業地別従業者数（棒グラフ）####
+# base Rで明示的にベクトルを取り出す（tidy evalでの列名衝突・意図しない型混入を避けるため）
+make_emp_df <- function(L_j_hat_df) {
+  data.frame(
+    KEY_CODE = as.character(rownames(L_j_hat_df)),
+    L_j_hat  = as.numeric(L_j_hat_df[["L_j_hat"]]),
+    stringsAsFactors = FALSE
+  )
+}
+emp_scn0 <- make_emp_df(scn0_L_j_hat)
+emp_scn1 <- make_emp_df(scn1_L_j_hat)
+emp_scn2 <- make_emp_df(scn2_L_j_hat)
+
+# KEY_CODE順でゾーン順を固定し、3シナリオ間で横軸を揃える
+zone_order <- sort(emp_scn0$KEY_CODE)
+
+# シナリオ0を基準にシナリオ1・2を比較できるよう1つの表にまとめる
+emp_compare <- data.frame(
+  KEY_CODE = factor(zone_order, levels = zone_order),
+  scn0 = emp_scn0$L_j_hat[match(zone_order, emp_scn0$KEY_CODE)],
+  scn1 = emp_scn1$L_j_hat[match(zone_order, emp_scn1$KEY_CODE)],
+  scn2 = emp_scn2$L_j_hat[match(zone_order, emp_scn2$KEY_CODE)]
+)
+
+base_color <- "#21908C"  # 従業者数の実績（ベース色）
+diff_color <- "#E8638C"  # シナリオ0からの増減（ピンク）
+y_max <- max(emp_compare$scn0, emp_compare$scn1, emp_compare$scn2, na.rm = TRUE)  # 3プロットで縦軸も統一
+
+# シナリオ0（基準）：単純な棒グラフ
+p_emp_scn0 <- ggplot(emp_compare, aes(x = KEY_CODE, y = scn0)) +
+  geom_col(fill = base_color, width = 1) +
+  scale_y_continuous(labels = scales::label_comma(), limits = c(0, y_max)) +
+  labs(title = "シナリオ0（ベース）：従業地別従業者数", x = "従業地（KEY_CODE順）", y = "従業者数") +
+  theme_minimal() +
+  theme(
+    axis.text.x  = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title   = element_text(hjust = 0.5)
+  )
+
+# シナリオ1・2：シナリオ0からの増減を重ねて可視化する棒グラフ
+# ・シナリオ0との共通部分（min(scn0, scnX)）はベース色
+# ・増加分（scnX > scn0）はピンクで上に積み重ねて表示
+# ・減少分（scnX < scn0）はシナリオ0の水準までピンクの点線で表示
+make_emp_bar_diff <- function(data, scn_col, title, base_color, diff_color, y_max) {
+  base_h  <- pmin(data$scn0, data[[scn_col]])
+  inc_h   <- pmax(data[[scn_col]] - data$scn0, 0)
+  d_long <- rbind(
+    data.frame(KEY_CODE = data$KEY_CODE, seg = "base", h = base_h),
+    data.frame(KEY_CODE = data$KEY_CODE, seg = "inc",  h = inc_h)
+  )
+  d_long$seg <- factor(d_long$seg, levels = c("base", "inc"))
+  d_dec <- data[data[[scn_col]] < data$scn0, ]
+
+  ggplot() +
+    geom_col(data = d_long, aes(x = KEY_CODE, y = h, fill = seg), width = 1) +
+    geom_segment(
+      data = d_dec,
+      aes(x = KEY_CODE, xend = KEY_CODE, y = .data[[scn_col]], yend = scn0),
+      color = diff_color, linetype = "dashed", linewidth = 0.35
+    ) +
+    scale_fill_manual(values = c(base = base_color, inc = diff_color), guide = "none") +
+    scale_y_continuous(labels = scales::label_comma(), limits = c(0, y_max)) +
+    labs(title = title, x = "従業地（KEY_CODE順）", y = "従業者数") +
+    theme_minimal() +
+    theme(
+      axis.text.x  = element_blank(),
+      axis.ticks.x = element_blank(),
+      plot.title   = element_text(hjust = 0.5)
+    )
+}
+
+p_emp_scn1 <- make_emp_bar_diff(emp_compare, "scn1", "シナリオ1：従業地別従業者数（シナリオ0比）",
+                                 base_color, diff_color, y_max)
+p_emp_scn2 <- make_emp_bar_diff(emp_compare, "scn2", "シナリオ2：従業地別従業者数（シナリオ0比）",
+                                 base_color, diff_color, y_max)
+print(p_emp_scn0)
+print(p_emp_scn1)
+print(p_emp_scn2)
+print(p_emp_scn0 / p_emp_scn1 / p_emp_scn2)  # patchwork（縦に並べて比較、横軸・縦軸を統一）
+
+
 # シナリオ実行関数 ####
 # Converted to while loop; passes parameters explicitly
 # Returns comprehensive result set including P.bike
