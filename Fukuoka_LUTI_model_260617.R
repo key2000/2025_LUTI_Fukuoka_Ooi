@@ -824,6 +824,22 @@ k_i_df <- tibble(
 )
 cat("has_data = TRUE のゾーン数:", sum(k_i_df$has_data), "\n") # OK, データあり341ゾーン
 
+# ---- 外れ値（上下5%）の判定 ----
+# 逆算に成功したゾーン（has_data==TRUE）のk_iの上下5%を外れ値とし、
+# クリギングの学習データからは除外して、代わりに補間対象に含める
+q_low  <- quantile(k_i_df$k_i[k_i_df$has_data], probs = 0.05, na.rm = TRUE)
+q_high <- quantile(k_i_df$k_i[k_i_df$has_data], probs = 0.95, na.rm = TRUE)
+
+k_i_df <- k_i_df %>%
+  mutate(
+    is_outlier    = has_data & (k_i < q_low | k_i > q_high),
+    # クリギングの学習データとして使うか（外れ値は除く）
+    use_for_krige = has_data & !is_outlier
+  )
+
+cat("外れ値の範囲（上下5%）:", q_low, "-", q_high, "\n")
+cat("外れ値として除外したゾーン数:", sum(k_i_df$is_outlier), "\n")
+
 # key_code_sfにk_iを結合（空間情報を持たせる）
 k_i_sf <- key_code_sf %>%
   left_join(k_i_df, by = "KEY_CODE") %>%
@@ -834,17 +850,33 @@ coords <- st_coordinates(st_centroid(k_i_sf))
 k_i_sf <- k_i_sf %>%
   mutate(x = coords[, 1], y = coords[, 2])
 
+# ---- 外れ値カット前のk_iの空間分布を確認（データなしゾーンは除く）----
+ggplot(k_i_sf %>% filter(has_data == TRUE)) +
+  geom_sf(aes(fill = k_i), color = "gray50", linewidth = 0.1) +
+  scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
+  labs(title = "k_iの空間分布（外れ値カット前）") +
+  theme_void()
+
+# ---- 外れ値カット後（クリギング補完前）のk_iの空間分布を確認（データなしゾーンは除く）----
+ggplot(k_i_sf %>% filter(use_for_krige == TRUE)) +
+  geom_sf(aes(fill = k_i), color = "gray50", linewidth = 0.1) +
+  scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
+  labs(title = "k_iの空間分布（外れ値カット後：クリギング補完前）") +
+  theme_void()
+
 # ---- 観測あり・なしに分ける ----
+# クリギングの学習データ：観測あり かつ 外れ値（上下5%）でないゾーン
 k_i_obs <- k_i_sf %>%
-  filter(has_data == TRUE, !is.na(k_i)) %>%
+  filter(use_for_krige == TRUE, !is.na(k_i)) %>%
   st_drop_geometry()
 
+# 補間対象：観測なしゾーン + 外れ値として除外したゾーン
 k_i_pred <- k_i_sf %>%
-  filter(has_data == FALSE | is.na(k_i)) %>%
+  filter(use_for_krige == FALSE | is.na(k_i)) %>%
   st_drop_geometry()
 
-cat("観測あり（クリギングの入力）:", nrow(k_i_obs), "ゾーン\n")
-cat("観測なし（補間対象）:", nrow(k_i_pred), "ゾーン\n")
+cat("観測あり（クリギングの入力、外れ値除く）:", nrow(k_i_obs), "ゾーン\n")
+cat("観測なし＋外れ値（補間対象）:", nrow(k_i_pred), "ゾーン\n")
 
 # ---- sp形式に変換（gstatが必要とする形式）----
 coordinates(k_i_obs)  <- ~x + y
@@ -856,11 +888,11 @@ vgm_emp <- variogram(k_i ~ 1, data = k_i_obs)
 plot(vgm_emp, main = "経験バリオグラム")
 
 # バリオグラムモデルをフィット（球面モデルが一般的）
-# vgm_fit <- fit.variogram(vgm_emp,
-#                           model = vgm(psill = var(k_i_obs$k_i),
-#                                       model = "Sph",
-#                                       range = 10000,   # 空間的相関の距離（m）
-#                                       nugget = 0))
+vgm_fit <- fit.variogram(vgm_emp,
+                          model = vgm(psill = var(k_i_obs$k_i),
+                                      model = "Sph",
+                                      range = 10000,   # 空間的相関の距離（m）
+                                      nugget = 0))
 
 # vgm_fit <- fit.variogram(vgm_emp,
 #                           model = vgm(psill = 0.0015,
@@ -874,11 +906,11 @@ plot(vgm_emp, main = "経験バリオグラム")
 #   model = vgm(psill=0.0015, model="Exp", range=10000, nugget=0.001)
 # )
 
-# ガウシアンモデル これだけうまくいった。
-vgm_fit <- fit.variogram(
-  vgm_emp,
-  model = vgm(psill=0.0015, model="Gau", range=20000, nugget=0.001)
-)
+# # ガウシアンモデル これだけうまくいった（外れ値カット前）。カット後はうまくいかん
+# vgm_fit <- fit.variogram(
+#   vgm_emp,
+#   model = vgm(psill=0.0015, model="Gau", range=20000, nugget=0.001)
+# )
 
 print(vgm_fit)
 plot(vgm_emp, vgm_fit, main = "バリオグラムモデルのフィット")
@@ -895,8 +927,8 @@ cat("クリギング補間完了\n")
 cat("補間値の範囲:", range(k_i_kriged$var1.pred), "\n")
 
 # ---- 補間値をk_i_estimatedに反映 ----
-# 観測ありゾーン：逆算値をそのまま使う
-# 観測なしゾーン：クリギング補間値を使う
+# 観測あり（外れ値除く）ゾーン：逆算値をそのまま使う
+# 観測なし・外れ値ゾーン：クリギング補間値を使う
 
 k_i_pred_df <- tibble(
   KEY_CODE = k_i_pred$KEY_CODE,
@@ -907,9 +939,9 @@ k_i_final <- k_i_df %>%
   left_join(k_i_pred_df, by = "KEY_CODE") %>%
   mutate(
     k_i_final = case_when(
-      has_data == TRUE  ~ k_i,            # 観測あり：逆算値
-      has_data == FALSE ~ k_i_kriged,     # 観測なし：クリギング補間値
-      TRUE              ~ 0.1             # それ以外：初期値
+      use_for_krige == TRUE  ~ k_i,            # 観測あり（外れ値除く）：逆算値
+      use_for_krige == FALSE ~ k_i_kriged,     # 観測なし・外れ値：クリギング補間値
+      TRUE                    ~ 0.1             # それ以外：初期値
     )
   )
 
@@ -917,18 +949,16 @@ k_i_final <- k_i_df %>%
 k_i_estimated_final <- k_i_final$k_i_final
 cat("最終的なk_iの範囲:", range(k_i_estimated_final, na.rm=TRUE), "\n")
 
-# 空間分布を確認
+# ---- 外れ値カット後（クリギング補完後）の全ゾーンのk_iの空間分布を確認 ----
 k_i_map <- key_code_sf %>%
   left_join(k_i_final %>% dplyr::select(KEY_CODE, k_i_final, has_data),
             by = "KEY_CODE")
-# k_i_map_obs <- k_i_map %>%
-#   filter(has_data == TRUE)
 
 ggplot(k_i_map) +
   geom_sf(aes(fill = k_i_final), color = "gray50", linewidth = 0.1) +
   scale_fill_viridis_c(option = "plasma", direction = -1,
                         name = "k_i") +
-  labs(title = "k_iの空間分布（逆算＋クリギング補完）") +
+  labs(title = "k_iの空間分布（外れ値カット後：クリギング補完後、全ゾーン）") +
   theme_void()
 
 # k_iをグローバル変数として固定
@@ -941,6 +971,187 @@ library(GA)
 library(parallel)
 library(doParallel)
 library(nleqslv)
+
+# ==== GA実行前の試算 ====
+# alpha_a, gamma_0, gamma_1, theta_H, theta_L はL.360-408のベースライン値のまま、
+# k_iのみクリギング補完後の値（k_i_estimated_final）を使ってLUTIループを収束まで
+# 実行し、実データと比較する（GA較正の前の妥当性チェック）
+
+flag_preGA  <- 0
+alpha_preGA <- 0.5
+ii_preGA    <- 1
+tt0_preGA   <- proc.time()
+
+while (flag_preGA == 0) {
+  V.car  <- para[1] * dists0.road + para[2] + para[4] * parkPrice / 2
+  den    <- exp(V.bike) + exp(V.car) + exp(V.rail)
+  P.bike <- exp(V.bike) / den
+  P.car  <- exp(V.car)  / den
+  P.rail <- exp(V.rail) / den
+  agcc   <- (P.bike * V.bike + P.car * V.car + P.rail * V.rail) / para[1]
+  c_ij   <- agcc * 1.600
+  disposable_income_ij <- pmax(-c_ij + omega_j_matrix, 0)
+
+  result_nleqslv_preGA <- nleqslv(
+    x = v_start, fn = gapf_vj,
+    global = "dbldog",
+    control = list(ftol = 1e-8, xtol = 1e-8, maxit = 200)
+  )
+  v_equilibrium_preGA <- result_nleqslv_preGA$x %>% exp()
+  final_state_preGA   <- caluculate_model_state(v_equilibrium_preGA)
+
+  ODD.car <- final_state_preGA$l_i_j * P.car
+  trips   <- as.data.frame.table(ODD.car, responseName = "demand")
+  names(trips) <- c("from", "to", "demand")
+
+  traffic01 <- assign_traffic(
+    Graph     = sgr,
+    from      = trips$from,
+    to        = trips$to,
+    demand    = trips$demand,
+    max_gap   = 1e-2,
+    algorithm = "bfw",
+    verbose   = FALSE
+  )
+  sgr2 <- makegraph(
+    df       = traffic01$data[, c("from", "to", "cost")],
+    directed = TRUE,
+    capacity = 1e4,
+    alpha    = alpha,
+    beta     = beta,
+    coords   = nodes
+  )
+  dists0.road.b <- dists0.road
+  dists1.road   <- get_distance_matrix(sgr2,
+                                       from      = zones,
+                                       to        = centers,
+                                       algorithm = "mch")
+  dists0.road <- alpha_preGA * dists1.road + (1 - alpha_preGA) * dists0.road.b
+  diff_preGA  <- sum((dists0.road.b - dists0.road) ^ 2)
+  cat("[GA前試算] ii=", ii_preGA, ", diff=", diff_preGA, "\n")
+  ii_preGA <- ii_preGA + 1
+  if (diff_preGA < 100 | ii_preGA > 1e3) flag_preGA <- 1
+}
+proc.time() - tt0_preGA
+
+
+# ---- 実データとモデル比較（GA前：クリギング後k_i、他パラメータはベースライン値）----
+library(patchwork)
+library(wCorr)
+
+make_map <- function(data, fill_var, title, option, limits) {
+  ggplot(data) +
+    geom_sf(aes(fill = .data[[fill_var]]), color = "gray50", linewidth = 0.1) +
+    scale_fill_viridis_c(option = option, direction = -1,
+                         limits = limits, oob = scales::squish,
+                         labels = scales::label_comma()) +
+    labs(title = title) +
+    theme_void()
+}
+
+## 世帯数の比較
+est_hh_df_preGA <- tibble(
+  KEY_CODE = rownames(final_state_preGA$l_i_j) %>% gsub("^mc_", "", .),
+  est_hh   = rowSums(final_state_preGA$l_i_j, na.rm = TRUE)
+)
+
+hhC_preGA <- key_code_sf %>%
+  left_join(est_hh_df_preGA, by = "KEY_CODE") %>%
+  left_join(household, by = "KEY_CODE") %>%
+  mutate(obs_hh = tidyr::replace_na(obs_hh, 0))
+
+plot(hhC_preGA$obs_hh, hhC_preGA$est_hh,
+     xlab = "実データ：世帯数", ylab = "モデル：世帯数（GA前）")
+abline(0, 1, col = "red")
+r_hh_weighted_preGA <- weightedCorr(
+  x = hhC_preGA$obs_hh,
+  y = hhC_preGA$est_hh,
+  weights = hhC_preGA$obs_hh,
+  method = "Pearson"
+)
+cat("[GA前] 世帯数 重みつきR²:", r_hh_weighted_preGA^2, "\n")
+
+p_hh_obs_preGA   <- make_map(hhC_preGA, "obs_hh", "実データ：世帯数",       "magma", c(0, 25000))
+p_hh_model_preGA <- make_map(hhC_preGA, "est_hh", "モデル：世帯数（GA前）", "magma", c(0, 25000))
+print(p_hh_obs_preGA + p_hh_model_preGA)
+
+
+## 家賃の比較
+est_rent_df_preGA <- tibble(
+  KEY_CODE = names(final_state_preGA$r_bar_i) %>% gsub("^mc_", "", .),
+  est_rent = as.numeric(final_state_preGA$r_bar_i) * 1000
+)
+
+rentC_preGA <- key_code_sf %>%
+  left_join(athome_df, by = "KEY_CODE") %>%
+  left_join(est_rent_df_preGA, by = "KEY_CODE") %>%
+  left_join(household, by = "KEY_CODE")
+
+rentC_preGA_flt <- rentC_preGA %>%
+  st_drop_geometry() %>%
+  filter(!is.na(avg_rent), !is.na(est_rent), !is.na(obs_hh),
+         avg_rent > 0, est_rent > 0, obs_hh > 0)
+
+plot(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent,
+     xlab = "実データ：家賃", ylab = "モデル：家賃（GA前）")
+abline(0, 1, col = "red")
+r_rent_weighted_preGA <- weightedCorr(
+  x = rentC_preGA_flt$avg_rent,
+  y = rentC_preGA_flt$est_rent,
+  weights = rentC_preGA_flt$obs_hh,
+  method = "Pearson"
+)
+cat("[GA前] 家賃 重みつきR²:", r_rent_weighted_preGA^2, "\n")
+
+p_rent_obs_preGA   <- make_map(rentC_preGA, "avg_rent", "実データ：家賃",       "plasma", c(0, 3200))
+p_rent_model_preGA <- make_map(rentC_preGA, "est_rent", "モデル：家賃（GA前）", "plasma", c(0, 3200))
+print(p_rent_obs_preGA + p_rent_model_preGA)
+
+
+## 床面積の比較
+est_ar_vec_preGA <- rowSums(final_state_preGA$a_fij_H * final_state_preGA$l_i_j, na.rm = TRUE) /
+  rowSums(final_state_preGA$l_i_j, na.rm = TRUE)
+est_ar_df_preGA <- tibble(
+  KEY_CODE = rownames(final_state_preGA$a_fij_H) %>% gsub("^mc_", "", .),
+  est_ar   = est_ar_vec_preGA
+)
+
+arC_preGA <- key_code_sf %>%
+  left_join(athome_ar, by = "KEY_CODE") %>%
+  left_join(est_ar_df_preGA, by = "KEY_CODE") %>%
+  left_join(household, by = "KEY_CODE")
+
+arC_preGA_flt <- arC_preGA %>%
+  st_drop_geometry() %>%
+  filter(!is.na(avg_room_ar), !is.na(est_ar), !is.na(obs_hh),
+         avg_room_ar > 0, est_ar > 0, obs_hh > 0)
+
+plot(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar,
+     xlab = "実データ：床面積", ylab = "モデル：床面積（GA前）")
+abline(0, 1, col = "red")
+r_ar_weighted_preGA <- weightedCorr(
+  x = arC_preGA_flt$avg_room_ar,
+  y = arC_preGA_flt$est_ar,
+  weights = arC_preGA_flt$obs_hh,
+  method = "Pearson"
+)
+cat("[GA前] 床面積 重みつきR²:", r_ar_weighted_preGA^2, "\n")
+
+p_ar_obs_preGA   <- make_map(arC_preGA, "avg_room_ar", "実データ：床面積",       "viridis", c(0, 200))
+p_ar_model_preGA <- make_map(arC_preGA, "est_ar",      "モデル：床面積（GA前）", "viridis", c(0, 200))
+print(p_ar_obs_preGA + p_ar_model_preGA)
+
+
+# ---- 決定係数（R²）の算出（GA前：世帯数・家賃・床面積）----
+r2_hh_preGA   <- (cor(hhC_preGA$obs_hh, hhC_preGA$est_hh, use = "complete.obs"))^2
+r2_rent_preGA <- (cor(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent))^2
+r2_ar_preGA   <- (cor(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar))^2
+
+cat("[GA前] 決定係数（R²）\n")
+cat("  世帯数：", r2_hh_preGA,   "\n")
+cat("  家賃　：", r2_rent_preGA, "\n")
+cat("  床面積：", r2_ar_preGA,   "\n")
+
 
 calibration_fitness <- function(x) {
   
