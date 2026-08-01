@@ -965,6 +965,397 @@ ggplot(k_i_map) +
 k_i <- k_i_estimated_final
 
 
+# ==== k_iの逐次推定（緩和法）####
+# 発想：
+#   観測値 (Afi*, r_i*) と、現在のKで解いたモデル整合解 (Afi°, r_i°) を
+#   交互に使ってゾーンごとにKを再推定し、緩和（successive averaging）しながら
+#   Kが収束するまで繰り返す。
+#
+#   ・対象ゾーンは @home データが実際にあるゾーン（has_data==TRUE）のみ。
+#     クリギング補完値（k_i_estimated_final）は本手法では一切使わない。
+#   ・K0 は観測値 (Afi*, r_i*) から直接逆算した k_i_estimated（クリギング前）。
+#
+#   ① K_(t-1) でLUTI均衡を解き、モデル整合的な (Afi°, r_i°) を得る
+#   ② has_data==TRUEの各ゾーンiで、以下を同時に最小化するKを求める
+#        (Afi(K | r_i°) - Afi*_i)^2 + (r_i(K | Afi°) - r_i*_i)^2
+#      → 候補 K~_t
+#   ③ 緩和更新： K_t = alpha_relax * K_(t-1) + (1 - alpha_relax) * K~_t
+#   ④ Σ|K_t - K_(t-1)| < eps_relax となるまで①〜③を繰り返す（has_dataゾーンのみで集計）
+
+# ---- Kの探索範囲・緩和パラメータ ----
+k_lower_relax  <- 0.01
+k_upper_relax  <- 0.4
+alpha_relax    <- 0.5     # 緩和係数：K_(t-1)側の重み（大きいほど更新が保守的）
+eps_relax      <- 1e-3    # 収束判定：Σ|K_t - K_(t-1)|（has_dataゾーンのみ）
+max_iter_relax <- 30
+
+# ---- 観測ターゲット（ki_inputはdists0の行順=ゾーン順に整列済み）----
+Afi_star   <- ki_input$obs_A_Fi        # 観測：総床面積（=平均床面積×世帯数）
+r_star     <- ki_input$r_bar_i_obs     # 観測：家賃（千円/m2）
+
+# 対象ゾーン：@homeデータが実際にあるゾーンのみ（クリギング補完対象は除外）
+valid_zone <- k_i_df$has_data
+
+# ---- モデルの床面積関数 A_Fi(K, r)（eq.14, eq.15と同一）----
+model_A_Fi <- function(K, r, G0) {
+  pg   <- gamma_1 / (1 - gamma_1)
+  rg_i <- phi * (1 - gamma_1) * (r * gamma_0) ^ (1 / (1 - gamma_1)) * (gamma_1 / K) ^ pg
+  G_i  <- G0 * exp(theta_L * (rg_i - rr_a)) / (1 + exp(theta_L * (rg_i - rr_a))) * phi_pub * phi
+  gamma_0 * ((r * gamma_0 * gamma_1) / K) ^ pg * G_i
+}
+
+# ---- A_Fi(K, r) = A_target を r について解く（Kを固定した時の整合家賃）----
+model_r_from_AFi <- function(K, A_target, G0, r_interval = c(1e-3, 100)) {
+  f <- function(r) model_A_Fi(K, r, G0) - A_target
+  tryCatch(
+    uniroot(f, interval = r_interval, tol = 1e-8)$root,
+    error = function(e) NA_real_
+  )
+}
+
+# ---- ゾーンiの目的関数：床面積式の残差^2 + 家賃式の残差^2 ----
+zone_objective <- function(K, r0, A0, G0, A_target, r_target) {
+  term_A <- (model_A_Fi(K, r0, G0) - A_target) ^ 2
+  r_hat  <- model_r_from_AFi(K, A0, G0)
+  term_r <- if (is.na(r_hat)) 1e6 else (r_hat - r_target) ^ 2
+  term_A + term_r
+}
+
+# ---- 反復（緩和法）本体 ----
+# K0：観測値から直接逆算した値（クリギング前）。has_data==FALSEのゾーンは
+#     uniroot失敗時のフォールバック値0.1のままだが、これらは③で更新対象外。
+K_current <- k_i_estimated
+
+for (t in seq_len(max_iter_relax)) {
+
+  cat("=== k_i 逐次推定（緩和法） iteration", t, "===\n")
+
+  # ① 現在のKでLUTI均衡を解き、モデル整合的な (Afi°, r_i°) を得る
+  k_i <- K_current
+  res_relax <- nleqslv(
+    x       = v_start,
+    fn      = gapf_vj,
+    global  = "dbldog",
+    control = list(ftol = 1e-8, xtol = 1e-8, maxit = 200)
+  )
+  state_relax <- caluculate_model_state(exp(res_relax$x))
+
+  r0_vec <- state_relax$r_bar_i
+  A0_vec <- rowSums(state_relax$a_fij_H * state_relax$l_i_j, na.rm = TRUE)
+
+  # ② has_data==TRUEのゾーンのみ、Kの候補 K~_t を再推定
+  K_tilde <- K_current
+  for (i in which(valid_zone)) {
+    opt <- optimize(
+      zone_objective,
+      interval = c(k_lower_relax, k_upper_relax),
+      r0       = r0_vec[i],
+      A0       = A0_vec[i],
+      G0       = G0_i[i],
+      A_target = Afi_star[i],
+      r_target = r_star[i]
+    )
+    K_tilde[i] <- opt$minimum
+  }
+
+  # ③ 緩和更新（successive averaging）： K_t = alpha*K_(t-1) + (1-alpha)*K~_t
+  #    has_data==FALSEのゾーンはK_tilde==K_currentのまま＝更新されない
+  K_new <- alpha_relax * K_current + (1 - alpha_relax) * K_tilde
+
+  # ④ 収束判定（has_dataゾーンのみで集計）
+  diff_relax <- sum(abs(K_new[valid_zone] - K_current[valid_zone]), na.rm = TRUE)
+  cat("  Sigma|K_t - K_(t-1)| (has_dataゾーンのみ) =", diff_relax, "\n")
+
+  K_current <- K_new
+
+  if (diff_relax < eps_relax) {
+    cat("収束しました（iteration", t, "）\n")
+    break
+  }
+}
+
+k_i_relax_final <- K_current   # has_data==TRUEのゾーンのみ更新済み、他は0.1のまま
+k_i <- k_i_relax_final         # グローバルのk_iを更新（以降のモデル実行で使用）
+
+cat("\n最終的なk_i（緩和法・has_dataゾーンのみ）の範囲:\n")
+print(summary(k_i_relax_final[valid_zone]))
+hist(k_i_relax_final[valid_zone],
+     main = "逐次推定（緩和法）後の k_i 分布（has_dataゾーンのみ）",
+     xlab = "k_i")
+
+
+# ==== 緩和法k_i（has_dataゾーン）をクリギングで全ゾーンへ拡張 ####
+# 反復法（緩和法）ではhas_data==TRUEのゾーンのみKを更新しており、
+# それ以外のゾーンはk_i_estimatedのフォールバック値(0.1)のままになっている。
+# ここでは有効ゾーン（has_data==TRUE）の緩和法推定値をそのまま学習データとして
+# 空間クリギングを行い、それ以外のゾーン（データなし）のkappaを補完する。
+# gstat/sp/sfはL.810-812で読み込み済み。
+
+# ---- 緩和法k_iをデータフレーム化（zone_idsはL.817と同じdists0行順）----
+k_i_relax_df <- tibble(
+  KEY_CODE = zone_ids,
+  k_i      = k_i_relax_final,
+  has_data = valid_zone   # 反復法で実際に更新したゾーンか
+)
+cat("[緩和法k_i] has_data==TRUEのゾーン数:", sum(k_i_relax_df$has_data), "\n")
+
+# ---- 空間情報の付与（重心座標）----
+k_i_relax_sf <- key_code_sf %>%
+  left_join(k_i_relax_df, by = "KEY_CODE") %>%
+  mutate(centroid = st_centroid(geometry))
+
+coords_relax <- st_coordinates(st_centroid(k_i_relax_sf))
+k_i_relax_sf <- k_i_relax_sf %>%
+  mutate(x = coords_relax[, 1], y = coords_relax[, 2])
+
+# ---- 観測あり（has_data==TRUE）／なし（has_data==FALSE）に分割 ----
+k_i_relax_obs <- k_i_relax_sf %>%
+  filter(has_data == TRUE, !is.na(k_i)) %>%
+  st_drop_geometry()
+
+k_i_relax_pred <- k_i_relax_sf %>%
+  filter(has_data == FALSE | is.na(k_i)) %>%
+  st_drop_geometry()
+
+cat("[緩和法k_i] クリギング学習データ:", nrow(k_i_relax_obs), "ゾーン\n")
+cat("[緩和法k_i] 補完対象（データなし）:", nrow(k_i_relax_pred), "ゾーン\n")
+
+coordinates(k_i_relax_obs)  <- ~x + y
+coordinates(k_i_relax_pred) <- ~x + y
+
+# ---- バリオグラム推定・フィット（球面モデル）----
+vgm_emp_relax <- variogram(k_i ~ 1, data = k_i_relax_obs)
+vgm_fit_relax <- fit.variogram(
+  vgm_emp_relax,
+  model = vgm(psill = var(k_i_relax_obs$k_i), model = "Sph", range = 10000, nugget = 0)
+)
+print(vgm_fit_relax)
+plot(vgm_emp_relax, vgm_fit_relax, main = "バリオグラムモデルのフィット（緩和法k_i）")
+
+# ---- クリギング補間 ----
+k_i_relax_kriged <- krige(
+  formula   = k_i ~ 1,
+  locations = k_i_relax_obs,
+  newdata   = k_i_relax_pred,
+  model     = vgm_fit_relax
+)
+cat("[緩和法k_i] クリギング補間完了\n")
+cat("[緩和法k_i] 補間値の範囲:", range(k_i_relax_kriged$var1.pred), "\n")
+
+# ---- 補間値を反映して全ゾーン分のk_iベクトルを作成 ----
+k_i_relax_pred_df <- tibble(
+  KEY_CODE   = k_i_relax_pred$KEY_CODE,
+  k_i_kriged = pmax(k_i_relax_kriged$var1.pred, 0.01)   # 負値を防ぐ下限
+)
+
+k_i_relax_final_all <- k_i_relax_df %>%
+  left_join(k_i_relax_pred_df, by = "KEY_CODE") %>%
+  mutate(
+    k_i_final = case_when(
+      has_data == TRUE  ~ k_i,          # 有効ゾーン：緩和法の推定値
+      has_data == FALSE ~ k_i_kriged,   # データなし：クリギング補間値
+      TRUE               ~ 0.1
+    )
+  )
+
+# k_iのベクトルとして取り出す（dists0の行順）
+k_i_relax_kriged_final <- k_i_relax_final_all$k_i_final
+cat("[緩和法k_i] クリギング後の最終k_i範囲:", range(k_i_relax_kriged_final, na.rm = TRUE), "\n")
+
+k_i_relax_map <- key_code_sf %>%
+  left_join(k_i_relax_final_all %>% dplyr::select(KEY_CODE, k_i_final, has_data),
+            by = "KEY_CODE")
+
+ggplot(k_i_relax_map) +
+  geom_sf(aes(fill = k_i_final), color = "gray50", linewidth = 0.1) +
+  scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
+  labs(title = "緩和法k_iの空間分布（クリギング補完後、全ゾーン）") +
+  theme_void()
+
+
+# ==== 緩和法k_i（クリギング後）の検証：実データとの比較 ====
+# alpha_a, gamma_0, gamma_1, theta_H, theta_L はベースライン値のまま、
+# k_iのみ「逐次推定（緩和法）＋クリギング補完」で求めた値（k_i_relax_kriged_final）を
+# 使ってLUTIループを収束まで実行し、実データ（世帯数・家賃・床面積）と比較する
+
+library(patchwork)
+library(wCorr)
+
+make_map <- function(data, fill_var, title, option, limits) {
+  ggplot(data) +
+    geom_sf(aes(fill = .data[[fill_var]]), color = "gray50", linewidth = 0.1) +
+    scale_fill_viridis_c(option = option, direction = -1,
+                         limits = limits, oob = scales::squish,
+                         labels = scales::label_comma()) +
+    labs(title = title) +
+    theme_void()
+}
+
+k_i <- k_i_relax_kriged_final
+dists0.road <- dists0   # 交通配分を毎回同じ条件から独立に収束させる
+
+flag_kirelax  <- 0
+alpha_kirelax <- 0.5
+ii_kirelax    <- 1
+tt0_kirelax   <- proc.time()
+
+while (flag_kirelax == 0) {
+  V.car  <- para[1] * dists0.road + para[2] + para[4] * parkPrice / 2
+  den    <- exp(V.bike) + exp(V.car) + exp(V.rail)
+  P.bike <- exp(V.bike) / den
+  P.car  <- exp(V.car)  / den
+  P.rail <- exp(V.rail) / den
+  agcc   <- (P.bike * V.bike + P.car * V.car + P.rail * V.rail) / para[1]
+  c_ij   <- agcc * 1.600
+  disposable_income_ij <- pmax(-c_ij + omega_j_matrix, 0)
+
+  result_nleqslv_kirelax <- nleqslv(
+    x = v_start, fn = gapf_vj,
+    global = "dbldog",
+    control = list(ftol = 1e-8, xtol = 1e-8, maxit = 200)
+  )
+  v_equilibrium_kirelax <- result_nleqslv_kirelax$x %>% exp()
+  final_state_kirelax   <- caluculate_model_state(v_equilibrium_kirelax)
+
+  ODD.car <- final_state_kirelax$l_i_j * P.car
+  trips   <- as.data.frame.table(ODD.car, responseName = "demand")
+  names(trips) <- c("from", "to", "demand")
+
+  traffic_kirelax <- assign_traffic(
+    Graph     = sgr,
+    from      = trips$from,
+    to        = trips$to,
+    demand    = trips$demand,
+    max_gap   = 1e-2,
+    algorithm = "bfw",
+    verbose   = FALSE
+  )
+  sgr2_kirelax <- makegraph(
+    df       = traffic_kirelax$data[, c("from", "to", "cost")],
+    directed = TRUE,
+    capacity = 1e4,
+    alpha    = alpha,
+    beta     = beta,
+    coords   = nodes
+  )
+  dists0.road.b <- dists0.road
+  dists1.road   <- get_distance_matrix(sgr2_kirelax,
+                                       from      = zones,
+                                       to        = centers,
+                                       algorithm = "mch")
+  dists0.road  <- alpha_kirelax * dists1.road + (1 - alpha_kirelax) * dists0.road.b
+  diff_kirelax <- sum((dists0.road.b - dists0.road) ^ 2)
+  cat("[緩和法k_i・クリギング後 検証] ii=", ii_kirelax, ", diff=", diff_kirelax, "\n")
+  ii_kirelax <- ii_kirelax + 1
+  if (diff_kirelax < 100 | ii_kirelax > 1e3) flag_kirelax <- 1
+}
+proc.time() - tt0_kirelax
+
+
+## 世帯数の比較
+est_hh_df_kirelax <- tibble(
+  KEY_CODE = rownames(final_state_kirelax$l_i_j) %>% gsub("^mc_", "", .),
+  est_hh   = rowSums(final_state_kirelax$l_i_j, na.rm = TRUE)
+)
+
+hhC_kirelax <- key_code_sf %>%
+  left_join(est_hh_df_kirelax, by = "KEY_CODE") %>%
+  left_join(household, by = "KEY_CODE") %>%
+  mutate(obs_hh = tidyr::replace_na(obs_hh, 0))
+
+plot(hhC_kirelax$obs_hh, hhC_kirelax$est_hh,
+     xlab = "実データ：世帯数", ylab = "モデル：世帯数（緩和法k_i・クリギング後）")
+abline(0, 1, col = "red")
+r_hh_weighted_kirelax <- weightedCorr(
+  x = hhC_kirelax$obs_hh,
+  y = hhC_kirelax$est_hh,
+  weights = hhC_kirelax$obs_hh,
+  method = "Pearson"
+)
+cat("[緩和法k_i・クリギング後] 世帯数 重みつきR²:", r_hh_weighted_kirelax^2, "\n")
+
+p_hh_obs_kirelax   <- make_map(hhC_kirelax, "obs_hh", "実データ：世帯数",           "magma", c(0, 25000))
+p_hh_model_kirelax <- make_map(hhC_kirelax, "est_hh", "モデル：世帯数（緩和法k_i・クリギング後）", "magma", c(0, 25000))
+print(p_hh_obs_kirelax + p_hh_model_kirelax)
+
+
+## 家賃の比較
+est_rent_df_kirelax <- tibble(
+  KEY_CODE = names(final_state_kirelax$r_bar_i) %>% gsub("^mc_", "", .),
+  est_rent = as.numeric(final_state_kirelax$r_bar_i) * 1000
+)
+
+rentC_kirelax <- key_code_sf %>%
+  left_join(athome_df, by = "KEY_CODE") %>%
+  left_join(est_rent_df_kirelax, by = "KEY_CODE") %>%
+  left_join(household, by = "KEY_CODE")
+
+rentC_kirelax_flt <- rentC_kirelax %>%
+  st_drop_geometry() %>%
+  filter(!is.na(avg_rent), !is.na(est_rent), !is.na(obs_hh),
+         avg_rent > 0, est_rent > 0, obs_hh > 0)
+
+plot(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent,
+     xlab = "実データ：家賃", ylab = "モデル：家賃（緩和法k_i・クリギング後）")
+abline(0, 1, col = "red")
+r_rent_weighted_kirelax <- weightedCorr(
+  x = rentC_kirelax_flt$avg_rent,
+  y = rentC_kirelax_flt$est_rent,
+  weights = rentC_kirelax_flt$obs_hh,
+  method = "Pearson"
+)
+cat("[緩和法k_i・クリギング後] 家賃 重みつきR²:", r_rent_weighted_kirelax^2, "\n")
+
+p_rent_obs_kirelax   <- make_map(rentC_kirelax, "avg_rent", "実データ：家賃",           "plasma", c(0, 3200))
+p_rent_model_kirelax <- make_map(rentC_kirelax, "est_rent", "モデル：家賃（緩和法k_i・クリギング後）", "plasma", c(0, 3200))
+print(p_rent_obs_kirelax + p_rent_model_kirelax)
+
+
+## 床面積の比較
+est_ar_vec_kirelax <- rowSums(final_state_kirelax$a_fij_H * final_state_kirelax$l_i_j, na.rm = TRUE) /
+  rowSums(final_state_kirelax$l_i_j, na.rm = TRUE)
+est_ar_df_kirelax <- tibble(
+  KEY_CODE = rownames(final_state_kirelax$a_fij_H) %>% gsub("^mc_", "", .),
+  est_ar   = est_ar_vec_kirelax
+)
+
+arC_kirelax <- key_code_sf %>%
+  left_join(athome_ar, by = "KEY_CODE") %>%
+  left_join(est_ar_df_kirelax, by = "KEY_CODE") %>%
+  left_join(household, by = "KEY_CODE")
+
+arC_kirelax_flt <- arC_kirelax %>%
+  st_drop_geometry() %>%
+  filter(!is.na(avg_room_ar), !is.na(est_ar), !is.na(obs_hh),
+         avg_room_ar > 0, est_ar > 0, obs_hh > 0)
+
+plot(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar,
+     xlab = "実データ：床面積", ylab = "モデル：床面積（緩和法k_i・クリギング後）")
+abline(0, 1, col = "red")
+r_ar_weighted_kirelax <- weightedCorr(
+  x = arC_kirelax_flt$avg_room_ar,
+  y = arC_kirelax_flt$est_ar,
+  weights = arC_kirelax_flt$obs_hh,
+  method = "Pearson"
+)
+cat("[緩和法k_i・クリギング後] 床面積 重みつきR²:", r_ar_weighted_kirelax^2, "\n")
+
+p_ar_obs_kirelax   <- make_map(arC_kirelax, "avg_room_ar", "実データ：床面積",           "viridis", c(0, 200))
+p_ar_model_kirelax <- make_map(arC_kirelax, "est_ar",      "モデル：床面積（緩和法k_i・クリギング後）", "viridis", c(0, 200))
+print(p_ar_obs_kirelax + p_ar_model_kirelax)
+
+
+# ---- 決定係数（R²）の算出（緩和法k_i：世帯数・家賃・床面積）----
+r2_hh_kirelax   <- (cor(hhC_kirelax$obs_hh, hhC_kirelax$est_hh, use = "complete.obs"))^2
+r2_rent_kirelax <- (cor(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent))^2
+r2_ar_kirelax   <- (cor(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar))^2
+
+cat("[緩和法k_i・クリギング後] 決定係数（R²）\n")
+cat("  世帯数：", r2_hh_kirelax,   "\n")
+cat("  家賃　：", r2_rent_kirelax, "\n")
+cat("  床面積：", r2_ar_kirelax,   "\n")
+
+
 # install.packages("GA")
 # install.packages("doParallel")
 library(GA)
@@ -976,6 +1367,9 @@ library(nleqslv)
 # alpha_a, gamma_0, gamma_1, theta_H, theta_L はL.360-408のベースライン値のまま、
 # k_iのみクリギング補完後の値（k_i_estimated_final）を使ってLUTIループを収束まで
 # 実行し、実データと比較する（GA較正の前の妥当性チェック）
+# 直前の「緩和法k_i」検証でグローバルk_i・dists0.roadが書き換わっているため、明示的に戻す
+k_i <- k_i_estimated_final
+dists0.road <- dists0
 
 flag_preGA  <- 0
 alpha_preGA <- 0.5
@@ -1140,6 +1534,34 @@ cat("[GA前] 床面積 重みつきR²:", r_ar_weighted_preGA^2, "\n")
 p_ar_obs_preGA   <- make_map(arC_preGA, "avg_room_ar", "実データ：床面積",       "viridis", c(0, 200))
 p_ar_model_preGA <- make_map(arC_preGA, "est_ar",      "モデル：床面積（GA前）", "viridis", c(0, 200))
 print(p_ar_obs_preGA + p_ar_model_preGA)
+
+# ---- 床面積の誤差（モデルー実データ）の空間分布（GA前）----
+arC_preGA_diff <- arC_preGA_flt %>%
+  mutate(diff_ar_preGA = est_ar - avg_room_ar) %>%
+  left_join(key_code_sf %>% dplyr::select(KEY_CODE), by = "KEY_CODE") %>%
+  st_as_sf()
+
+lim_ar_preGA <- max(abs(arC_preGA_diff$diff_ar_preGA), na.rm = TRUE)
+
+p_arC_diff_preGA <- ggplot(arC_preGA_diff) +
+  geom_sf(aes(fill = diff_ar_preGA), color = "gray70", linewidth = 0.1) +
+  scale_fill_gradient2(
+    low = "blue", mid = "white", high = "red", midpoint = 0,
+    limits = c(-lim_ar_preGA, lim_ar_preGA),
+    labels = scales::label_comma(),
+    name = "(m^2)"
+  ) +
+  labs(title = "床面積誤差（モデルー実データ、GA前）") +
+  theme_void() +
+  theme(
+    plot.title       = element_text(size = 10, hjust = 0.5),
+    legend.title     = element_text(size = 8),
+    legend.text      = element_text(size = 7),
+    plot.background  = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "gray80", color = NA)
+  )
+
+plot(p_arC_diff_preGA)
 
 
 # ---- 決定係数（R²）の算出（GA前：世帯数・家賃・床面積）----
