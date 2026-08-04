@@ -109,11 +109,11 @@ bnd_mesh_with_landuse <- bnd_mesh_with_landuse %>%
 colors <- c("less10" = "red", "over10" = "lightblue")
 plot(st_geometry(bnd_mesh_with_landuse),
      col = colors[bnd_mesh_with_landuse$habit_category],
-     main = "可住土地利用種の割合")
-legend("topleft", 
+     main = "Percentage of Habitable Land Use Types")
+legend("topleft",
        legend = c("less10", "over10"),
        fill = colors,
-       title = "メッシュ内の割合(％)",
+       title = "Percentage within Mesh (%)",
        bg = "white")
 plot(st_geometry(UEA_Fukuoka), 
      add = TRUE,                                       
@@ -709,8 +709,8 @@ ggplot() +
     values = c("less5" = "red", "over5" = "gray80")
   ) +
   labs(
-    title = "サンプル数に応じたゾーン判定", 
-    fill = "ステータス"
+    title = "Zone Classification by Sample Size",
+    fill = "Status"
   ) +
   theme_minimal()
 
@@ -733,7 +733,7 @@ obs_floor_total_sf <- key_code_sf %>%
 ggplot2::ggplot() +
   geom_sf(data = obs_floor_total_sf, aes(fill = obs_A_Fi), color = NA) +
   scale_fill_viridis_c(option = "plasma", na.value = "gray90") +
-  labs(title = "観測総床面積（ゾーンごと）", fill = "総床面積 (m²)") +
+  labs(title = "Observed Total Floor Area (by Zone)", fill = "Total Floor Area (m²)") +
   theme_minimal()
 
 # r_bar_i として観測家賃を使う（単位を合わせる：円/m2 → 千円/m2）
@@ -800,7 +800,7 @@ cat("k_i_estimated の範囲:", range(k_i_estimated), "\n")
 cat("uniroot 失敗（初期値0.1のまま）のゾーン数:",
     sum(k_i_estimated == 0.1), "\n")
 
-hist(k_i_estimated, main = "逆算したk_iの分布", xlab = "k_i")
+hist(k_i_estimated, main = "Distribution of Back-calculated k_i", xlab = "k_i")
 
 
 
@@ -854,14 +854,14 @@ k_i_sf <- k_i_sf %>%
 ggplot(k_i_sf %>% filter(has_data == TRUE)) +
   geom_sf(aes(fill = k_i), color = "gray50", linewidth = 0.1) +
   scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
-  labs(title = "k_iの空間分布（外れ値カット前）") +
+  labs(title = "Spatial Distribution of k_i (Before Outlier Removal)") +
   theme_void()
 
 # ---- 外れ値カット後（クリギング補完前）のk_iの空間分布を確認（データなしゾーンは除く）----
 ggplot(k_i_sf %>% filter(use_for_krige == TRUE)) +
   geom_sf(aes(fill = k_i), color = "gray50", linewidth = 0.1) +
   scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
-  labs(title = "k_iの空間分布（外れ値カット後：クリギング補完前）") +
+  labs(title = "Spatial Distribution of k_i (After Outlier Removal, Before Kriging)") +
   theme_void()
 
 # ---- 観測あり・なしに分ける ----
@@ -885,7 +885,7 @@ coordinates(k_i_pred) <- ~x + y
 # ---- バリオグラムの推定 ----
 # k_iの空間的ばらつきのパターンを学習する
 vgm_emp <- variogram(k_i ~ 1, data = k_i_obs)
-plot(vgm_emp, main = "経験バリオグラム")
+plot(vgm_emp, main = "Empirical Variogram")
 
 # バリオグラムモデルをフィット（球面モデルが一般的）
 vgm_fit <- fit.variogram(vgm_emp,
@@ -913,7 +913,7 @@ vgm_fit <- fit.variogram(vgm_emp,
 # )
 
 print(vgm_fit)
-plot(vgm_emp, vgm_fit, main = "バリオグラムモデルのフィット")
+plot(vgm_emp, vgm_fit, main = "Variogram Model Fit")
 
 # ---- クリギング補間 ----
 k_i_kriged <- krige(
@@ -958,7 +958,7 @@ ggplot(k_i_map) +
   geom_sf(aes(fill = k_i_final), color = "gray50", linewidth = 0.1) +
   scale_fill_viridis_c(option = "plasma", direction = -1,
                         name = "k_i") +
-  labs(title = "k_iの空間分布（外れ値カット後：クリギング補完後、全ゾーン）") +
+  labs(title = "Spatial Distribution of k_i (After Outlier Removal and Kriging, All Zones)") +
   theme_void()
 
 # k_iをグローバル変数として固定
@@ -1080,7 +1080,7 @@ k_i <- k_i_relax_final         # グローバルのk_iを更新（以降のモ�
 cat("\n最終的なk_i（緩和法・has_dataゾーンのみ）の範囲:\n")
 print(summary(k_i_relax_final[valid_zone]))
 hist(k_i_relax_final[valid_zone],
-     main = "逐次推定（緩和法）後の k_i 分布（has_dataゾーンのみ）",
+     main = "Distribution of k_i After Iterative Estimation (Relaxation Method, has_data Zones Only)",
      xlab = "k_i")
 
 
@@ -1130,7 +1130,7 @@ vgm_fit_relax <- fit.variogram(
   model = vgm(psill = var(k_i_relax_obs$k_i), model = "Sph", range = 10000, nugget = 0)
 )
 print(vgm_fit_relax)
-plot(vgm_emp_relax, vgm_fit_relax, main = "バリオグラムモデルのフィット（緩和法k_i）")
+plot(vgm_emp_relax, vgm_fit_relax, main = "Variogram Model Fit (Relaxation Method k_i)")
 
 # ---- クリギング補間 ----
 k_i_relax_kriged <- krige(
@@ -1169,7 +1169,7 @@ k_i_relax_map <- key_code_sf %>%
 ggplot(k_i_relax_map) +
   geom_sf(aes(fill = k_i_final), color = "gray50", linewidth = 0.1) +
   scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
-  labs(title = "緩和法k_iの空間分布（クリギング補完後、全ゾーン）") +
+  labs(title = "Spatial Distribution of Relaxation-Method k_i (After Kriging, All Zones)") +
   theme_void()
 
 
@@ -1264,7 +1264,7 @@ hhC_kirelax <- key_code_sf %>%
   mutate(obs_hh = tidyr::replace_na(obs_hh, 0))
 
 plot(hhC_kirelax$obs_hh, hhC_kirelax$est_hh,
-     xlab = "実データ：世帯数", ylab = "モデル：世帯数（緩和法k_i・クリギング後）")
+     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Relaxation k_i, After Kriging)")
 abline(0, 1, col = "red")
 r_hh_weighted_kirelax <- weightedCorr(
   x = hhC_kirelax$obs_hh,
@@ -1274,8 +1274,8 @@ r_hh_weighted_kirelax <- weightedCorr(
 )
 cat("[緩和法k_i・クリギング後] 世帯数 重みつきR²:", r_hh_weighted_kirelax^2, "\n")
 
-p_hh_obs_kirelax   <- make_map(hhC_kirelax, "obs_hh", "実データ：世帯数",           "magma", c(0, 25000))
-p_hh_model_kirelax <- make_map(hhC_kirelax, "est_hh", "モデル：世帯数（緩和法k_i・クリギング後）", "magma", c(0, 25000))
+p_hh_obs_kirelax   <- make_map(hhC_kirelax, "obs_hh", "Observed: Number of Households",           "magma", c(0, 25000))
+p_hh_model_kirelax <- make_map(hhC_kirelax, "est_hh", "Model: Number of Households (Relaxation k_i, After Kriging)", "magma", c(0, 25000))
 print(p_hh_obs_kirelax + p_hh_model_kirelax)
 
 
@@ -1296,7 +1296,7 @@ rentC_kirelax_flt <- rentC_kirelax %>%
          avg_rent > 0, est_rent > 0, obs_hh > 0)
 
 plot(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent,
-     xlab = "実データ：家賃", ylab = "モデル：家賃（緩和法k_i・クリギング後）")
+     xlab = "Observed: Rent", ylab = "Model: Rent (Relaxation k_i, After Kriging)")
 abline(0, 1, col = "red")
 r_rent_weighted_kirelax <- weightedCorr(
   x = rentC_kirelax_flt$avg_rent,
@@ -1306,8 +1306,8 @@ r_rent_weighted_kirelax <- weightedCorr(
 )
 cat("[緩和法k_i・クリギング後] 家賃 重みつきR²:", r_rent_weighted_kirelax^2, "\n")
 
-p_rent_obs_kirelax   <- make_map(rentC_kirelax, "avg_rent", "実データ：家賃",           "plasma", c(0, 3200))
-p_rent_model_kirelax <- make_map(rentC_kirelax, "est_rent", "モデル：家賃（緩和法k_i・クリギング後）", "plasma", c(0, 3200))
+p_rent_obs_kirelax   <- make_map(rentC_kirelax, "avg_rent", "Observed: Rent",           "plasma", c(0, 3200))
+p_rent_model_kirelax <- make_map(rentC_kirelax, "est_rent", "Model: Rent (Relaxation k_i, After Kriging)", "plasma", c(0, 3200))
 print(p_rent_obs_kirelax + p_rent_model_kirelax)
 
 
@@ -1330,7 +1330,7 @@ arC_kirelax_flt <- arC_kirelax %>%
          avg_room_ar > 0, est_ar > 0, obs_hh > 0)
 
 plot(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar,
-     xlab = "実データ：床面積", ylab = "モデル：床面積（緩和法k_i・クリギング後）")
+     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Relaxation k_i, After Kriging)")
 abline(0, 1, col = "red")
 r_ar_weighted_kirelax <- weightedCorr(
   x = arC_kirelax_flt$avg_room_ar,
@@ -1340,8 +1340,8 @@ r_ar_weighted_kirelax <- weightedCorr(
 )
 cat("[緩和法k_i・クリギング後] 床面積 重みつきR²:", r_ar_weighted_kirelax^2, "\n")
 
-p_ar_obs_kirelax   <- make_map(arC_kirelax, "avg_room_ar", "実データ：床面積",           "viridis", c(0, 200))
-p_ar_model_kirelax <- make_map(arC_kirelax, "est_ar",      "モデル：床面積（緩和法k_i・クリギング後）", "viridis", c(0, 200))
+p_ar_obs_kirelax   <- make_map(arC_kirelax, "avg_room_ar", "Observed: Floor Area",           "viridis", c(0, 200))
+p_ar_model_kirelax <- make_map(arC_kirelax, "est_ar",      "Model: Floor Area (Relaxation k_i, After Kriging)", "viridis", c(0, 200))
 print(p_ar_obs_kirelax + p_ar_model_kirelax)
 
 
@@ -1455,7 +1455,7 @@ hhC_preGA <- key_code_sf %>%
   mutate(obs_hh = tidyr::replace_na(obs_hh, 0))
 
 plot(hhC_preGA$obs_hh, hhC_preGA$est_hh,
-     xlab = "実データ：世帯数", ylab = "モデル：世帯数（GA前）")
+     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Pre-GA)")
 abline(0, 1, col = "red")
 r_hh_weighted_preGA <- weightedCorr(
   x = hhC_preGA$obs_hh,
@@ -1465,8 +1465,8 @@ r_hh_weighted_preGA <- weightedCorr(
 )
 cat("[GA前] 世帯数 重みつきR²:", r_hh_weighted_preGA^2, "\n")
 
-p_hh_obs_preGA   <- make_map(hhC_preGA, "obs_hh", "実データ：世帯数",       "magma", c(0, 25000))
-p_hh_model_preGA <- make_map(hhC_preGA, "est_hh", "モデル：世帯数（GA前）", "magma", c(0, 25000))
+p_hh_obs_preGA   <- make_map(hhC_preGA, "obs_hh", "Observed: Number of Households",       "magma", c(0, 25000))
+p_hh_model_preGA <- make_map(hhC_preGA, "est_hh", "Model: Number of Households (Pre-GA)", "magma", c(0, 25000))
 print(p_hh_obs_preGA + p_hh_model_preGA)
 
 
@@ -1487,7 +1487,7 @@ rentC_preGA_flt <- rentC_preGA %>%
          avg_rent > 0, est_rent > 0, obs_hh > 0)
 
 plot(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent,
-     xlab = "実データ：家賃", ylab = "モデル：家賃（GA前）")
+     xlab = "Observed: Rent", ylab = "Model: Rent (Pre-GA)")
 abline(0, 1, col = "red")
 r_rent_weighted_preGA <- weightedCorr(
   x = rentC_preGA_flt$avg_rent,
@@ -1497,8 +1497,8 @@ r_rent_weighted_preGA <- weightedCorr(
 )
 cat("[GA前] 家賃 重みつきR²:", r_rent_weighted_preGA^2, "\n")
 
-p_rent_obs_preGA   <- make_map(rentC_preGA, "avg_rent", "実データ：家賃",       "plasma", c(0, 3200))
-p_rent_model_preGA <- make_map(rentC_preGA, "est_rent", "モデル：家賃（GA前）", "plasma", c(0, 3200))
+p_rent_obs_preGA   <- make_map(rentC_preGA, "avg_rent", "Observed: Rent",       "plasma", c(0, 3200))
+p_rent_model_preGA <- make_map(rentC_preGA, "est_rent", "Model: Rent (Pre-GA)", "plasma", c(0, 3200))
 print(p_rent_obs_preGA + p_rent_model_preGA)
 
 
@@ -1521,7 +1521,7 @@ arC_preGA_flt <- arC_preGA %>%
          avg_room_ar > 0, est_ar > 0, obs_hh > 0)
 
 plot(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar,
-     xlab = "実データ：床面積", ylab = "モデル：床面積（GA前）")
+     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Pre-GA)")
 abline(0, 1, col = "red")
 r_ar_weighted_preGA <- weightedCorr(
   x = arC_preGA_flt$avg_room_ar,
@@ -1531,8 +1531,8 @@ r_ar_weighted_preGA <- weightedCorr(
 )
 cat("[GA前] 床面積 重みつきR²:", r_ar_weighted_preGA^2, "\n")
 
-p_ar_obs_preGA   <- make_map(arC_preGA, "avg_room_ar", "実データ：床面積",       "viridis", c(0, 200))
-p_ar_model_preGA <- make_map(arC_preGA, "est_ar",      "モデル：床面積（GA前）", "viridis", c(0, 200))
+p_ar_obs_preGA   <- make_map(arC_preGA, "avg_room_ar", "Observed: Floor Area",       "viridis", c(0, 200))
+p_ar_model_preGA <- make_map(arC_preGA, "est_ar",      "Model: Floor Area (Pre-GA)", "viridis", c(0, 200))
 print(p_ar_obs_preGA + p_ar_model_preGA)
 
 # ---- 床面積の誤差（モデルー実データ）の空間分布（GA前）----
@@ -1551,7 +1551,7 @@ p_arC_diff_preGA <- ggplot(arC_preGA_diff) +
     labels = scales::label_comma(),
     name = "(m^2)"
   ) +
-  labs(title = "床面積誤差（モデルー実データ、GA前）") +
+  labs(title = "Floor Area Error (Model - Observed, Pre-GA)") +
   theme_void() +
   theme(
     plot.title       = element_text(size = 10, hjust = 0.5),
@@ -1858,7 +1858,7 @@ plot(ga_result_calib)  # 収束曲線
 cat("\nk_iの分布（要約統計）:\n")
 print(summary(best_k_i))
 # k_iの空間分布を確認（都心と郊外で値が分かれているか）
-hist(best_k_i, main = "GA最適化後の k_i 分布", xlab = "k_i")
+hist(best_k_i, main = "Distribution of k_i After GA Optimization", xlab = "k_i")
 
 
 # fitness関数の中身を一部再現して、各項の値を確認
@@ -1878,7 +1878,7 @@ k_i_map_data <- left_join(key_code_sf, k_i_df, by = "KEY_CODE")
 ggplot(k_i_map_data) +
   geom_sf(aes(fill = best_k_i), color = "gray50", linewidth = 0.1) +
   scale_fill_viridis_c(option = "viridis", direction = -1) +
-  labs(title = "GA最適化後の k_i 空間分布") +
+  labs(title = "Spatial Distribution of k_i After GA Optimization") +
   theme_void()
 
 
@@ -2018,8 +2018,8 @@ r_hh_weighted <- weightedCorr(
 cat("従業世帯数 重みつきR²:", r_hh_weighted^2, "\n")
 
 #居住プロット 
-p_hh_obs   <- make_map(hhC, "obs_household",       "実データ：世帯数", "magma", c(0, 25000))
-p_hh_model <- make_map(hhC, "est_household", "モデル：世帯数",   "magma", c(0, 25000))
+p_hh_obs   <- make_map(hhC, "obs_household",       "Observed: Number of Households", "magma", c(0, 25000))
+p_hh_model <- make_map(hhC, "est_household", "Model: Number of Households",   "magma", c(0, 25000))
 print(p_hh_obs + p_hh_model)  # patchwork
 
 
@@ -2076,8 +2076,8 @@ cat("家賃 重みつきR²:", r_rent_weighted^2, "\n")
 
 
 #家賃プロット　  
-p_rent_obs   <- make_map(rentC, "obs_rent",       "実データ：家賃", "plasma", c(0, 3200))
-p_rent_model <- make_map(rentC, "est_rent", "モデル：家賃",   "plasma", c(0, 3200))
+p_rent_obs   <- make_map(rentC, "obs_rent",       "Observed: Rent", "plasma", c(0, 3200))
+p_rent_model <- make_map(rentC, "est_rent", "Model: Rent",   "plasma", c(0, 3200))
 print(p_rent_obs + p_rent_model)  # patchwork
 
 # diff_rent
@@ -2132,8 +2132,8 @@ r_ar_weighted <- weightedCorr(
 )
 cat("床面積 重みつきR²:", r_ar_weighted^2, "\n")
 
-p_ar_obs   <- make_map(arC, "obs_ar",       "実データ：床面積", "viridis", c(0, 200))
-p_ar_model <- make_map(arC, "est_ar", "モデル：床面積",   "viridis", c(0, 200))
+p_ar_obs   <- make_map(arC, "obs_ar",       "Observed: Floor Area", "viridis", c(0, 200))
+p_ar_model <- make_map(arC, "est_ar", "Model: Floor Area",   "viridis", c(0, 200))
 print(p_ar_obs + p_ar_model)  # patchwork
 
 # diff_ar
@@ -2486,8 +2486,8 @@ diff_household <- scn0_household %>%
   dplyr::select(KEY_CODE,diff_household_01,diff_household_02,geometry)
 
 #plot
-p_hh_scn1 <- make_map(diff_household, "diff_household_01", "居住世帯数 変化量", "magma", c(-500,300))
-p_hh_scn2 <- make_map(diff_household, "diff_household_02", "居住世帯数 変化量", "magma", c(-500,300))
+p_hh_scn1 <- make_map(diff_household, "diff_household_01", "Change in Number of Resident Households", "magma", c(-500,300))
+p_hh_scn2 <- make_map(diff_household, "diff_household_02", "Change in Number of Resident Households", "magma", c(-500,300))
 plot(p_hh_scn1 + p_hh_scn2) # patchwork
 
 print(make_diff_map2(diff_household, c("diff_household_01", "diff_household_02"), 
@@ -2523,8 +2523,8 @@ diff_rent <- scn0_rent %>%
   dplyr::select(KEY_CODE,diff_rent_01,diff_rent_02,geometry)
 
 #plot
-p_rent_scn1 <- make_map(diff_rent, "diff_rent_01", "平均付値地代 変化量", "plasma", c(-50, 20))
-p_rent_scn2 <- make_map(diff_rent, "diff_rent_02", "平均付値地代 変化量", "plasma", c(- 50, 20))
+p_rent_scn1 <- make_map(diff_rent, "diff_rent_01", "Change in Average Imputed Land Rent", "plasma", c(-50, 20))
+p_rent_scn2 <- make_map(diff_rent, "diff_rent_02", "Change in Average Imputed Land Rent", "plasma", c(- 50, 20))
 plot(p_rent_scn1 + p_rent_scn2) # patchwork
 
 print(make_diff_map2(diff_rent, c("diff_rent_01", "diff_rent_02"), 
@@ -2562,8 +2562,8 @@ diff_ar <- scn0_ar %>%
 scn1_ar <- left_join(key_code_sf, scn1_ar , by = "KEY_CODE")
 scn2_ar <- left_join(key_code_sf, scn2_ar , by = "KEY_CODE")
 
-p_ar_scn1 <- make_map(diff_ar, "diff_ar_01", "平均床面積 変化量", "viridis", c(-20, 20))
-p_ar_scn2 <- make_map(diff_ar, "diff_ar_02", "平均床面積 変化量", "viridis", c(-20, 20))
+p_ar_scn1 <- make_map(diff_ar, "diff_ar_01", "Change in Average Floor Area", "viridis", c(-20, 20))
+p_ar_scn2 <- make_map(diff_ar, "diff_ar_02", "Change in Average Floor Area", "viridis", c(-20, 20))
 plot(p_ar_scn1 + p_ar_scn2) # patchwork
 
 
@@ -2592,8 +2592,8 @@ diff_Gi <- scn0_Gi %>%
   mutate(diff_Gi_02=scn2_Gi-scn0_Gi) %>% 
   dplyr::select(KEY_CODE,diff_Gi_01,diff_Gi_02,geometry)
 
-p_Gi_scn1 <- make_map(diff_Gi, "diff_Gi_01", "宅地割合 変化量", "mako", c(-3500, 3500))
-p_Gi_scn2 <- make_map(diff_Gi, "diff_Gi_02", "宅地割合 変化量", "mako", c(-3500, 3500))
+p_Gi_scn1 <- make_map(diff_Gi, "diff_Gi_01", "Change in Residential Land Ratio", "mako", c(-3500, 3500))
+p_Gi_scn2 <- make_map(diff_Gi, "diff_Gi_02", "Change in Residential Land Ratio", "mako", c(-3500, 3500))
 plot(p_Gi_scn1 + p_Gi_scn2) # patchwork
 
 scn1_Gi <- left_join(key_code_sf, scn1_Gi , by = "KEY_CODE")
@@ -2826,14 +2826,14 @@ ggplot() +
   geom_sf(data = UEA_Fukuoka, fill = NA, aes(color = "boundary"), linewidth = 0.5) +
   
   scale_color_manual(
-    name = "境界",
+    name = "Boundary",
     values = c("boundary" = "blue"),
-    labels = c("boundary" = "福岡都市雇用圏")
+    labels = c("boundary" = "Fukuoka Urban Employment Area")
   ) +
   scale_fill_manual(
-    name = "エリア区分", 
+    name = "Area Classification",
     values = c("excluded" = "gray", "0" = "green", "1"="red"),
-    labels = c("excluded" = "対象外エリア","0"="分析対象：居住地ゾーン", "1"="分析対象：従業地ゾーン")
+    labels = c("excluded" = "Excluded Area","0"="Analysis Target: Residential Zone", "1"="Analysis Target: Employment Zone")
   ) +
   
   
@@ -2926,9 +2926,9 @@ ggplot(zone_pop_sf, aes(x = household, y = zone_population)) +
   scale_y_continuous(labels = label_comma()) +
   
   labs(
-    x = "実データ：従業世帯数（世帯）",
-    y = "モデル推計値：従業世帯数（世帯）",
-    title = "モデル再現性の検証（従業世帯数）"
+    x = "Observed: Number of Households (households)",
+    y = "Model Estimate: Number of Households (households)",
+    title = "Model Reproducibility Validation (Households)"
   ) +
   annotate("text", x = Inf, y = -Inf, label = r_label,
            hjust = 1.1, vjust = -1, size = 5, fontface = "italic") +
@@ -2951,7 +2951,7 @@ make_diff_map <- function(data, fill_var, title, limits, breaks) {
       limits = limits, breaks = breaks,
       labels = label_comma(), show.limits = TRUE
     ) +
-    labs(fill = "変化量\n(世帯)") +
+    labs(fill = "Change\n(households)") +
     theme_void() +
     theme(
       plot.background  = element_rect(fill = "white", color = NA),
@@ -2962,9 +2962,9 @@ make_diff_map <- function(data, fill_var, title, limits, breaks) {
 }
 
 # 使い方
-p_scn1 <- make_diff_map(diff_hh_scn1, "diff_household", "シナリオ1：世帯数変化",
+p_scn1 <- make_diff_map(diff_hh_scn1, "diff_household", "Scenario 1: Change in Number of Households",
                          limits = c(-210, 210), breaks = c(-100, -30, -5, 5, 30, 100))
-p_scn2 <- make_diff_map(diff_hh_scn2, "diff_household", "シナリオ2：世帯数変化",
+p_scn2 <- make_diff_map(diff_hh_scn2, "diff_household", "Scenario 2: Change in Number of Households",
                          limits = c(-210, 210), breaks = c(-100, -30, -5, 30, 100))
 
 print(p_scn1 + p_scn2)
