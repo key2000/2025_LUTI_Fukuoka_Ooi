@@ -1,0 +1,22 @@
+order: 5
+date: "2026-08-01"
+title: "逐次推定（緩和法・successive averaging）でk_iを精緻化"
+method: >
+  クリギング後のk_iをさらに精緻化。@homeデータが実在するゾーン（has_data=TRUE）のみを対象に、
+  現在のKでLUTI均衡を解いて得た床面積・家賃と、観測値との残差を最小化するKを再推定し、
+  新旧Kを平滑化しながら収束するまで繰り返す。収束後、この値を学習データとして再度クリギングし
+  全ゾーンへ拡張する。数式は右のパネルを参照
+  （scripts/Fukuoka_LUTI_model_260617.R L.968-1173）。
+params:
+  alpha_relax（平滑化係数）: 0.5
+  eps_relax（収束閾値）: "1e-3"
+  max_iter_relax: 30
+  Kの探索範囲: "[0.01, 0.4]"
+metrics:
+  対象ゾーン数: "341（has_data=TRUEのみ更新）"
+verdict: adopted
+note: >
+  現状のk_iの最新版（逆算→外れ値カット→クリギング→緩和法→再クリギング）。
+  次のステップ：この k_i を固定して5変数GA（alpha_a, gamma_0, gamma_1, theta_H, theta_L）を
+  再較正する（未実施）。
+plot: plots/formula.png
