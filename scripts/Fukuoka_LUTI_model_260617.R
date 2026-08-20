@@ -15,7 +15,6 @@ library(sf)
 library(dplyr)
 library(raster)
 library(terra)
-library(rgdal)
 library(janitor)
 library(ggplot2)
 
@@ -659,6 +658,8 @@ proc.time()-tt0
 
 
 #GA####
+if(FALSE){ # 260807方針: k_i逆算・緩和法・GA前検証・GA本番実行の試行錯誤コード一式。
+# 削除はせずコードは残すが、今回は実行しない（k_iは固定値0.1、他パラメータはproject_log/calibration/02_ga-800dim/ga_result.RDataのbest_xを使用）。
 # --- 世帯数（国勢調査）---
 # 元コードL.1020〜1025と同じ処理
 csv.household <- "data/raw/国勢調査_人口及び世帯数_1kmメッシュ/tblT001100S5030.csv"
@@ -701,7 +702,19 @@ athome_count <- athome_crop %>%
 
 athome_unreliable <- key_code_sf %>%
   left_join(athome_count, by = "KEY_CODE") %>%
-  mutate(sample_status = if_else(n_sample < 5 , "less5", "over5")) 
+  mutate(sample_status = if_else(n_sample < 5 , "less5", "over5"))
+
+# ==== キャリブレーションログ用：出力フォルダの準備 ====
+# ここから先で作る図は project_log/calibration/<試行フォルダ>/plots/ に保存する。
+# project_log/calibration/README.md 参照。
+calib_stage_dirs <- c(
+  "03_ki-backward-calc",
+  "04_ki-outlier-crop-kriging",
+  "05_ki-relaxation"
+)
+for (calib_d in calib_stage_dirs) {
+  dir.create(file.path("project_log", "calibration", calib_d, "plots"), recursive = TRUE, showWarnings = FALSE)
+}
 
 ggplot() +
   geom_sf(data = athome_unreliable, aes(fill = sample_status), color = NA) +
@@ -713,6 +726,7 @@ ggplot() +
     fill = "Status"
   ) +
   theme_minimal()
+ggsave("project_log/calibration/03_ki-backward-calc/plots/athome_sample_reliability.png", width = 6, height = 5.5, dpi = 150)
 
 
 # calculate backward k_i
@@ -735,6 +749,7 @@ ggplot2::ggplot() +
   scale_fill_viridis_c(option = "plasma", na.value = "gray90") +
   labs(title = "Observed Total Floor Area (by Zone)", fill = "Total Floor Area (m²)") +
   theme_minimal()
+ggsave("project_log/calibration/03_ki-backward-calc/plots/observed_floor_area.png", width = 6, height = 5.5, dpi = 150)
 
 # r_bar_i として観測家賃を使う（単位を合わせる：円/m2 → 千円/m2）
 obs_rent_ki <- athome_df %>%
@@ -801,6 +816,9 @@ cat("uniroot 失敗（初期値0.1のまま）のゾーン数:",
     sum(k_i_estimated == 0.1), "\n")
 
 hist(k_i_estimated, main = "Distribution of Back-calculated k_i", xlab = "k_i")
+png("project_log/calibration/03_ki-backward-calc/plots/k_i_estimated_hist.png", width = 900, height = 750, res = 150)
+hist(k_i_estimated, main = "Distribution of Back-calculated k_i", xlab = "k_i")
+dev.off()
 
 
 
@@ -856,6 +874,7 @@ ggplot(k_i_sf %>% filter(has_data == TRUE)) +
   scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
   labs(title = "Spatial Distribution of k_i (Before Outlier Removal)") +
   theme_void()
+ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/k_i_spatial_before_outlier.png", width = 6, height = 5.5, dpi = 150)
 
 # ---- 外れ値カット後（クリギング補完前）のk_iの空間分布を確認（データなしゾーンは除く）----
 ggplot(k_i_sf %>% filter(use_for_krige == TRUE)) +
@@ -863,6 +882,7 @@ ggplot(k_i_sf %>% filter(use_for_krige == TRUE)) +
   scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
   labs(title = "Spatial Distribution of k_i (After Outlier Removal, Before Kriging)") +
   theme_void()
+ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/k_i_spatial_after_outlier_before_kriging.png", width = 6, height = 5.5, dpi = 150)
 
 # ---- 観測あり・なしに分ける ----
 # クリギングの学習データ：観測あり かつ 外れ値（上下5%）でないゾーン
@@ -886,34 +906,43 @@ coordinates(k_i_pred) <- ~x + y
 # k_iの空間的ばらつきのパターンを学習する
 vgm_emp <- variogram(k_i ~ 1, data = k_i_obs)
 plot(vgm_emp, main = "Empirical Variogram")
+png("project_log/calibration/04_ki-outlier-crop-kriging/plots/variogram_empirical.png", width = 900, height = 750, res = 150)
+plot(vgm_emp, main = "Empirical Variogram")
+dev.off()
 
-# バリオグラムモデルをフィット（球面モデルが一般的）
-vgm_fit <- fit.variogram(vgm_emp,
-                          model = vgm(psill = var(k_i_obs$k_i),
-                                      model = "Sph",
-                                      range = 10000,   # 空間的相関の距離（m）
-                                      nugget = 0))
+# バリオグラムモデルをフィット（球面モデルが一般的だが、他のモデルも試せるようにしておく）
+# selected_vgm_model を変えるだけでモデルを切り替えられる
+# "Sph"=球面, "Exp"=指数, "Gau"=ガウシアン, "Mat"=マテルン, "Lin"=線形, "auto"=SSE最小のモデルを自動選択
+selected_vgm_model <- "Sph"
 
-# vgm_fit <- fit.variogram(vgm_emp,
-#                           model = vgm(psill = 0.0015,
-#                                       model = "Sph",
-#                                       range = 20000,   # 空間的相関の距離（m）
-#                                       nugget = 0.001))
+vgm_candidates <- list(
+  Sph = vgm(psill = var(k_i_obs$k_i), model = "Sph", range = 10000, nugget = 0),
+  Exp = vgm(psill = var(k_i_obs$k_i), model = "Exp", range = 10000, nugget = 0),
+  Gau = vgm(psill = var(k_i_obs$k_i), model = "Gau", range = 10000, nugget = 0),
+  Mat = vgm(psill = var(k_i_obs$k_i), model = "Mat", range = 10000, nugget = 0, kappa = 0.5),
+  Lin = vgm(psill = var(k_i_obs$k_i), model = "Lin", range = 10000, nugget = 0)
+)
 
-# # 指数モデル
-# vgm_fit <- fit.variogram(
-#   vgm_emp,
-#   model = vgm(psill=0.0015, model="Exp", range=10000, nugget=0.001)
-# )
-
-# # ガウシアンモデル これだけうまくいった（外れ値カット前）。カット後はうまくいかん
-# vgm_fit <- fit.variogram(
-#   vgm_emp,
-#   model = vgm(psill=0.0015, model="Gau", range=20000, nugget=0.001)
-# )
+if (selected_vgm_model == "auto") {
+  # 各モデルをフィットし、SSE（当てはまり誤差）が最小のものを自動選択
+  vgm_comparison <- do.call(rbind, lapply(names(vgm_candidates), function(m) {
+    fit <- fit.variogram(vgm_emp, model = vgm_candidates[[m]])
+    data.frame(model = m, SSErr = attr(fit, "SSErr"))
+  }))
+  vgm_comparison <- vgm_comparison[order(vgm_comparison$SSErr), ]
+  print(vgm_comparison)
+  best_model <- vgm_comparison$model[1]
+  cat("自動選択されたバリオグラムモデル:", best_model, "\n")
+  vgm_fit <- fit.variogram(vgm_emp, model = vgm_candidates[[best_model]])
+} else {
+  vgm_fit <- fit.variogram(vgm_emp, model = vgm_candidates[[selected_vgm_model]])
+}
 
 print(vgm_fit)
-plot(vgm_emp, vgm_fit, main = "Variogram Model Fit")
+plot(vgm_emp, vgm_fit, main = paste("Variogram Model Fit -", selected_vgm_model))
+png("project_log/calibration/04_ki-outlier-crop-kriging/plots/variogram_fit.png", width = 900, height = 750, res = 150)
+plot(vgm_emp, vgm_fit, main = paste("Variogram Model Fit -", selected_vgm_model))
+dev.off()
 
 # ---- クリギング補間 ----
 k_i_kriged <- krige(
@@ -960,6 +989,7 @@ ggplot(k_i_map) +
                         name = "k_i") +
   labs(title = "Spatial Distribution of k_i (After Outlier Removal and Kriging, All Zones)") +
   theme_void()
+ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/k_i_spatial_after_kriging_all_zones.png", width = 6, height = 5.5, dpi = 150)
 
 # k_iをグローバル変数として固定
 k_i <- k_i_estimated_final
@@ -987,7 +1017,7 @@ k_lower_relax  <- 0.01
 k_upper_relax  <- 0.4
 alpha_relax    <- 0.5     # 緩和係数：K_(t-1)側の重み（大きいほど更新が保守的）
 eps_relax      <- 1e-3    # 収束判定：Σ|K_t - K_(t-1)|（has_dataゾーンのみ）
-max_iter_relax <- 30
+max_iter_relax <- 80
 
 # ---- 観測ターゲット（ki_inputはdists0の行順=ゾーン順に整列済み）----
 Afi_star   <- ki_input$obs_A_Fi        # 観測：総床面積（=平均床面積×世帯数）
@@ -1082,6 +1112,11 @@ print(summary(k_i_relax_final[valid_zone]))
 hist(k_i_relax_final[valid_zone],
      main = "Distribution of k_i After Iterative Estimation (Relaxation Method, has_data Zones Only)",
      xlab = "k_i")
+png("project_log/calibration/05_ki-relaxation/plots/k_i_relax_hist.png", width = 900, height = 750, res = 150)
+hist(k_i_relax_final[valid_zone],
+     main = "Distribution of k_i After Iterative Estimation (Relaxation Method, has_data Zones Only)",
+     xlab = "k_i")
+dev.off()
 
 
 # ==== 緩和法k_i（has_dataゾーン）をクリギングで全ゾーンへ拡張 ####
@@ -1123,14 +1158,41 @@ cat("[緩和法k_i] 補完対象（データなし）:", nrow(k_i_relax_pred), "
 coordinates(k_i_relax_obs)  <- ~x + y
 coordinates(k_i_relax_pred) <- ~x + y
 
-# ---- バリオグラム推定・フィット（球面モデル）----
+# ---- バリオグラム推定・フィット（球面モデルが一般的だが、他のモデルも試せるようにしておく）----
+# selected_vgm_model_relax を変えるだけでモデルを切り替えられる
+# "Sph"=球面, "Exp"=指数, "Gau"=ガウシアン, "Mat"=マテルン, "Lin"=線形, "auto"=SSE最小のモデルを自動選択
+selected_vgm_model_relax <- "auto"
+
 vgm_emp_relax <- variogram(k_i ~ 1, data = k_i_relax_obs)
-vgm_fit_relax <- fit.variogram(
-  vgm_emp_relax,
-  model = vgm(psill = var(k_i_relax_obs$k_i), model = "Sph", range = 10000, nugget = 0)
+
+vgm_candidates_relax <- list(
+  Sph = vgm(psill = var(k_i_relax_obs$k_i), model = "Sph", range = 10000, nugget = 0),
+  Exp = vgm(psill = var(k_i_relax_obs$k_i), model = "Exp", range = 10000, nugget = 0),
+  Gau = vgm(psill = var(k_i_relax_obs$k_i), model = "Gau", range = 10000, nugget = 0),
+  Mat = vgm(psill = var(k_i_relax_obs$k_i), model = "Mat", range = 10000, nugget = 0, kappa = 0.5),
+  Lin = vgm(psill = var(k_i_relax_obs$k_i), model = "Lin", range = 10000, nugget = 0)
 )
+
+if (selected_vgm_model_relax == "auto") {
+  # 各モデルをフィットし、SSE（当てはまり誤差）が最小のものを自動選択
+  vgm_comparison_relax <- do.call(rbind, lapply(names(vgm_candidates_relax), function(m) {
+    fit <- fit.variogram(vgm_emp_relax, model = vgm_candidates_relax[[m]])
+    data.frame(model = m, SSErr = attr(fit, "SSErr"))
+  }))
+  vgm_comparison_relax <- vgm_comparison_relax[order(vgm_comparison_relax$SSErr), ]
+  print(vgm_comparison_relax)
+  best_model_relax <- vgm_comparison_relax$model[1]
+  cat("自動選択されたバリオグラムモデル（緩和法）:", best_model_relax, "\n")
+  vgm_fit_relax <- fit.variogram(vgm_emp_relax, model = vgm_candidates_relax[[best_model_relax]])
+} else {
+  vgm_fit_relax <- fit.variogram(vgm_emp_relax, model = vgm_candidates_relax[[selected_vgm_model_relax]])
+}
+
 print(vgm_fit_relax)
-plot(vgm_emp_relax, vgm_fit_relax, main = "Variogram Model Fit (Relaxation Method k_i)")
+plot(vgm_emp_relax, vgm_fit_relax, main = paste("Variogram Model Fit (Relaxation Method k_i) -", selected_vgm_model_relax))
+png("project_log/calibration/05_ki-relaxation/plots/variogram_fit_relax.png", width = 900, height = 750, res = 150)
+plot(vgm_emp_relax, vgm_fit_relax, main = paste("Variogram Model Fit (Relaxation Method k_i) -", selected_vgm_model_relax))
+dev.off()
 
 # ---- クリギング補間 ----
 k_i_relax_kriged <- krige(
@@ -1171,6 +1233,7 @@ ggplot(k_i_relax_map) +
   scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
   labs(title = "Spatial Distribution of Relaxation-Method k_i (After Kriging, All Zones)") +
   theme_void()
+ggsave("project_log/calibration/05_ki-relaxation/plots/k_i_relax_spatial_after_kriging.png", width = 6, height = 5.5, dpi = 150)
 
 
 # ==== 緩和法k_i（クリギング後）の検証：実データとの比較 ====
@@ -1263,20 +1326,33 @@ hhC_kirelax <- key_code_sf %>%
   left_join(household, by = "KEY_CODE") %>%
   mutate(obs_hh = tidyr::replace_na(obs_hh, 0))
 
-plot(hhC_kirelax$obs_hh, hhC_kirelax$est_hh,
-     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Relaxation k_i, After Kriging)")
-abline(0, 1, col = "red")
 r_hh_weighted_kirelax <- weightedCorr(
   x = hhC_kirelax$obs_hh,
   y = hhC_kirelax$est_hh,
   weights = hhC_kirelax$obs_hh,
   method = "Pearson"
 )
-cat("[緩和法k_i・クリギング後] 世帯数 重みつきR²:", r_hh_weighted_kirelax^2, "\n")
+r2_hh_weighted_kirelax <- r_hh_weighted_kirelax^2
+r2_hh_kirelax <- (cor(hhC_kirelax$obs_hh, hhC_kirelax$est_hh, use = "complete.obs"))^2
+cat("[緩和法k_i・クリギング後] 世帯数 重みつきR²:", r2_hh_weighted_kirelax, "\n")
+
+plot(hhC_kirelax$obs_hh, hhC_kirelax$est_hh,
+     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Relaxation k_i, After Kriging)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_hh_kirelax))), bty = "n", cex = 1.1)
+png("project_log/calibration/05_ki-relaxation/plots/kirelax_hh_scatter.png", width = 900, height = 750, res = 150)
+plot(hhC_kirelax$obs_hh, hhC_kirelax$est_hh,
+     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Relaxation k_i, After Kriging)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_hh_kirelax))), bty = "n", cex = 1.1)
+
+dev.off()
 
 p_hh_obs_kirelax   <- make_map(hhC_kirelax, "obs_hh", "Observed: Number of Households",           "magma", c(0, 25000))
 p_hh_model_kirelax <- make_map(hhC_kirelax, "est_hh", "Model: Number of Households (Relaxation k_i, After Kriging)", "magma", c(0, 25000))
 print(p_hh_obs_kirelax + p_hh_model_kirelax)
+ggsave("project_log/calibration/05_ki-relaxation/plots/kirelax_hh_maps.png",
+       plot = p_hh_obs_kirelax + p_hh_model_kirelax, width = 9, height = 5, dpi = 150)
 
 
 ## 家賃の比較
@@ -1295,20 +1371,33 @@ rentC_kirelax_flt <- rentC_kirelax %>%
   filter(!is.na(avg_rent), !is.na(est_rent), !is.na(obs_hh),
          avg_rent > 0, est_rent > 0, obs_hh > 0)
 
-plot(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent,
-     xlab = "Observed: Rent", ylab = "Model: Rent (Relaxation k_i, After Kriging)")
-abline(0, 1, col = "red")
 r_rent_weighted_kirelax <- weightedCorr(
   x = rentC_kirelax_flt$avg_rent,
   y = rentC_kirelax_flt$est_rent,
   weights = rentC_kirelax_flt$obs_hh,
   method = "Pearson"
 )
-cat("[緩和法k_i・クリギング後] 家賃 重みつきR²:", r_rent_weighted_kirelax^2, "\n")
+r2_rent_weighted_kirelax <- r_rent_weighted_kirelax^2
+r2_rent_kirelax <- (cor(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent))^2
+cat("[緩和法k_i・クリギング後] 家賃 重みつきR²:", r2_rent_weighted_kirelax, "\n")
+
+plot(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent,
+     xlab = "Observed: Rent", ylab = "Model: Rent (Relaxation k_i, After Kriging)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_rent_kirelax))), bty = "n", cex = 1.1)
+png("project_log/calibration/05_ki-relaxation/plots/kirelax_rent_scatter.png", width = 900, height = 750, res = 150)
+
+plot(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent,
+     xlab = "Observed: Rent", ylab = "Model: Rent (Relaxation k_i, After Kriging)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_rent_kirelax))), bty = "n", cex = 1.1)
+dev.off()
 
 p_rent_obs_kirelax   <- make_map(rentC_kirelax, "avg_rent", "Observed: Rent",           "plasma", c(0, 3200))
 p_rent_model_kirelax <- make_map(rentC_kirelax, "est_rent", "Model: Rent (Relaxation k_i, After Kriging)", "plasma", c(0, 3200))
 print(p_rent_obs_kirelax + p_rent_model_kirelax)
+ggsave("project_log/calibration/05_ki-relaxation/plots/kirelax_rent_maps.png",
+       plot = p_rent_obs_kirelax + p_rent_model_kirelax, width = 9, height = 5, dpi = 150)
 
 
 ## 床面積の比較
@@ -1329,26 +1418,36 @@ arC_kirelax_flt <- arC_kirelax %>%
   filter(!is.na(avg_room_ar), !is.na(est_ar), !is.na(obs_hh),
          avg_room_ar > 0, est_ar > 0, obs_hh > 0)
 
-plot(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar,
-     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Relaxation k_i, After Kriging)")
-abline(0, 1, col = "red")
 r_ar_weighted_kirelax <- weightedCorr(
   x = arC_kirelax_flt$avg_room_ar,
   y = arC_kirelax_flt$est_ar,
   weights = arC_kirelax_flt$obs_hh,
   method = "Pearson"
 )
-cat("[緩和法k_i・クリギング後] 床面積 重みつきR²:", r_ar_weighted_kirelax^2, "\n")
+r2_ar_weighted_kirelax <- r_ar_weighted_kirelax^2
+r2_ar_kirelax <- (cor(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar))^2
+cat("[緩和法k_i・クリギング後] 床面積 重みつきR²:", r2_ar_weighted_kirelax, "\n")
+
+plot(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar,
+     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Relaxation k_i, After Kriging)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_ar_kirelax))), bty = "n", cex = 1.1)
+png("project_log/calibration/05_ki-relaxation/plots/kirelax_ar_scatter.png", width = 900, height = 750, res = 150)
+plot(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar,
+     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Relaxation k_i, After Kriging)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_ar_kirelax))), bty = "n", cex = 1.1)
+dev.off()
 
 p_ar_obs_kirelax   <- make_map(arC_kirelax, "avg_room_ar", "Observed: Floor Area",           "viridis", c(0, 200))
 p_ar_model_kirelax <- make_map(arC_kirelax, "est_ar",      "Model: Floor Area (Relaxation k_i, After Kriging)", "viridis", c(0, 200))
 print(p_ar_obs_kirelax + p_ar_model_kirelax)
+ggsave("project_log/calibration/05_ki-relaxation/plots/kirelax_ar_maps.png",
+       plot = p_ar_obs_kirelax + p_ar_model_kirelax, width = 9, height = 5, dpi = 150)
 
 
 # ---- 決定係数（R²）の算出（緩和法k_i：世帯数・家賃・床面積）----
-r2_hh_kirelax   <- (cor(hhC_kirelax$obs_hh, hhC_kirelax$est_hh, use = "complete.obs"))^2
-r2_rent_kirelax <- (cor(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent))^2
-r2_ar_kirelax   <- (cor(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar))^2
+# r2_hh_kirelax / r2_rent_kirelax / r2_ar_kirelax は各散布図の直前で計算済み
 
 cat("[緩和法k_i・クリギング後] 決定係数（R²）\n")
 cat("  世帯数：", r2_hh_kirelax,   "\n")
@@ -1454,20 +1553,32 @@ hhC_preGA <- key_code_sf %>%
   left_join(household, by = "KEY_CODE") %>%
   mutate(obs_hh = tidyr::replace_na(obs_hh, 0))
 
-plot(hhC_preGA$obs_hh, hhC_preGA$est_hh,
-     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Pre-GA)")
-abline(0, 1, col = "red")
 r_hh_weighted_preGA <- weightedCorr(
   x = hhC_preGA$obs_hh,
   y = hhC_preGA$est_hh,
   weights = hhC_preGA$obs_hh,
   method = "Pearson"
 )
-cat("[GA前] 世帯数 重みつきR²:", r_hh_weighted_preGA^2, "\n")
+r2_hh_weighted_preGA <- r_hh_weighted_preGA^2
+r2_hh_preGA <- (cor(hhC_preGA$obs_hh, hhC_preGA$est_hh, use = "complete.obs"))^2
+cat("[GA前] 世帯数 重みつきR²:", r2_hh_weighted_preGA, "\n")
+
+plot(hhC_preGA$obs_hh, hhC_preGA$est_hh,
+     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Pre-GA)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_hh_preGA))), bty = "n", cex = 1.1)
+png("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_hh_scatter.png", width = 900, height = 750, res = 150)
+plot(hhC_preGA$obs_hh, hhC_preGA$est_hh,
+     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Pre-GA)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_hh_preGA))), bty = "n", cex = 1.1)
+dev.off()
 
 p_hh_obs_preGA   <- make_map(hhC_preGA, "obs_hh", "Observed: Number of Households",       "magma", c(0, 25000))
 p_hh_model_preGA <- make_map(hhC_preGA, "est_hh", "Model: Number of Households (Pre-GA)", "magma", c(0, 25000))
 print(p_hh_obs_preGA + p_hh_model_preGA)
+ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_hh_maps.png",
+       plot = p_hh_obs_preGA + p_hh_model_preGA, width = 9, height = 5, dpi = 150)
 
 
 ## 家賃の比較
@@ -1486,20 +1597,32 @@ rentC_preGA_flt <- rentC_preGA %>%
   filter(!is.na(avg_rent), !is.na(est_rent), !is.na(obs_hh),
          avg_rent > 0, est_rent > 0, obs_hh > 0)
 
-plot(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent,
-     xlab = "Observed: Rent", ylab = "Model: Rent (Pre-GA)")
-abline(0, 1, col = "red")
 r_rent_weighted_preGA <- weightedCorr(
   x = rentC_preGA_flt$avg_rent,
   y = rentC_preGA_flt$est_rent,
   weights = rentC_preGA_flt$obs_hh,
   method = "Pearson"
 )
-cat("[GA前] 家賃 重みつきR²:", r_rent_weighted_preGA^2, "\n")
+r2_rent_weighted_preGA <- r_rent_weighted_preGA^2
+r2_rent_preGA <- (cor(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent))^2
+cat("[GA前] 家賃 重みつきR²:", r2_rent_weighted_preGA, "\n")
+
+plot(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent,
+     xlab = "Observed: Rent", ylab = "Model: Rent (Pre-GA)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_rent_preGA))), bty = "n", cex = 1.1)
+png("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_rent_scatter.png", width = 900, height = 750, res = 150)
+plot(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent,
+     xlab = "Observed: Rent", ylab = "Model: Rent (Pre-GA)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_rent_preGA))), bty = "n", cex = 1.1)
+dev.off()
 
 p_rent_obs_preGA   <- make_map(rentC_preGA, "avg_rent", "Observed: Rent",       "plasma", c(0, 3200))
 p_rent_model_preGA <- make_map(rentC_preGA, "est_rent", "Model: Rent (Pre-GA)", "plasma", c(0, 3200))
 print(p_rent_obs_preGA + p_rent_model_preGA)
+ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_rent_maps.png",
+       plot = p_rent_obs_preGA + p_rent_model_preGA, width = 9, height = 5, dpi = 150)
 
 
 ## 床面積の比較
@@ -1520,20 +1643,32 @@ arC_preGA_flt <- arC_preGA %>%
   filter(!is.na(avg_room_ar), !is.na(est_ar), !is.na(obs_hh),
          avg_room_ar > 0, est_ar > 0, obs_hh > 0)
 
-plot(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar,
-     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Pre-GA)")
-abline(0, 1, col = "red")
 r_ar_weighted_preGA <- weightedCorr(
   x = arC_preGA_flt$avg_room_ar,
   y = arC_preGA_flt$est_ar,
   weights = arC_preGA_flt$obs_hh,
   method = "Pearson"
 )
-cat("[GA前] 床面積 重みつきR²:", r_ar_weighted_preGA^2, "\n")
+r2_ar_weighted_preGA <- r_ar_weighted_preGA^2
+r2_ar_preGA <- (cor(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar))^2
+cat("[GA前] 床面積 重みつきR²:", r2_ar_weighted_preGA, "\n")
+
+plot(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar,
+     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Pre-GA)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_ar_preGA))), bty = "n", cex = 1.1)
+png("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_ar_scatter.png", width = 900, height = 750, res = 150)
+plot(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar,
+     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Pre-GA)")
+abline(0, 1, col = "red")
+legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_ar_preGA))), bty = "n", cex = 1.1)
+dev.off()
 
 p_ar_obs_preGA   <- make_map(arC_preGA, "avg_room_ar", "Observed: Floor Area",       "viridis", c(0, 200))
 p_ar_model_preGA <- make_map(arC_preGA, "est_ar",      "Model: Floor Area (Pre-GA)", "viridis", c(0, 200))
 print(p_ar_obs_preGA + p_ar_model_preGA)
+ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_ar_maps.png",
+       plot = p_ar_obs_preGA + p_ar_model_preGA, width = 9, height = 5, dpi = 150)
 
 # ---- 床面積の誤差（モデルー実データ）の空間分布（GA前）----
 arC_preGA_diff <- arC_preGA_flt %>%
@@ -1562,12 +1697,12 @@ p_arC_diff_preGA <- ggplot(arC_preGA_diff) +
   )
 
 plot(p_arC_diff_preGA)
+ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_floor_area_error_map.png",
+       plot = p_arC_diff_preGA, width = 6, height = 5.5, dpi = 150)
 
 
 # ---- 決定係数（R²）の算出（GA前：世帯数・家賃・床面積）----
-r2_hh_preGA   <- (cor(hhC_preGA$obs_hh, hhC_preGA$est_hh, use = "complete.obs"))^2
-r2_rent_preGA <- (cor(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent))^2
-r2_ar_preGA   <- (cor(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar))^2
+# r2_hh_preGA / r2_rent_preGA / r2_ar_preGA は各散布図の直前で計算済み
 
 cat("[GA前] 決定係数（R²）\n")
 cat("  世帯数：", r2_hh_preGA,   "\n")
@@ -1841,10 +1976,12 @@ gc()
 showConnections(all = TRUE)
 
 # ---- 結果の確認 ----
-save(ga_result_calib, best_x, file = "ga_ki_calculate_backward_backup.RData")
+save(ga_result_calib, best_x, file = "project_log/calibration/03_ki-backward-calc/ga_result.RData")
 }
+} # end if(FALSE) - k_i backward-calc / relaxation / GA calibration trial code（保存のみ、未実行）
 
-load("ga_ki_calculate_backward_backup.RData")
+if(FALSE){ # 260808方針: project_log/calibration/02_ga-800dim/ga_result.RData（k_iを含む852次元GA較正）は今回使わない。コードは残すが未実行。
+load("project_log/calibration/02_ga-800dim/ga_result.RData")
 
 best_x <- ga_result_calib@solution[1, ]
 best_params_global <- best_x[1:5]
@@ -1880,6 +2017,19 @@ ggplot(k_i_map_data) +
   scale_fill_viridis_c(option = "viridis", direction = -1) +
   labs(title = "Spatial Distribution of k_i After GA Optimization") +
   theme_void()
+} # end if(FALSE) - project_log/calibration/02_ga-800dim/ga_result.RData(852次元)は未使用
+
+# 260808方針: 5変数GA（k_iは同時最適化していない較正）で得られていた値を直接使用する
+# （このGA実行結果のRDataは保存されていなかったため、控えていた数値を直書きする）
+best_params_global <- c(
+  alpha_a = 0.3227,
+  gamma_0 = 0.4438,
+  gamma_1 = 0.5501,
+  theta_H = 0.2555,
+  theta_L = 2.7657
+)
+cat("\n使用するグローバルパラメータ（5変数GA、控え値）:\n")
+print(best_params_global)
 
 
 # ---- グローバル変数に反映 ----
@@ -1892,7 +2042,7 @@ gamma_1 <- best_params_global["gamma_1"]
 theta_H <- best_params_global["theta_H"]
 theta_L <- best_params_global["theta_L"]
 
-k_i <- best_k_i
+k_i <- rep(0.1, nz_res)  # 260807方針: GA較正のk_i(best_k_i)は使わず固定値0.1とする
 # k_iが正しく代入されているか確認
 length(k_i)
 range(k_i, na.rm = TRUE)
@@ -1922,11 +2072,21 @@ while (flag01 == 0) {
   )
   v_equilibrium <- result_nleqslv$x %>% exp()
   final_state   <- caluculate_model_state(v_equilibrium)
-  
+
   ODD.car <- final_state$l_i_j * P.car
   trips   <- as.data.frame.table(ODD.car, responseName = "demand")
   names(trips) <- c("from", "to", "demand")
-  
+
+  cat("[debug] termcd=", result_nleqslv$termcd,
+      " NA(v_equilibrium)=", sum(is.na(v_equilibrium)),
+      " NA(l_i_j)=", sum(is.na(final_state$l_i_j)),
+      " NA(P.car)=", sum(is.na(P.car)),
+      " NA(disposable_income_ij)=", sum(is.na(disposable_income_ij)),
+      " NA(ODD.car)=", sum(is.na(ODD.car)),
+      " NA(demand)=", sum(is.na(trips$demand)),
+      " range(demand)=", paste(range(trips$demand, na.rm = TRUE), collapse=","),
+      "\n")
+
   traffic01 <- assign_traffic(
     Graph     = sgr,
     from      = trips$from,
@@ -1936,6 +2096,21 @@ while (flag01 == 0) {
     algorithm = "bfw",
     verbose   = FALSE
   )
+
+  cat("[debug2] gap=", traffic01$gap, " iteration=", traffic01$iteration,
+      " NA(cost)=", sum(is.na(traffic01$data$cost)),
+      " Inf(cost)=", sum(is.infinite(traffic01$data$cost)),
+      " NA(flow)=", sum(is.na(traffic01$data$flow)),
+      " neg(flow)=", sum(traffic01$data$flow < 0, na.rm = TRUE),
+      " NA(capacity)=", sum(is.na(traffic01$data$capacity)),
+      " zero(capacity)=", sum(traffic01$data$capacity == 0, na.rm = TRUE),
+      "\n")
+  if (sum(is.na(traffic01$data$cost)) > 0) {
+    bad <- traffic01$data[is.na(traffic01$data$cost), ][1:min(5, sum(is.na(traffic01$data$cost))), ]
+    cat("[debug2] sample rows with NA cost:\n")
+    print(bad)
+  }
+
   sgr2 <- makegraph(
     df       = traffic01$data[, c("from", "to", "cost")],
     directed = TRUE,
@@ -1962,6 +2137,46 @@ proc.time() - tt0
 
 
 
+# 260808方針: 下のモデル適合度検証セクション（実データとの比較）は今回スキップするが、
+# シナリオ比較セクションが参照する est_household / rent_df / est_ar / Gi_df / make_map() は
+# final_state（モデル出力）のみから作れるので、ここで先に用意しておく。
+make_map <- function(data, fill_var, title, option, limits) {
+  ggplot(data) +
+    geom_sf(aes(fill = .data[[fill_var]]), color = "gray50", linewidth = 0.1) +
+    scale_fill_viridis_c(option = option, direction = -1,
+                         limits = limits, oob = scales::squish,
+                         labels = scales::label_comma()) +
+    labs(title = title) +
+    theme_void()
+}
+
+est_household <- rowSums(final_state$l_i_j, na.rm = TRUE)
+est_household <- tibble(
+  KEY_CODE = rownames(final_state$l_i_j),
+  est_household = est_household
+) %>%
+  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
+
+rent_df <- tibble(
+  KEY_CODE = names(final_state$r_bar_i) %>% gsub("^mc_", "", .),
+  est_rent = as.numeric(final_state$r_bar_i) * 1000
+)
+
+avg_floor_i <- rowSums(final_state$a_fij_H * final_state$l_i_j, na.rm = TRUE) / rowSums(final_state$l_i_j, na.rm = TRUE)
+est_ar <- tibble(
+  KEY_CODE = rownames(final_state$a_fij_H),
+  est_ar = avg_floor_i
+) %>%
+  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
+
+Gi_df <- data.frame(
+  KEY_CODE = names(final_state$G_i),
+  habit_ar = as.numeric(final_state$G_i)
+) %>%
+  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
+
+
+if(FALSE){ # 260807方針: モデル適合度検証セクション（make_diff_map2の定義順序バグあり、別途修正予定のため今回はスキップ）
 #実データとモデル比較#####
 # install.packages("patchwork")
 library(patchwork)
@@ -2159,7 +2374,8 @@ Gi_map_data <- Gi_map_data %>%
 
 hist(Gi_map_data$habit_ar)
 
-#宅地割合プロット　  
+#宅地割合プロット
+} # end if(FALSE) - 実データとモデル比較
 
 
 #シナリオ分析 ####
@@ -2361,10 +2577,11 @@ run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn,
     v = v_l,
     state = state,
     dists_road = dists_road,
-    disposable_income_ij = disposable_income_ij_local,  
+    disposable_income_ij = disposable_income_ij_local,
     P.car = P.car_l,
     P.rail = P.rail_l,
     P.bike = P.bike_l,
+    link_flow = ta$data,  # リンク別交通量・所要時間（太さ=交通量／色=速度マップ用）
     iterations = it - 1,
     converged = (diff < tol),
     final_diff = diff
@@ -2422,6 +2639,71 @@ scn2_disposable_income_ij <- results$scn2$disposable_income_ij
 # # forループ後に復元
 # disposable_income_ij <- results$scn0$disposable_income_ij
 # L_j_hat <- scenarios$scn0$L_j_hat
+
+#シナリオ別 交通量・速度マップ####
+# 太さ = リンク別交通量(flow, pcu/h)、色 = リンク別速度(km/h)
+# results$scn0（現状）/ scn1（シナリオB）/ scn2（シナリオC）の link_flow(from, to, ftt, cost, flow, capacity)を
+# link10（道路網ジオメトリ）に結合してマップ化する
+
+dir.create("project_log/scenario-analysis/plots", recursive = TRUE, showWarnings = FALSE)
+
+scn_titles <- c(
+  scn0 = "現状シナリオ",
+  scn1 = "シナリオB: 雇用一律再配置",
+  scn2 = "シナリオC: CBD距離加重再配置"
+)
+
+build_scn_link_map_data <- function(scn_result) {
+  link10 %>%
+    mutate(ID1 = as.character(ID1), ID2 = as.character(ID2)) %>%
+    left_join(
+      scn_result$link_flow %>%
+        mutate(from = as.character(from), to = as.character(to)),
+      by = c("ID1" = "from", "ID2" = "to")
+    ) %>%
+    mutate(
+      flow = tidyr::replace_na(flow, 0),
+      speed_kmh = dplyr::if_else(
+        !is.na(cost) & cost > 0,
+        (linklen / 1000) / (cost / 60),
+        maxspeed
+      )
+    )
+}
+
+scn_link_maps <- lapply(results, build_scn_link_map_data)
+
+# 3シナリオ間で比較しやすいよう、太さ・色のスケールを共通の範囲に固定する
+flow_range  <- range(unlist(lapply(scn_link_maps, function(d) d$flow)), na.rm = TRUE)
+speed_range <- range(unlist(lapply(scn_link_maps, function(d) d$speed_kmh)), na.rm = TRUE)
+
+make_flow_speed_map <- function(map_data, title) {
+  ggplot(map_data) +
+    geom_sf(aes(linewidth = flow, color = speed_kmh)) +
+    scale_linewidth_continuous(range = c(0.15, 2.5), limits = flow_range,
+                                name = "交通量\n(pcu/h)") +
+    scale_color_viridis_c(option = "plasma", direction = -1,
+                           limits = speed_range, oob = scales::squish,
+                           name = "速度\n(km/h)") +
+    labs(title = title) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA))
+}
+
+scn_flow_speed_plots <- Map(make_flow_speed_map, scn_link_maps, scn_titles[names(scn_link_maps)])
+
+library(patchwork)
+combined_flow_speed_map <- scn_flow_speed_plots$scn0 + scn_flow_speed_plots$scn1 + scn_flow_speed_plots$scn2 +
+  plot_layout(ncol = 3, guides = "collect")
+print(combined_flow_speed_map)
+ggsave("project_log/scenario-analysis/plots/scenario_flow_speed_maps.png",
+       plot = combined_flow_speed_map, width = 18, height = 6, dpi = 150)
+
+for (scn_name in names(scn_flow_speed_plots)) {
+  ggsave(sprintf("project_log/scenario-analysis/plots/%s_flow_speed_map.png", scn_name),
+         plot = scn_flow_speed_plots[[scn_name]], width = 7, height = 6, dpi = 150)
+}
+
 
 #シナリオ比較####
 exp(scn0_v)
