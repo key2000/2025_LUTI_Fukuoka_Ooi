@@ -843,12 +843,12 @@ st_write(Fukuoka.rail,dsn="data/osm/Fukuoka.rail0.gpkg",delete_dsn = T)
 # Fukuoka.rail=st_read("data/osm/Fukuoka.rail0.gpkg")
 
 ## OSM
-tstr="E:/WorkDir01/prog/R/2025/2025_GlobalUrbanModel/data/OSM/"
-fl=list.files(tstr,pattern=".pbf")
-tI=grep("kyushu",fl)
-system.time({ # 4.67   
-  pbf.points=oe_read(paste0(tstr,fl[tI]),layer="points",force_vectortranslate=T)
+system.time({
+  pbf.points=oe_read("data/geofabrik_kyushu-latest.osm.pbf",layer="points",force_vectortranslate=T)
 })
+save(pbf.points,file="data/osm/kyushu.pbf.points.xdr")
+load("data/osm/kyushu.pbf.points.xdr") # pbf.points
+
 pbf.points.other=pbf.points %>% filter(is.na(highway))
 
 # within the fukuoka geographical buffer
@@ -1598,7 +1598,12 @@ library(igraph)
 load("data/fukuoka.railway.simplified.xdr") #fukuoka.railway.simplified
 load("data/stations_3857.xdr") # stations
 
-mesh.Fukuoka.uea2.0=st_read("data/bnd_mesh_wL10_filterd/bnd_mesh_wL10_filterd.shp")
+# 260824: メッシュ重心はメインスクリプト（Fukuoka_LUTI_model_260617.R）が実際に使っている
+# key_code_sf（生シェープファイルの別コピーではない）から取る。KEY_CODEをas.character()で
+# 明示キャストしておくことで、下流のmc_ゾーンIDがl_i_j/dists0.rail/P.railのゾーンIDと
+# 桁ズレなく一致することを保証する。
+load("data/key_code_sf.xdr") # key_code_sf
+mesh.Fukuoka.uea2.0=key_code_sf %>% mutate(KEY_CODE=as.character(KEY_CODE))
 mesh.Fukuoka.uea2=st_transform(mesh.Fukuoka.uea2.0,st_crs(fukuoka.railway.simplified))
 
 # centeroid of mesh
@@ -1676,14 +1681,14 @@ system.time({ # 2.27
 
 tI=apply(distm,1,which.min)
 aa1=st.nodes2.sf[tI,] %>% dplyr::select(nodeID=osm_id) %>% mutate(linkID=paste0("acl_",formatC(1:length(tI),width=4,flag="0"))) #%>% rename(ID=osm_id.y)
-aa2=mesh.Fukuoka.uea2.cnt %>% mutate(MeshCode=paste0("mc_",KEY_CODE),linkID=paste0("acl_",formatC(1:length(tI),width=4,flag="0"))) %>% rename(nodeID=MeshCode) %>% dplyr::select(nodeID,linkID,geometry)
+aa2=mesh.Fukuoka.uea2.cnt %>% mutate(MeshCode=paste0("mc_",as.character(KEY_CODE)),linkID=paste0("acl_",formatC(1:length(tI),width=4,flag="0"))) %>% rename(nodeID=MeshCode) %>% dplyr::select(nodeID,linkID,geometry)
 aa3=rbind(aa1,aa2) %>% arrange(linkID) %>% dplyr::select(linkID,nodeID,geometry)
 
 system.time({ # 1.78  
   ac_link = aa3 %>% 
     group_by(linkID) %>% 
     summarize(osm_id=first(linkID), ID1=first(nodeID),ID2=last(nodeID),name=as.character(NA),z_order=0,type="access",geometry=st_cast(st_combine(geometry), "LINESTRING")) %>%
-    mutate(length=st_length(geometry)) %>% dplyr::select(-linkID)
+    mutate(length=st_length(geometry) %>% units::drop_units()) %>% dplyr::select(-linkID) # fukuoka.railway.simplified2$lengthもdrop_units済みのため型を揃える
   # filter(st_geometry_type(.) == "MULTIPOINT") %>%
   # st_cast("LINESTRING")
   # st_as_sf()
@@ -1757,7 +1762,12 @@ lkspd=data.frame(type=c("rail","subway","access"),speed=c(60,40,5))
 link10=rbind(rail_network,rail_network %>% rename(ID1=ID2,ID2=ID1)) %>% left_join(lkspd,by="type") %>% mutate(FFtime=length/speed*60/10^3,cap=10^5) #%>%  # fftime (minutes)
 # merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
 dim(link10)
-# which(is.na(link10$FFtime))
+# 260824: lkspdはrail/subway/accessのみ定義。fukuoka.railwayの種別フィルタはmonorailも含みうるため、
+# lkspdに無い種別が混ざるとFFtimeがNAになりmakegraph()に渡せない。ここで検出しておく。
+if (any(is.na(link10$FFtime))) {
+  cat("FFtimeがNAのtype:\n"); print(table(link10$type[is.na(link10$FFtime)]))
+  stop("lkspdに定義の無いtypeが含まれています。lkspdに速度を追加してください。")
+}
 
 node10=data.frame(rail_network.nodes$nodeID,st_coordinates(rail_network.nodes))
 names(node10)=c("Node","X","Y")
@@ -1780,7 +1790,7 @@ sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(),
                  alpha = 0.1,
                  beta = 1,
                  coords = node10)
-save(sgr,file="sgr.rail.xdr")
+save(sgr,file="data/sgr.rail.xdr") # data/配下（Git管理外）に保存。以前はリポジトリルートに保存されており、.gitignoreの対象外だった
 # sgr$data
 # ?makegraph
 #　孤立判定

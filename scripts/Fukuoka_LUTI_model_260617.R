@@ -432,9 +432,12 @@ dists0.road=dists0
 # E:/WorkDir01/prog/R/2025/2025_LUTI_Fukuoka_Ooi/Fukuoka_OSM_03.R
 load("data/railway_dist.xdr") # dists0, minutes per one way: do not depend on traffic　ここでdists0filter前に戻ってる
 dists0.rail=dists0
-dists0 <- dists0.road 
-dists0.rail <- dists0.rail[valid_res_rows, ]
-dists0.rail <- dists0.rail[, valid_work_cols]
+dists0 <- dists0.road
+# 260824: dists0.railはkey_code_sf由来のゾーン集合で再構築しており、valid_res_rows/valid_work_cols
+# （道路dists0の元の行数・順序が前提）と行数が一致しない場合があるため、位置ベースではなく
+# 名前ベースで絞り込む（mc_50300426のようにdists0.rail側に元々存在しないゾーンがあっても安全）。
+dists0.rail <- dists0.rail[rownames(dists0.rail) %in% names(valid_res_rows)[valid_res_rows], ]
+dists0.rail <- dists0.rail[, colnames(dists0.rail) %in% names(valid_work_cols)[valid_work_cols]]
 # which(rownames(dists0.rail)!=rownames(dists0.road))
 # which(colnames(dists0.rail)!=colnames(dists00))
 
@@ -567,13 +570,36 @@ link10=link10 %>% mutate(FFtime=linklen/maxspeed*60/10^3) %>%  # fftime (minutes
 nodes=data.frame(node10$ID,st_coordinates(node10))
 names(nodes)=c("Node","X","Y")
 
-sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(), 
+sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(),
                  directed = TRUE,
                  # capacity = 10^4,
                  capacity = link10$cap/KK,
                  alpha = alpha,
                  beta = beta,
                  coords = nodes)
+
+# 鉄道網（リンクレベル）####
+# scripts/Fukuoka_OSM_03_copied.R の「rail network」節で構築（要事前実行、data/はGit管理外）。
+# 鉄道は混雑関数を持たない（速度低下を考慮しない）ため、capacityは大容量プレースホルダ。
+# 道路側の link10/nodes/sgr とは別名にする（run_scenario内で道路側と同時に使うため）。
+load("data/osm/rail_network.xdr")        # rail_network
+load("data/osm/rail_network.nodes.xdr")  # rail_network.nodes
+
+lkspd_rail <- data.frame(type = c("rail", "subway", "access"), speed = c(60, 40, 5))
+
+link10_rail <- rbind(rail_network, rail_network %>% rename(ID1 = ID2, ID2 = ID1)) %>%
+  left_join(lkspd_rail, by = "type") %>%
+  mutate(FFtime = length / speed * 60 / 10^3, cap = 1e5)  # FFtime（分）
+
+nodes_rail <- data.frame(rail_network.nodes$nodeID, st_coordinates(rail_network.nodes))
+names(nodes_rail) <- c("Node", "X", "Y")
+
+sgr_rail <- makegraph(df = link10_rail[, c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(),
+                       directed = TRUE,
+                       capacity = 1e5,
+                       alpha = 0.1,
+                       beta = 1,
+                       coords = nodes_rail)
 
 # fixed variables
 # mode choice utilities
@@ -2429,6 +2455,138 @@ Hi_df <- data.frame(
 } # end if(FALSE) - 実データとモデル比較
 
 
+## 床面積の比較（住宅・土地統計調査、市区町村・2人世帯換算） ----
+# project_log/calibration/06_housing-survey-comparison/ 参照。
+# 既存のアットホームデータとの比較（メッシュ単位、上のarC/rentC）はサンプル数が少なく
+# 信頼性に課題があるため、住宅・土地統計調査（市区町村単位、公的統計）を別の実データとして
+# 使い、モデルの床面積出力と整合しているか確認する。
+
+# --- (a) 住宅・土地統計調査：福岡県分の抽出と2人世帯換算 ---
+load("data/area.df.xdr") # area.df, dwelling size (m2)
+load("data/hhn.df.xdr")  # hhn.df, household size (member)
+
+yyv1 <- c(1993, 2003, 2008, 2013, 2018, 2023)
+
+tI01 <- grep("^40", area.df$mun)
+tI02 <- grep("^40", hhn.df$mun)
+
+ApP <- (area.df[tI01, -1] %>% mutate(across(everything(), as.numeric))) /
+  (hhn.df[tI02, -1]  %>% mutate(across(everything(), as.numeric)))
+# 2人世帯換算 床面積(m2)：1人あたり床面積 × 2
+area_2p <- ApP * 2
+colnames(area_2p) <- yyv1
+
+housing_survey_fukuoka <- tibble(
+  mun = area.df$mun[tI01],
+  area_2p
+) %>%
+  pivot_longer(cols = -mun, names_to = "year", values_to = "area_2p_m2") %>%
+  mutate(year = as.integer(year))
+
+# 年次推移（福岡県内、市区町村ごと）
+ggplot(housing_survey_fukuoka, aes(x = year, y = area_2p_m2, group = mun)) +
+  geom_line(color = "gray60", alpha = 0.6) +
+  labs(
+    title = "住宅・土地統計調査：2人世帯換算 平均床面積の推移（福岡県）",
+    x = "調査年", y = "2人世帯換算 床面積 (m2)"
+  ) +
+  theme_minimal()
+ggsave("project_log/calibration/06_housing-survey-comparison/plots/housing_survey_area2p_trend.png",
+       width = 6, height = 5, dpi = 150)
+
+# --- (b) 市区町村境界の作成とメッシュ(KEY_CODE)→市区町村の対応付け ---
+if(F){
+  city_raw <- st_read("data/raw/小地域(町丁・字等)/h27ka40.shp") %>%
+    st_transform(crs = target_crs) %>%
+    mutate(mun = paste0(PREF, CITY))
+  city_sf <- city_raw %>%
+    group_by(mun, CITY_NAME) %>%
+    summarise(geometry = st_union(geometry), .groups = "drop") %>%
+    st_make_valid()
+  save(city_sf, file = "data/city_sf.xdr")
+}
+load("data/city_sf.xdr")
+
+# メッシュ(KEY_CODE)ゾーンの重心が属する市区町村を判定
+key_code_mun <- key_code_sf %>%
+  st_centroid() %>%
+  st_join(city_sf, join = st_within) %>%
+  st_drop_geometry() %>%
+  dplyr::select(KEY_CODE, mun, CITY_NAME)
+
+# 分析範囲の可視化：study area内の市区町村のうち、2023年データがあり実際に比較へ使えたもの
+study_area_mun <- unique(na.omit(key_code_mun$mun))
+mun_2023 <- housing_survey_fukuoka %>% filter(year == 2023, !is.na(area_2p_m2)) %>% pull(mun)
+comparison_mun <- intersect(study_area_mun, mun_2023)
+
+city_scope <- city_sf %>%
+  mutate(status = case_when(
+    mun %in% comparison_mun ~ "比較に使用（2023年データあり）",
+    mun %in% study_area_mun ~ "study area内だが2023年データなし",
+    TRUE ~ "study area外"
+  ))
+label_pts <- city_scope %>% filter(status == "比較に使用（2023年データあり）") %>% st_centroid()
+
+p_scope <- ggplot() +
+  geom_sf(data = city_scope, aes(fill = status), color = "white", linewidth = 0.3) +
+  scale_fill_manual(values = c(
+    "比較に使用（2023年データあり）" = "#4472C4",
+    "study area内だが2023年データなし" = "#A9C4EB",
+    "study area外" = "gray90"
+  )) +
+  geom_sf_text(data = label_pts, aes(label = CITY_NAME), size = 2.2, color = "black") +
+  labs(
+    title = "住宅・土地統計調査による床面積比較の対象市区町村（福岡県）",
+    subtitle = "濃青：2023年比較に使用した市区町村",
+    fill = NULL
+  ) +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    legend.position = "bottom"
+  )
+ggsave("project_log/calibration/06_housing-survey-comparison/plots/study_area_municipality_map.png",
+       plot = p_scope, width = 7, height = 6.5, dpi = 150)
+
+# --- (c) モデル出力（est_ar）の市区町村集計と比較 ---
+# est_ar：ゾーンiごとの従業地方向世帯数加重平均床面積（m2/世帯、全世帯平均）
+# L.2233-2238で既に計算済みのest_arをそのまま使う（再計算しない）
+# 市区町村集計：国勢調査メッシュ世帯数(obs_household)で加重平均
+est_ar_mun <- est_ar %>%
+  left_join(key_code_mun, by = "KEY_CODE") %>%
+  left_join(obs_household, by = "KEY_CODE") %>%
+  filter(!is.na(mun), !is.na(obs_household), obs_household > 0) %>%
+  group_by(mun, CITY_NAME) %>%
+  summarise(
+    est_ar_mun = weighted.mean(est_ar, w = obs_household, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# 最新調査年（2023年）の2人世帯換算値と結合して比較
+comparison_2023 <- est_ar_mun %>%
+  inner_join(
+    housing_survey_fukuoka %>% filter(year == 2023),
+    by = "mun"
+  )
+
+plot(comparison_2023$area_2p_m2, comparison_2023$est_ar_mun,
+     xlab = "実データ：2人世帯換算 床面積(m2) [住宅・土地統計調査2023]",
+     ylab = "モデル：市区町村平均床面積(m2) [est_ar_mun]",
+     main = "床面積の比較（市区町村単位、2023年）")
+abline(0, 1, col = "red")
+r_ar_mun <- cor(comparison_2023$area_2p_m2, comparison_2023$est_ar_mun, use = "complete.obs")
+cat("床面積（市区町村・住宅土地統計調査） R²:", r_ar_mun^2, "\n")
+
+png("project_log/calibration/06_housing-survey-comparison/plots/floor_area_mun_comparison_2023.png",
+    width = 6, height = 5.5, units = "in", res = 150)
+plot(comparison_2023$area_2p_m2, comparison_2023$est_ar_mun,
+     xlab = "実データ：2人世帯換算 床面積(m2) [住宅・土地統計調査2023]",
+     ylab = "モデル：市区町村平均床面積(m2) [est_ar_mun]",
+     main = "床面積の比較（市区町村単位、2023年）")
+abline(0, 1, col = "red")
+dev.off()
+
+
 #シナリオ分析 ####
 
 # === Base Scenario (scn0) Setup ===
@@ -2621,7 +2779,16 @@ run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn,
     it <- it + 1
     if (diff < tol | it > max_iter) flag <- 1
   }
-  
+
+  # 鉄道リンク配分（均衡収束後の最終stateに対して一度だけ実行、混雑は考慮しない）
+  ODD.rail <- state$l_i_j * P.rail_l
+  trips_rail <- as.data.frame.table(ODD.rail, responseName = "demand")
+  names(trips_rail) <- c("from", "to", "demand")
+
+  ta_rail <- assign_traffic(Graph = sgr_rail, from = trips_rail$from, to = trips_rail$to,
+                             demand = trips_rail$demand, max_gap = 1e-2,
+                             algorithm = "bfw", verbose = FALSE)
+
   # Return comprehensive result set
   list(
     scenario = scenario_name,
@@ -2633,6 +2800,7 @@ run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn,
     P.rail = P.rail_l,
     P.bike = P.bike_l,
     link_flow = ta$data,  # リンク別交通量・所要時間（太さ=交通量／色=速度マップ用）
+    rail_link_flow = ta_rail$data,  # 鉄道リンク別利用世帯数（太さ=色=利用世帯数マップ用）
     iterations = it - 1,
     converged = (diff < tol),
     final_diff = diff
@@ -2792,27 +2960,31 @@ speed_diff_lim <- max(abs(unlist(lapply(scn_diff_maps, function(d) d$speed_diff)
 make_flow_diff_map <- function(map_data, title) {
   ggplot(map_data) +
     geom_sf(aes(linewidth = abs(flow_diff), color = flow_diff)) +
-    scale_linewidth_continuous(range = c(0.15, 2.5), limits = c(0, flow_diff_lim),
+    scale_linewidth_continuous(range = c(0.4, 2.8), limits = c(0, flow_diff_lim),
+                                transform = "sqrt",
                                 name = "交通量の変化\n(|Δ pcu/日|)") +
     scale_color_gradient2(low = "blue", mid = "gray85", high = "red", midpoint = 0,
                            limits = c(-flow_diff_lim, flow_diff_lim), oob = scales::squish,
                            name = "交通量の変化\n(Δ pcu/日)") +
     labs(title = paste0(title, "：交通量差分")) +
     theme_void() +
-    theme(plot.background = element_rect(fill = "white", color = NA))
+    theme(plot.background = element_rect(fill = "white", color = NA),
+          panel.background = element_rect(fill = "gray80", color = NA))
 }
 
 make_speed_diff_map <- function(map_data, title) {
   ggplot(map_data) +
     geom_sf(aes(linewidth = abs(speed_diff), color = speed_diff)) +
-    scale_linewidth_continuous(range = c(0.15, 2.5), limits = c(0, speed_diff_lim),
+    scale_linewidth_continuous(range = c(0.4, 2.8), limits = c(0, speed_diff_lim),
+                                transform = "sqrt",
                                 name = "速度の変化\n(|Δ km/h|)") +
     scale_color_gradient2(low = "blue", mid = "gray85", high = "red", midpoint = 0,
                            limits = c(-speed_diff_lim, speed_diff_lim), oob = scales::squish,
                            name = "速度の変化\n(Δ km/h)") +
     labs(title = paste0(title, "：速度差分")) +
     theme_void() +
-    theme(plot.background = element_rect(fill = "white", color = NA))
+    theme(plot.background = element_rect(fill = "white", color = NA),
+          panel.background = element_rect(fill = "gray80", color = NA))
 }
 
 flow_diff_plots  <- Map(make_flow_diff_map,  scn_diff_maps, diff_titles[names(scn_diff_maps)])
@@ -2835,6 +3007,138 @@ for (scn_name in names(scn_diff_maps)) {
          plot = flow_diff_plots[[scn_name]], width = 7, height = 6, dpi = 150)
   ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_speed_diff_map.png", scn_name),
          plot = speed_diff_plots[[scn_name]], width = 7, height = 6, dpi = 150)
+}
+
+
+#シナリオ別 交通量・速度 差分マップ（主要道路のみ・試作）####
+# 上のマップは全リンク（各メッシュ重心から道路網に接続する合成リンク highway="access" を含む）を
+# 描画しており、特に都心部でリンクが密集して見にくい。ここでは highway が
+# primary（及びそれ以上の幹線）のリンクだけに絞った版を試作として別ファイルで出力する。
+# 上のマップ（scenario_flow_diff_maps.png 等）はそのまま残し、ファイル名に "_major" を付けて別出力する。
+
+major_highway_classes <- c("motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link")
+
+scn_diff_maps_major <- lapply(scn_diff_maps, function(d) {
+  d %>% dplyr::filter(highway %in% major_highway_classes)
+})
+
+# 主要道路のみに絞った上で、スケール上下限もその範囲内の最大絶対値に合わせ直す
+flow_diff_lim_major  <- max(abs(unlist(lapply(scn_diff_maps_major, function(d) d$flow_diff))), na.rm = TRUE)
+speed_diff_lim_major <- max(abs(unlist(lapply(scn_diff_maps_major, function(d) d$speed_diff))), na.rm = TRUE)
+
+make_flow_diff_map_major <- function(map_data, title, lim) {
+  ggplot(map_data) +
+    geom_sf(aes(linewidth = abs(flow_diff), color = flow_diff)) +
+    scale_linewidth_continuous(range = c(0.4, 2.8), limits = c(0, lim),
+                                transform = "sqrt",
+                                name = "交通量の変化\n(|Δ pcu/日|)") +
+    scale_color_gradient2(low = "blue", mid = "gray85", high = "red", midpoint = 0,
+                           limits = c(-lim, lim), oob = scales::squish,
+                           name = "交通量の変化\n(Δ pcu/日)") +
+    labs(title = paste0(title, "：交通量差分（主要道路のみ）")) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA),
+          panel.background = element_rect(fill = "gray80", color = NA))
+}
+
+make_speed_diff_map_major <- function(map_data, title, lim) {
+  ggplot(map_data) +
+    geom_sf(aes(linewidth = abs(speed_diff), color = speed_diff)) +
+    scale_linewidth_continuous(range = c(0.4, 2.8), limits = c(0, lim),
+                                transform = "sqrt",
+                                name = "速度の変化\n(|Δ km/h|)") +
+    scale_color_gradient2(low = "blue", mid = "gray85", high = "red", midpoint = 0,
+                           limits = c(-lim, lim), oob = scales::squish,
+                           name = "速度の変化\n(Δ km/h)") +
+    labs(title = paste0(title, "：速度差分（主要道路のみ）")) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA),
+          panel.background = element_rect(fill = "gray80", color = NA))
+}
+
+flow_diff_plots_major <- Map(function(d, t) make_flow_diff_map_major(d, t, flow_diff_lim_major),
+                              scn_diff_maps_major, diff_titles[names(scn_diff_maps_major)])
+speed_diff_plots_major <- Map(function(d, t) make_speed_diff_map_major(d, t, speed_diff_lim_major),
+                               scn_diff_maps_major, diff_titles[names(scn_diff_maps_major)])
+
+combined_flow_diff_map_major <- flow_diff_plots_major$scn1 + flow_diff_plots_major$scn2 +
+  plot_layout(ncol = 2, guides = "collect")
+print(combined_flow_diff_map_major)
+ggsave("project_log/scenario-analysis/plots/scenario_flow_diff_maps_major.png",
+       plot = combined_flow_diff_map_major, width = 12, height = 6, dpi = 150)
+
+combined_speed_diff_map_major <- speed_diff_plots_major$scn1 + speed_diff_plots_major$scn2 +
+  plot_layout(ncol = 2, guides = "collect")
+print(combined_speed_diff_map_major)
+ggsave("project_log/scenario-analysis/plots/scenario_speed_diff_maps_major.png",
+       plot = combined_speed_diff_map_major, width = 12, height = 6, dpi = 150)
+
+for (scn_name in names(scn_diff_maps_major)) {
+  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_flow_diff_map_major.png", scn_name),
+         plot = flow_diff_plots_major[[scn_name]], width = 7, height = 6, dpi = 150)
+  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_speed_diff_map_major.png", scn_name),
+         plot = speed_diff_plots_major[[scn_name]], width = 7, height = 6, dpi = 150)
+}
+
+
+#シナリオ別 交通量・速度 差分マップ（主要道路のみ・1kmメッシュ背景・試作）####
+# 上の「主要道路のみ」版に、1kmメッシュ（key_code_sf）の境界線を背景に重ねた版。
+# 既存の全リンク版・主要道路版（メッシュなし）はそのまま残し、ファイル名に "_major_mesh" を付けて別出力する。
+
+make_flow_diff_map_major_mesh <- function(map_data, title, lim) {
+  ggplot(map_data) +
+    geom_sf(data = key_code_sf, fill = NA, color = "gray60", linewidth = 0.15, inherit.aes = FALSE) +
+    geom_sf(aes(linewidth = abs(flow_diff), color = flow_diff)) +
+    scale_linewidth_continuous(range = c(0.4, 2.8), limits = c(0, lim),
+                                transform = "sqrt",
+                                name = "交通量の変化\n(|Δ pcu/日|)") +
+    scale_color_gradient2(low = "blue", mid = "gray85", high = "red", midpoint = 0,
+                           limits = c(-lim, lim), oob = scales::squish,
+                           name = "交通量の変化\n(Δ pcu/日)") +
+    labs(title = paste0(title, "：交通量差分（主要道路のみ・1kmメッシュ）")) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA),
+          panel.background = element_rect(fill = "gray80", color = NA))
+}
+
+make_speed_diff_map_major_mesh <- function(map_data, title, lim) {
+  ggplot(map_data) +
+    geom_sf(data = key_code_sf, fill = NA, color = "gray60", linewidth = 0.15, inherit.aes = FALSE) +
+    geom_sf(aes(linewidth = abs(speed_diff), color = speed_diff)) +
+    scale_linewidth_continuous(range = c(0.4, 2.8), limits = c(0, lim),
+                                transform = "sqrt",
+                                name = "速度の変化\n(|Δ km/h|)") +
+    scale_color_gradient2(low = "blue", mid = "gray85", high = "red", midpoint = 0,
+                           limits = c(-lim, lim), oob = scales::squish,
+                           name = "速度の変化\n(Δ km/h)") +
+    labs(title = paste0(title, "：速度差分（主要道路のみ・1kmメッシュ）")) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA),
+          panel.background = element_rect(fill = "gray80", color = NA))
+}
+
+flow_diff_plots_major_mesh <- Map(function(d, t) make_flow_diff_map_major_mesh(d, t, flow_diff_lim_major),
+                                   scn_diff_maps_major, diff_titles[names(scn_diff_maps_major)])
+speed_diff_plots_major_mesh <- Map(function(d, t) make_speed_diff_map_major_mesh(d, t, speed_diff_lim_major),
+                                    scn_diff_maps_major, diff_titles[names(scn_diff_maps_major)])
+
+combined_flow_diff_map_major_mesh <- flow_diff_plots_major_mesh$scn1 + flow_diff_plots_major_mesh$scn2 +
+  plot_layout(ncol = 2, guides = "collect")
+print(combined_flow_diff_map_major_mesh)
+ggsave("project_log/scenario-analysis/plots/scenario_flow_diff_maps_major_mesh.png",
+       plot = combined_flow_diff_map_major_mesh, width = 12, height = 6, dpi = 150)
+
+combined_speed_diff_map_major_mesh <- speed_diff_plots_major_mesh$scn1 + speed_diff_plots_major_mesh$scn2 +
+  plot_layout(ncol = 2, guides = "collect")
+print(combined_speed_diff_map_major_mesh)
+ggsave("project_log/scenario-analysis/plots/scenario_speed_diff_maps_major_mesh.png",
+       plot = combined_speed_diff_map_major_mesh, width = 12, height = 6, dpi = 150)
+
+for (scn_name in names(scn_diff_maps_major)) {
+  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_flow_diff_map_major_mesh.png", scn_name),
+         plot = flow_diff_plots_major_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
+  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_speed_diff_map_major_mesh.png", scn_name),
+         plot = speed_diff_plots_major_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
 
@@ -3319,6 +3623,183 @@ p_rail_work_diverging <- make_diff_map2(diff_rail_work, c("diff_rail_work_01", "
 print(p_rail_work_diverging)
 ggsave("project_log/scenario-analysis/plots/scenario_rail_ridership_workplace_diff_maps.png",
        plot = p_rail_work_diverging, width = 12, height = 6, dpi = 150)
+
+
+#鉄道 リンク別利用者数マップ####
+# 太さ・色 = リンク別利用世帯数（世帯/日）。道路と異なり鉄道配分は混雑関数を持たないため、
+# 「太さ=交通量・色=速度」という組合せは作れず、太さ・色とも利用世帯数の単一指標とする。
+# results$scn0/scn1/scn2の rail_link_flow(from, to, ftt, cost, flow, capacity) を
+# rail_network（鉄道網ジオメトリ、scripts/Fukuoka_OSM_03_copied.R の rail network 節で構築）
+# に結合してマップ化する。type=="access"（メッシュ重心↔最寄駅・駅↔線形頂点の合成リンク）は
+# 実在の軌道ではないため描画から除外する。
+# assign_traffic()の結果はID1→ID2/ID2→ID1の方向別に別レコードを持つため、物理的に同じ区間を
+# 1本の線として描くために往復のflowを合算する（道路の交通量マップとの違い）。
+
+build_scn_rail_map_data <- function(scn_result) {
+  flow_fwd <- scn_result$rail_link_flow %>%
+    dplyr::select(ID1 = from, ID2 = to, flow_fwd = flow) %>%
+    mutate(ID1 = as.character(ID1), ID2 = as.character(ID2))
+  flow_rev <- scn_result$rail_link_flow %>%
+    dplyr::select(ID1 = to, ID2 = from, flow_rev = flow) %>%
+    mutate(ID1 = as.character(ID1), ID2 = as.character(ID2))
+
+  rail_network %>%
+    mutate(ID1 = as.character(ID1), ID2 = as.character(ID2)) %>%
+    left_join(flow_fwd, by = c("ID1", "ID2")) %>%
+    left_join(flow_rev, by = c("ID1", "ID2")) %>%
+    mutate(
+      flow_fwd = tidyr::replace_na(flow_fwd, 0),
+      flow_rev = tidyr::replace_na(flow_rev, 0),
+      flow = flow_fwd + flow_rev  # 物理セグメント単位の往復合計利用世帯数
+    ) %>%
+    dplyr::filter(type %in% c("rail", "subway"))
+}
+
+scn_rail_maps <- lapply(results, build_scn_rail_map_data)
+
+rail_flow_range <- range(unlist(lapply(scn_rail_maps, function(d) d$flow)), na.rm = TRUE)
+
+make_rail_flow_map <- function(map_data, title) {
+  ggplot(map_data) +
+    geom_sf(aes(linewidth = flow, color = flow)) +
+    scale_linewidth_continuous(range = c(0.4, 3), limits = rail_flow_range,
+                                name = "鉄道利用世帯数\n(世帯/日)") +
+    scale_color_viridis_c(option = "viridis", limits = rail_flow_range,
+                           oob = scales::squish, name = "鉄道利用世帯数\n(世帯/日)") +
+    labs(title = title) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA))
+}
+
+scn_rail_flow_plots <- Map(make_rail_flow_map, scn_rail_maps, scn_titles[names(scn_rail_maps)])
+
+combined_rail_flow_map <- scn_rail_flow_plots$scn0 + scn_rail_flow_plots$scn1 + scn_rail_flow_plots$scn2 +
+  plot_layout(ncol = 3, guides = "collect")
+print(combined_rail_flow_map)
+ggsave("project_log/scenario-analysis/plots/scenario_rail_flow_maps.png",
+       plot = combined_rail_flow_map, width = 18, height = 6, dpi = 150)
+
+for (scn_name in names(scn_rail_flow_plots)) {
+  ggsave(sprintf("project_log/scenario-analysis/plots/%s_rail_flow_map.png", scn_name),
+         plot = scn_rail_flow_plots[[scn_name]], width = 7, height = 6, dpi = 150)
+}
+
+
+#鉄道 リンク別利用者数 差分マップ（シナリオB/C − 現状）####
+
+build_scn_rail_diff_map_data <- function(scn_map, base_map) {
+  base_flow <- base_map %>%
+    st_drop_geometry() %>%
+    dplyr::select(ID1, ID2, flow_base = flow)
+
+  scn_map %>%
+    left_join(base_flow, by = c("ID1", "ID2")) %>%
+    mutate(flow_diff = flow - flow_base)
+}
+
+scn_rail_diff_maps <- list(
+  scn1 = build_scn_rail_diff_map_data(scn_rail_maps$scn1, scn_rail_maps$scn0),
+  scn2 = build_scn_rail_diff_map_data(scn_rail_maps$scn2, scn_rail_maps$scn0)
+)
+
+diff_titles_rail <- c(
+  scn1 = "シナリオB − 現状",
+  scn2 = "シナリオC − 現状"
+)
+
+# scn1・scn2で共通の対称スケールにする（固定値ではなく、実際の差分値の絶対値の最大値を使う）
+rail_flow_diff_lim <- max(abs(unlist(lapply(scn_rail_diff_maps, function(d) d$flow_diff))), na.rm = TRUE)
+
+make_rail_flow_diff_map <- function(map_data, title, lim) {
+  ggplot(map_data) +
+    geom_sf(aes(linewidth = abs(flow_diff), color = flow_diff)) +
+    scale_linewidth_continuous(range = c(0.4, 3), limits = c(0, lim),
+                                transform = "sqrt",
+                                name = "鉄道利用世帯数の変化\n(|Δ 世帯/日|)") +
+    scale_color_gradient2(low = "blue", mid = "gray85", high = "red", midpoint = 0,
+                           limits = c(-lim, lim), oob = scales::squish,
+                           name = "鉄道利用世帯数の変化\n(Δ 世帯/日)") +
+    labs(title = paste0(title, "：鉄道利用者数差分")) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA),
+          panel.background = element_rect(fill = "gray80", color = NA))
+}
+
+rail_flow_diff_plots <- Map(function(d, t) make_rail_flow_diff_map(d, t, rail_flow_diff_lim),
+                             scn_rail_diff_maps, diff_titles_rail[names(scn_rail_diff_maps)])
+
+combined_rail_flow_diff_map <- rail_flow_diff_plots$scn1 + rail_flow_diff_plots$scn2 +
+  plot_layout(ncol = 2, guides = "collect")
+print(combined_rail_flow_diff_map)
+ggsave("project_log/scenario-analysis/plots/scenario_rail_flow_diff_maps.png",
+       plot = combined_rail_flow_diff_map, width = 12, height = 6, dpi = 150)
+
+for (scn_name in names(scn_rail_diff_maps)) {
+  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_rail_flow_diff_map.png", scn_name),
+         plot = rail_flow_diff_plots[[scn_name]], width = 7, height = 6, dpi = 150)
+}
+
+
+#鉄道 リンク別利用者数マップ・差分マップ（1kmメッシュ背景・試作）####
+# 上のリンク別利用者数マップ・差分マップに、1kmメッシュ（key_code_sf）の境界線を背景に重ねた版。
+# 道路の「主要道路のみ・1kmメッシュ背景」版（scenario_flow_diff_maps_major_mesh.png等）と同じ
+# パターン。既存の（メッシュなし）版はそのまま残し、ファイル名に "_mesh" を付けて別出力する。
+
+make_rail_flow_map_mesh <- function(map_data, title) {
+  ggplot(map_data) +
+    geom_sf(data = key_code_sf, fill = NA, color = "gray60", linewidth = 0.15, inherit.aes = FALSE) +
+    geom_sf(aes(linewidth = flow, color = flow)) +
+    scale_linewidth_continuous(range = c(0.4, 3), limits = rail_flow_range,
+                                name = "鉄道利用世帯数\n(世帯/日)") +
+    scale_color_viridis_c(option = "viridis", limits = rail_flow_range,
+                           oob = scales::squish, name = "鉄道利用世帯数\n(世帯/日)") +
+    labs(title = title) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA))
+}
+
+scn_rail_flow_plots_mesh <- Map(make_rail_flow_map_mesh, scn_rail_maps, scn_titles[names(scn_rail_maps)])
+
+combined_rail_flow_map_mesh <- scn_rail_flow_plots_mesh$scn0 + scn_rail_flow_plots_mesh$scn1 + scn_rail_flow_plots_mesh$scn2 +
+  plot_layout(ncol = 3, guides = "collect")
+print(combined_rail_flow_map_mesh)
+ggsave("project_log/scenario-analysis/plots/scenario_rail_flow_maps_mesh.png",
+       plot = combined_rail_flow_map_mesh, width = 18, height = 6, dpi = 150)
+
+for (scn_name in names(scn_rail_flow_plots_mesh)) {
+  ggsave(sprintf("project_log/scenario-analysis/plots/%s_rail_flow_map_mesh.png", scn_name),
+         plot = scn_rail_flow_plots_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
+}
+
+make_rail_flow_diff_map_mesh <- function(map_data, title, lim) {
+  ggplot(map_data) +
+    geom_sf(data = key_code_sf, fill = NA, color = "gray60", linewidth = 0.15, inherit.aes = FALSE) +
+    geom_sf(aes(linewidth = abs(flow_diff), color = flow_diff)) +
+    scale_linewidth_continuous(range = c(0.4, 3), limits = c(0, lim),
+                                transform = "sqrt",
+                                name = "鉄道利用世帯数の変化\n(|Δ 世帯/日|)") +
+    scale_color_gradient2(low = "blue", mid = "gray85", high = "red", midpoint = 0,
+                           limits = c(-lim, lim), oob = scales::squish,
+                           name = "鉄道利用世帯数の変化\n(Δ 世帯/日)") +
+    labs(title = paste0(title, "：鉄道利用者数差分（1kmメッシュ）")) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA),
+          panel.background = element_rect(fill = "gray80", color = NA))
+}
+
+rail_flow_diff_plots_mesh <- Map(function(d, t) make_rail_flow_diff_map_mesh(d, t, rail_flow_diff_lim),
+                                  scn_rail_diff_maps, diff_titles_rail[names(scn_rail_diff_maps)])
+
+combined_rail_flow_diff_map_mesh <- rail_flow_diff_plots_mesh$scn1 + rail_flow_diff_plots_mesh$scn2 +
+  plot_layout(ncol = 2, guides = "collect")
+print(combined_rail_flow_diff_map_mesh)
+ggsave("project_log/scenario-analysis/plots/scenario_rail_flow_diff_maps_mesh.png",
+       plot = combined_rail_flow_diff_map_mesh, width = 12, height = 6, dpi = 150)
+
+for (scn_name in names(scn_rail_diff_maps)) {
+  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_rail_flow_diff_map_mesh.png", scn_name),
+         plot = rail_flow_diff_plots_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
+}
 
 
 #total ar
