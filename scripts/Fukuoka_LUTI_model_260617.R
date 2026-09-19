@@ -432,7 +432,7 @@ dists0.road=dists0
 # E:/WorkDir01/prog/R/2025/2025_LUTI_Fukuoka_Ooi/Fukuoka_OSM_03.R
 load("data/railway_dist.xdr") # dists0, minutes per one way: do not depend on traffic　ここでdists0filter前に戻ってる
 dists0.rail=dists0
-dists0 <- dists0.road
+dists0 <- dists0.road 
 # 260824: dists0.railはkey_code_sf由来のゾーン集合で再構築しており、valid_res_rows/valid_work_cols
 # （道路dists0の元の行数・順序が前提）と行数が一致しない場合があるため、位置ベースではなく
 # 名前ベースで絞り込む（mc_50300426のようにdists0.rail側に元々存在しないゾーンがあっても安全）。
@@ -570,7 +570,7 @@ link10=link10 %>% mutate(FFtime=linklen/maxspeed*60/10^3) %>%  # fftime (minutes
 nodes=data.frame(node10$ID,st_coordinates(node10))
 names(nodes)=c("Node","X","Y")
 
-sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(),
+sgr <- makegraph(df = link10[,c("ID1", "ID2", "FFtime")] %>% st_drop_geometry(), 
                  directed = TRUE,
                  # capacity = 10^4,
                  capacity = link10$cap/KK,
@@ -732,1064 +732,105 @@ proc.time()-tt0
 
 
 
-#GA####
-if(FALSE){ # 260807方針: k_i逆算・緩和法・GA前検証・GA本番実行の試行錯誤コード一式。
-# 削除はせずコードは残すが、今回は実行しない（k_iは固定値0.1、他パラメータはproject_log/calibration/02_ga-800dim/ga_result.RDataのbest_xを使用）。
-# --- 世帯数（国勢調査）---
-# 元コードL.1020〜1025と同じ処理
-csv.household <- "data/raw/国勢調査_人口及び世帯数_1kmメッシュ/tblT001100S5030.csv"
-household <- read.csv(
-  csv.household,
-  fileEncoding = "CP932",
-  stringsAsFactors = FALSE,
-  na.strings = c("", "NA")
-) %>%
-  dplyr::select(KEY_CODE, T001100035) %>%
-  dplyr::rename(obs_hh = "T001100035") %>%
-  dplyr::mutate(KEY_CODE = as.character(KEY_CODE),
-                obs_hh = as.numeric(obs_hh))
-household <- household[-1, ]
-
-# --- 家賃・床面積（@homeデータ）---
-# 元コードL.1085〜1094, L.1129〜1136と同じ処理
-load("data/athome_crop.xdr")
-
-athome_df <- athome_crop %>%
-  dplyr::select(rent, room_ar, KEY_CODE) %>%
-  mutate(rent_par_ar = rent / room_ar) %>%
-  st_drop_geometry() %>%
-  group_by(KEY_CODE) %>%
-  summarise(avg_rent = mean(rent_par_ar, na.rm = TRUE))
-  # 単位：円/m2（モデルのr_bar_iは千円/m2なので比較時に×1000）
-
-athome_ar <- athome_crop %>%
-  dplyr::select(KEY_CODE, room_ar) %>%
-  st_drop_geometry() %>%
-  group_by(KEY_CODE) %>%
-  summarise(avg_room_ar = mean(room_ar, na.rm = TRUE))
-  # 単位：m2
-
-# アットホームサンプル数確認
-athome_count <- athome_crop %>%
-  st_drop_geometry() %>%
-  group_by(KEY_CODE) %>%
-  summarise(n_sample = n())  # ゾーンごとのサンプル数
-
-athome_unreliable <- key_code_sf %>%
-  left_join(athome_count, by = "KEY_CODE") %>%
-  mutate(sample_status = if_else(n_sample < 5 , "less5", "over5"))
-
-# ==== キャリブレーションログ用：出力フォルダの準備 ====
-# ここから先で作る図は project_log/calibration/<試行フォルダ>/plots/ に保存する。
-# project_log/calibration/README.md 参照。
-calib_stage_dirs <- c(
-  "03_ki-backward-calc",
-  "04_ki-outlier-crop-kriging",
-  "05_ki-relaxation"
-)
-for (calib_d in calib_stage_dirs) {
-  dir.create(file.path("project_log", "calibration", calib_d, "plots"), recursive = TRUE, showWarnings = FALSE)
-}
-
-ggplot() +
-  geom_sf(data = athome_unreliable, aes(fill = sample_status), color = NA) +
-  scale_fill_manual(
-    values = c("less5" = "red", "over5" = "gray80")
-  ) +
-  labs(
-    title = "Zone Classification by Sample Size",
-    fill = "Status"
-  ) +
-  theme_minimal()
-ggsave("project_log/calibration/03_ki-backward-calc/plots/athome_sample_reliability.png", width = 6, height = 5.5, dpi = 150)
-
-
-# calculate backward k_i
-# ---- Step 1：k_i を逆算 ----
-
-# 観測総床面積の作成
-# athome_ar$avg_room_ar：ゾーンごとの平均床面積（m²/戸）
-# household$obs_hh     ：ゾーンごとの世帯数（戸）
-obs_floor_total <- athome_ar %>%
-  left_join(household, by = "KEY_CODE") %>%
-  mutate(obs_A_Fi = avg_room_ar * obs_hh) %>%   # 平均床面積 × 世帯数
-  dplyr::select(KEY_CODE, obs_A_Fi, avg_room_ar)
-
-
-obs_floor_total_sf <- key_code_sf %>%
-  left_join(obs_floor_total, by = "KEY_CODE")
-
-ggplot2::ggplot() +
-  geom_sf(data = obs_floor_total_sf, aes(fill = obs_A_Fi), color = NA) +
-  scale_fill_viridis_c(option = "plasma", na.value = "gray90") +
-  labs(title = "Observed Total Floor Area (by Zone)", fill = "Total Floor Area (m²)") +
-  theme_minimal()
-ggsave("project_log/calibration/03_ki-backward-calc/plots/observed_floor_area.png", width = 6, height = 5.5, dpi = 150)
-
-# r_bar_i として観測家賃を使う（単位を合わせる：円/m2 → 千円/m2）
-obs_rent_ki <- athome_df %>%
-  mutate(r_bar_i_obs = avg_rent / 1000) %>%      # 円/m2 → 千円/m2
-  dplyr::select(KEY_CODE, r_bar_i_obs)
-
-# ゾーン順序（dists0の行順）でデータを整理
-zone_ids <- rownames(dists0) %>% gsub("^mc_", "", .)
-
-ki_input <- tibble(KEY_CODE = zone_ids) %>%
-  left_join(obs_floor_total, by = "KEY_CODE") %>%
-  left_join(obs_rent_ki,     by = "KEY_CODE")
-
-cat("obs_A_Fi が存在するゾーン数:", sum(!is.na(ki_input$obs_A_Fi)), "\n")
-cat("r_bar_i_obs が存在するゾーン数:", sum(!is.na(ki_input$r_bar_i_obs)), "\n")
-
-# ---- uniroot で各ゾーンの k_i を逆算 ----
-k_i_estimated <- numeric(nz_res)
-
-for (i in seq_len(nz_res)) {
-  
-  r_bar_i_i  <- ki_input$r_bar_i_obs[i]
-  G0_i_i     <- G0_i[i]
-  obs_A_Fi_i <- ki_input$obs_A_Fi[i]
-  
-  if (is.na(obs_A_Fi_i) | is.na(r_bar_i_i) |
-      obs_A_Fi_i <= 0   | r_bar_i_i <= 0   | G0_i_i <= 0) {
-    k_i_estimated[i] <- 0.1
-    next
-  }
-  
-  # f(k_i) = A_Fi(k_i) - A_Fi_obs = 0 を解く
-  # local() で環境を固定し、クロージャの問題を回避
-  result <- local({
-    r   <- r_bar_i_i
-    G   <- G0_i_i
-    obs <- obs_A_Fi_i
-    
-    f <- function(ki) {
-      pg   <- gamma_1 / (1 - gamma_1)
-      rg_i <- phi * (1 - gamma_1) *
-              (r * gamma_0) ^ (1 / (1 - gamma_1)) *
-              (gamma_1 / ki) ^ pg
-      G_i  <- G * exp(theta_L * (rg_i - rr_a)) /
-               (1 + exp(theta_L * (rg_i - rr_a))) * phi_pub * phi
-      A_Fi <- gamma_0 * (r * gamma_0 * gamma_1 / ki) ^ pg * G_i
-      return(A_Fi - obs)
-    }
-    
-    tryCatch(
-      uniroot(f, interval = c(0.01, 0.5), tol = 1e-8),
-      error = function(e) NULL
-    )
-  })
-  
-  k_i_estimated[i] <- if (!is.null(result)) result$root else 0.1
-}
-
-cat("解が求まったゾーン数:", sum(k_i_estimated != 0.1), "\n")
-cat("k_i_estimatedの範囲:", range(k_i_estimated), "\n")
-
-cat("k_i_estimated の範囲:", range(k_i_estimated), "\n")
-cat("uniroot 失敗（初期値0.1のまま）のゾーン数:",
-    sum(k_i_estimated == 0.1), "\n")
-
-hist(k_i_estimated, main = "Distribution of Back-calculated k_i", xlab = "k_i")
-png("project_log/calibration/03_ki-backward-calc/plots/k_i_estimated_hist.png", width = 900, height = 750, res = 150)
-hist(k_i_estimated, main = "Distribution of Back-calculated k_i", xlab = "k_i")
-dev.off()
-
-
-
-# ki クリギング####
-# install.packages("gstat")
-# install.packages("sp")
-library(gstat)
-library(sp)
-library(sf)
-
-# ---- クリギングの準備 ----
-
-# k_i_estimated とゾーンのKEY_CODEを対応づける
-zone_ids <- rownames(dists0) %>% gsub("^mc_", "", .)
-
-k_i_df <- tibble(
-  KEY_CODE = zone_ids,
-  k_i      = k_i_estimated,
-  # uniroot成功したゾーン（=観測データあり）かどうかのフラグ
-  has_data = (k_i_estimated != 0.1) & !is.na(k_i_estimated)
-)
-cat("has_data = TRUE のゾーン数:", sum(k_i_df$has_data), "\n") # OK, データあり341ゾーン
-
-# ---- 外れ値（上下5%）の判定 ----
-# 逆算に成功したゾーン（has_data==TRUE）のk_iの上下5%を外れ値とし、
-# クリギングの学習データからは除外して、代わりに補間対象に含める
-q_low  <- quantile(k_i_df$k_i[k_i_df$has_data], probs = 0.05, na.rm = TRUE)
-q_high <- quantile(k_i_df$k_i[k_i_df$has_data], probs = 0.95, na.rm = TRUE)
-
-k_i_df <- k_i_df %>%
-  mutate(
-    is_outlier    = has_data & (k_i < q_low | k_i > q_high),
-    # クリギングの学習データとして使うか（外れ値は除く）
-    use_for_krige = has_data & !is_outlier
-  )
-
-cat("外れ値の範囲（上下5%）:", q_low, "-", q_high, "\n")
-cat("外れ値として除外したゾーン数:", sum(k_i_df$is_outlier), "\n")
-
-# key_code_sfにk_iを結合（空間情報を持たせる）
-k_i_sf <- key_code_sf %>%
-  left_join(k_i_df, by = "KEY_CODE") %>%
-  mutate(centroid = st_centroid(geometry))  # メッシュの重心座標
-
-# 重心座標を取り出す
-coords <- st_coordinates(st_centroid(k_i_sf))
-k_i_sf <- k_i_sf %>%
-  mutate(x = coords[, 1], y = coords[, 2])
-
-# ---- 外れ値カット前のk_iの空間分布を確認（データなしゾーンは除く）----
-ggplot(k_i_sf %>% filter(has_data == TRUE)) +
-  geom_sf(aes(fill = k_i), color = "gray50", linewidth = 0.1) +
-  scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
-  labs(title = "Spatial Distribution of k_i (Before Outlier Removal)") +
-  theme_void()
-ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/k_i_spatial_before_outlier.png", width = 6, height = 5.5, dpi = 150)
-
-# ---- 外れ値カット後（クリギング補完前）のk_iの空間分布を確認（データなしゾーンは除く）----
-ggplot(k_i_sf %>% filter(use_for_krige == TRUE)) +
-  geom_sf(aes(fill = k_i), color = "gray50", linewidth = 0.1) +
-  scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
-  labs(title = "Spatial Distribution of k_i (After Outlier Removal, Before Kriging)") +
-  theme_void()
-ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/k_i_spatial_after_outlier_before_kriging.png", width = 6, height = 5.5, dpi = 150)
-
-# ---- 観測あり・なしに分ける ----
-# クリギングの学習データ：観測あり かつ 外れ値（上下5%）でないゾーン
-k_i_obs <- k_i_sf %>%
-  filter(use_for_krige == TRUE, !is.na(k_i)) %>%
-  st_drop_geometry()
-
-# 補間対象：観測なしゾーン + 外れ値として除外したゾーン
-k_i_pred <- k_i_sf %>%
-  filter(use_for_krige == FALSE | is.na(k_i)) %>%
-  st_drop_geometry()
-
-cat("観測あり（クリギングの入力、外れ値除く）:", nrow(k_i_obs), "ゾーン\n")
-cat("観測なし＋外れ値（補間対象）:", nrow(k_i_pred), "ゾーン\n")
-
-# ---- sp形式に変換（gstatが必要とする形式）----
-coordinates(k_i_obs)  <- ~x + y
-coordinates(k_i_pred) <- ~x + y
-
-# ---- バリオグラムの推定 ----
-# k_iの空間的ばらつきのパターンを学習する
-vgm_emp <- variogram(k_i ~ 1, data = k_i_obs)
-plot(vgm_emp, main = "Empirical Variogram")
-png("project_log/calibration/04_ki-outlier-crop-kriging/plots/variogram_empirical.png", width = 900, height = 750, res = 150)
-plot(vgm_emp, main = "Empirical Variogram")
-dev.off()
-
-# バリオグラムモデルをフィット（球面モデルが一般的だが、他のモデルも試せるようにしておく）
-# selected_vgm_model を変えるだけでモデルを切り替えられる
-# "Sph"=球面, "Exp"=指数, "Gau"=ガウシアン, "Mat"=マテルン, "Lin"=線形, "auto"=SSE最小のモデルを自動選択
-selected_vgm_model <- "Sph"
-
-vgm_candidates <- list(
-  Sph = vgm(psill = var(k_i_obs$k_i), model = "Sph", range = 10000, nugget = 0),
-  Exp = vgm(psill = var(k_i_obs$k_i), model = "Exp", range = 10000, nugget = 0),
-  Gau = vgm(psill = var(k_i_obs$k_i), model = "Gau", range = 10000, nugget = 0),
-  Mat = vgm(psill = var(k_i_obs$k_i), model = "Mat", range = 10000, nugget = 0, kappa = 0.5),
-  Lin = vgm(psill = var(k_i_obs$k_i), model = "Lin", range = 10000, nugget = 0)
-)
-
-if (selected_vgm_model == "auto") {
-  # 各モデルをフィットし、SSE（当てはまり誤差）が最小のものを自動選択
-  vgm_comparison <- do.call(rbind, lapply(names(vgm_candidates), function(m) {
-    fit <- fit.variogram(vgm_emp, model = vgm_candidates[[m]])
-    data.frame(model = m, SSErr = attr(fit, "SSErr"))
-  }))
-  vgm_comparison <- vgm_comparison[order(vgm_comparison$SSErr), ]
-  print(vgm_comparison)
-  best_model <- vgm_comparison$model[1]
-  cat("自動選択されたバリオグラムモデル:", best_model, "\n")
-  vgm_fit <- fit.variogram(vgm_emp, model = vgm_candidates[[best_model]])
-} else {
-  vgm_fit <- fit.variogram(vgm_emp, model = vgm_candidates[[selected_vgm_model]])
-}
-
-print(vgm_fit)
-plot(vgm_emp, vgm_fit, main = paste("Variogram Model Fit -", selected_vgm_model))
-png("project_log/calibration/04_ki-outlier-crop-kriging/plots/variogram_fit.png", width = 900, height = 750, res = 150)
-plot(vgm_emp, vgm_fit, main = paste("Variogram Model Fit -", selected_vgm_model))
-dev.off()
-
-# ---- クリギング補間 ----
-k_i_kriged <- krige(
-  formula   = k_i ~ 1,      # 通常クリギング（トレンドなし）
-  locations = k_i_obs,       # 観測データ（入力）
-  newdata   = k_i_pred,      # 補間対象ゾーン
-  model     = vgm_fit
-)
-
-cat("クリギング補間完了\n")
-cat("補間値の範囲:", range(k_i_kriged$var1.pred), "\n")
-
-# ---- 補間値をk_i_estimatedに反映 ----
-# 観測あり（外れ値除く）ゾーン：逆算値をそのまま使う
-# 観測なし・外れ値ゾーン：クリギング補間値を使う
-
-k_i_pred_df <- tibble(
-  KEY_CODE = k_i_pred$KEY_CODE,
-  k_i_kriged = pmax(k_i_kriged$var1.pred, 0.01)  # 負の値を防ぐ下限
-)
-
-k_i_final <- k_i_df %>%
-  left_join(k_i_pred_df, by = "KEY_CODE") %>%
-  mutate(
-    k_i_final = case_when(
-      use_for_krige == TRUE  ~ k_i,            # 観測あり（外れ値除く）：逆算値
-      use_for_krige == FALSE ~ k_i_kriged,     # 観測なし・外れ値：クリギング補間値
-      TRUE                    ~ 0.1             # それ以外：初期値
-    )
-  )
-
-# k_iのベクトルとして取り出す（dists0の行順）
-k_i_estimated_final <- k_i_final$k_i_final
-cat("最終的なk_iの範囲:", range(k_i_estimated_final, na.rm=TRUE), "\n")
-
-# ---- 外れ値カット後（クリギング補完後）の全ゾーンのk_iの空間分布を確認 ----
-k_i_map <- key_code_sf %>%
-  left_join(k_i_final %>% dplyr::select(KEY_CODE, k_i_final, has_data),
-            by = "KEY_CODE")
-
-ggplot(k_i_map) +
-  geom_sf(aes(fill = k_i_final), color = "gray50", linewidth = 0.1) +
-  scale_fill_viridis_c(option = "plasma", direction = -1,
-                        name = "k_i") +
-  labs(title = "Spatial Distribution of k_i (After Outlier Removal and Kriging, All Zones)") +
-  theme_void()
-ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/k_i_spatial_after_kriging_all_zones.png", width = 6, height = 5.5, dpi = 150)
-
-# k_iをグローバル変数として固定
-k_i <- k_i_estimated_final
-
-
-# ==== k_iの逐次推定（緩和法）####
-# 発想：
-#   観測値 (Afi*, r_i*) と、現在のKで解いたモデル整合解 (Afi°, r_i°) を
-#   交互に使ってゾーンごとにKを再推定し、緩和（successive averaging）しながら
-#   Kが収束するまで繰り返す。
-#
-#   ・対象ゾーンは @home データが実際にあるゾーン（has_data==TRUE）のみ。
-#     クリギング補完値（k_i_estimated_final）は本手法では一切使わない。
-#   ・K0 は観測値 (Afi*, r_i*) から直接逆算した k_i_estimated（クリギング前）。
-#
-#   ① K_(t-1) でLUTI均衡を解き、モデル整合的な (Afi°, r_i°) を得る
-#   ② has_data==TRUEの各ゾーンiで、以下を同時に最小化するKを求める
-#        (Afi(K | r_i°) - Afi*_i)^2 + (r_i(K | Afi°) - r_i*_i)^2
-#      → 候補 K~_t
-#   ③ 緩和更新： K_t = alpha_relax * K_(t-1) + (1 - alpha_relax) * K~_t
-#   ④ Σ|K_t - K_(t-1)| < eps_relax となるまで①〜③を繰り返す（has_dataゾーンのみで集計）
-
-# ---- Kの探索範囲・緩和パラメータ ----
-k_lower_relax  <- 0.01
-k_upper_relax  <- 0.4
-alpha_relax    <- 0.5     # 緩和係数：K_(t-1)側の重み（大きいほど更新が保守的）
-eps_relax      <- 1e-3    # 収束判定：Σ|K_t - K_(t-1)|（has_dataゾーンのみ）
-max_iter_relax <- 80
-
-# ---- 観測ターゲット（ki_inputはdists0の行順=ゾーン順に整列済み）----
-Afi_star   <- ki_input$obs_A_Fi        # 観測：総床面積（=平均床面積×世帯数）
-r_star     <- ki_input$r_bar_i_obs     # 観測：家賃（千円/m2）
-
-# 対象ゾーン：@homeデータが実際にあるゾーンのみ（クリギング補完対象は除外）
-valid_zone <- k_i_df$has_data
-
-# ---- モデルの床面積関数 A_Fi(K, r)（eq.14, eq.15と同一）----
-model_A_Fi <- function(K, r, G0) {
-  pg   <- gamma_1 / (1 - gamma_1)
-  rg_i <- phi * (1 - gamma_1) * (r * gamma_0) ^ (1 / (1 - gamma_1)) * (gamma_1 / K) ^ pg
-  G_i  <- G0 * exp(theta_L * (rg_i - rr_a)) / (1 + exp(theta_L * (rg_i - rr_a))) * phi_pub * phi
-  gamma_0 * ((r * gamma_0 * gamma_1) / K) ^ pg * G_i
-}
-
-# ---- A_Fi(K, r) = A_target を r について解く（Kを固定した時の整合家賃）----
-model_r_from_AFi <- function(K, A_target, G0, r_interval = c(1e-3, 100)) {
-  f <- function(r) model_A_Fi(K, r, G0) - A_target
-  tryCatch(
-    uniroot(f, interval = r_interval, tol = 1e-8)$root,
-    error = function(e) NA_real_
-  )
-}
-
-# ---- ゾーンiの目的関数：床面積式の残差^2 + 家賃式の残差^2 ----
-zone_objective <- function(K, r0, A0, G0, A_target, r_target) {
-  term_A <- (model_A_Fi(K, r0, G0) - A_target) ^ 2
-  r_hat  <- model_r_from_AFi(K, A0, G0)
-  term_r <- if (is.na(r_hat)) 1e6 else (r_hat - r_target) ^ 2
-  term_A + term_r
-}
-
-# ---- 反復（緩和法）本体 ----
-# K0：観測値から直接逆算した値（クリギング前）。has_data==FALSEのゾーンは
-#     uniroot失敗時のフォールバック値0.1のままだが、これらは③で更新対象外。
-K_current <- k_i_estimated
-
-for (t in seq_len(max_iter_relax)) {
-
-  cat("=== k_i 逐次推定（緩和法） iteration", t, "===\n")
-
-  # ① 現在のKでLUTI均衡を解き、モデル整合的な (Afi°, r_i°) を得る
-  k_i <- K_current
-  res_relax <- nleqslv(
-    x       = v_start,
-    fn      = gapf_vj,
-    global  = "dbldog",
-    control = list(ftol = 1e-8, xtol = 1e-8, maxit = 200)
-  )
-  state_relax <- caluculate_model_state(exp(res_relax$x))
-
-  r0_vec <- state_relax$r_bar_i
-  A0_vec <- rowSums(state_relax$a_fij_H * state_relax$l_i_j, na.rm = TRUE)
-
-  # ② has_data==TRUEのゾーンのみ、Kの候補 K~_t を再推定
-  K_tilde <- K_current
-  for (i in which(valid_zone)) {
-    opt <- optimize(
-      zone_objective,
-      interval = c(k_lower_relax, k_upper_relax),
-      r0       = r0_vec[i],
-      A0       = A0_vec[i],
-      G0       = G0_i[i],
-      A_target = Afi_star[i],
-      r_target = r_star[i]
-    )
-    K_tilde[i] <- opt$minimum
-  }
-
-  # ③ 緩和更新（successive averaging）： K_t = alpha*K_(t-1) + (1-alpha)*K~_t
-  #    has_data==FALSEのゾーンはK_tilde==K_currentのまま＝更新されない
-  K_new <- alpha_relax * K_current + (1 - alpha_relax) * K_tilde
-
-  # ④ 収束判定（has_dataゾーンのみで集計）
-  diff_relax <- sum(abs(K_new[valid_zone] - K_current[valid_zone]), na.rm = TRUE)
-  cat("  Sigma|K_t - K_(t-1)| (has_dataゾーンのみ) =", diff_relax, "\n")
-
-  K_current <- K_new
-
-  if (diff_relax < eps_relax) {
-    cat("収束しました（iteration", t, "）\n")
-    break
-  }
-}
-
-k_i_relax_final <- K_current   # has_data==TRUEのゾーンのみ更新済み、他は0.1のまま
-k_i <- k_i_relax_final         # グローバルのk_iを更新（以降のモデル実行で使用）
-
-cat("\n最終的なk_i（緩和法・has_dataゾーンのみ）の範囲:\n")
-print(summary(k_i_relax_final[valid_zone]))
-hist(k_i_relax_final[valid_zone],
-     main = "Distribution of k_i After Iterative Estimation (Relaxation Method, has_data Zones Only)",
-     xlab = "k_i")
-png("project_log/calibration/05_ki-relaxation/plots/k_i_relax_hist.png", width = 900, height = 750, res = 150)
-hist(k_i_relax_final[valid_zone],
-     main = "Distribution of k_i After Iterative Estimation (Relaxation Method, has_data Zones Only)",
-     xlab = "k_i")
-dev.off()
-
-
-# ==== 緩和法k_i（has_dataゾーン）をクリギングで全ゾーンへ拡張 ####
-# 反復法（緩和法）ではhas_data==TRUEのゾーンのみKを更新しており、
-# それ以外のゾーンはk_i_estimatedのフォールバック値(0.1)のままになっている。
-# ここでは有効ゾーン（has_data==TRUE）の緩和法推定値をそのまま学習データとして
-# 空間クリギングを行い、それ以外のゾーン（データなし）のkappaを補完する。
-# gstat/sp/sfはL.810-812で読み込み済み。
-
-# ---- 緩和法k_iをデータフレーム化（zone_idsはL.817と同じdists0行順）----
-k_i_relax_df <- tibble(
-  KEY_CODE = zone_ids,
-  k_i      = k_i_relax_final,
-  has_data = valid_zone   # 反復法で実際に更新したゾーンか
-)
-cat("[緩和法k_i] has_data==TRUEのゾーン数:", sum(k_i_relax_df$has_data), "\n")
-
-# ---- 空間情報の付与（重心座標）----
-k_i_relax_sf <- key_code_sf %>%
-  left_join(k_i_relax_df, by = "KEY_CODE") %>%
-  mutate(centroid = st_centroid(geometry))
-
-coords_relax <- st_coordinates(st_centroid(k_i_relax_sf))
-k_i_relax_sf <- k_i_relax_sf %>%
-  mutate(x = coords_relax[, 1], y = coords_relax[, 2])
-
-# ---- 観測あり（has_data==TRUE）／なし（has_data==FALSE）に分割 ----
-k_i_relax_obs <- k_i_relax_sf %>%
-  filter(has_data == TRUE, !is.na(k_i)) %>%
-  st_drop_geometry()
-
-k_i_relax_pred <- k_i_relax_sf %>%
-  filter(has_data == FALSE | is.na(k_i)) %>%
-  st_drop_geometry()
-
-cat("[緩和法k_i] クリギング学習データ:", nrow(k_i_relax_obs), "ゾーン\n")
-cat("[緩和法k_i] 補完対象（データなし）:", nrow(k_i_relax_pred), "ゾーン\n")
-
-coordinates(k_i_relax_obs)  <- ~x + y
-coordinates(k_i_relax_pred) <- ~x + y
-
-# ---- バリオグラム推定・フィット（球面モデルが一般的だが、他のモデルも試せるようにしておく）----
-# selected_vgm_model_relax を変えるだけでモデルを切り替えられる
-# "Sph"=球面, "Exp"=指数, "Gau"=ガウシアン, "Mat"=マテルン, "Lin"=線形, "auto"=SSE最小のモデルを自動選択
-selected_vgm_model_relax <- "auto"
-
-vgm_emp_relax <- variogram(k_i ~ 1, data = k_i_relax_obs)
-
-vgm_candidates_relax <- list(
-  Sph = vgm(psill = var(k_i_relax_obs$k_i), model = "Sph", range = 10000, nugget = 0),
-  Exp = vgm(psill = var(k_i_relax_obs$k_i), model = "Exp", range = 10000, nugget = 0),
-  Gau = vgm(psill = var(k_i_relax_obs$k_i), model = "Gau", range = 10000, nugget = 0),
-  Mat = vgm(psill = var(k_i_relax_obs$k_i), model = "Mat", range = 10000, nugget = 0, kappa = 0.5),
-  Lin = vgm(psill = var(k_i_relax_obs$k_i), model = "Lin", range = 10000, nugget = 0)
-)
-
-if (selected_vgm_model_relax == "auto") {
-  # 各モデルをフィットし、SSE（当てはまり誤差）が最小のものを自動選択
-  vgm_comparison_relax <- do.call(rbind, lapply(names(vgm_candidates_relax), function(m) {
-    fit <- fit.variogram(vgm_emp_relax, model = vgm_candidates_relax[[m]])
-    data.frame(model = m, SSErr = attr(fit, "SSErr"))
-  }))
-  vgm_comparison_relax <- vgm_comparison_relax[order(vgm_comparison_relax$SSErr), ]
-  print(vgm_comparison_relax)
-  best_model_relax <- vgm_comparison_relax$model[1]
-  cat("自動選択されたバリオグラムモデル（緩和法）:", best_model_relax, "\n")
-  vgm_fit_relax <- fit.variogram(vgm_emp_relax, model = vgm_candidates_relax[[best_model_relax]])
-} else {
-  vgm_fit_relax <- fit.variogram(vgm_emp_relax, model = vgm_candidates_relax[[selected_vgm_model_relax]])
-}
-
-print(vgm_fit_relax)
-plot(vgm_emp_relax, vgm_fit_relax, main = paste("Variogram Model Fit (Relaxation Method k_i) -", selected_vgm_model_relax))
-png("project_log/calibration/05_ki-relaxation/plots/variogram_fit_relax.png", width = 900, height = 750, res = 150)
-plot(vgm_emp_relax, vgm_fit_relax, main = paste("Variogram Model Fit (Relaxation Method k_i) -", selected_vgm_model_relax))
-dev.off()
-
-# ---- クリギング補間 ----
-k_i_relax_kriged <- krige(
-  formula   = k_i ~ 1,
-  locations = k_i_relax_obs,
-  newdata   = k_i_relax_pred,
-  model     = vgm_fit_relax
-)
-cat("[緩和法k_i] クリギング補間完了\n")
-cat("[緩和法k_i] 補間値の範囲:", range(k_i_relax_kriged$var1.pred), "\n")
-
-# ---- 補間値を反映して全ゾーン分のk_iベクトルを作成 ----
-k_i_relax_pred_df <- tibble(
-  KEY_CODE   = k_i_relax_pred$KEY_CODE,
-  k_i_kriged = pmax(k_i_relax_kriged$var1.pred, 0.01)   # 負値を防ぐ下限
-)
-
-k_i_relax_final_all <- k_i_relax_df %>%
-  left_join(k_i_relax_pred_df, by = "KEY_CODE") %>%
-  mutate(
-    k_i_final = case_when(
-      has_data == TRUE  ~ k_i,          # 有効ゾーン：緩和法の推定値
-      has_data == FALSE ~ k_i_kriged,   # データなし：クリギング補間値
-      TRUE               ~ 0.1
-    )
-  )
-
-# k_iのベクトルとして取り出す（dists0の行順）
-k_i_relax_kriged_final <- k_i_relax_final_all$k_i_final
-cat("[緩和法k_i] クリギング後の最終k_i範囲:", range(k_i_relax_kriged_final, na.rm = TRUE), "\n")
-
-k_i_relax_map <- key_code_sf %>%
-  left_join(k_i_relax_final_all %>% dplyr::select(KEY_CODE, k_i_final, has_data),
-            by = "KEY_CODE")
-
-ggplot(k_i_relax_map) +
-  geom_sf(aes(fill = k_i_final), color = "gray50", linewidth = 0.1) +
-  scale_fill_viridis_c(option = "plasma", direction = -1, name = "k_i") +
-  labs(title = "Spatial Distribution of Relaxation-Method k_i (After Kriging, All Zones)") +
-  theme_void()
-ggsave("project_log/calibration/05_ki-relaxation/plots/k_i_relax_spatial_after_kriging.png", width = 6, height = 5.5, dpi = 150)
-
-
-# ==== 緩和法k_i（クリギング後）の検証：実データとの比較 ====
-# alpha_a, gamma_0, gamma_1, theta_H, theta_L はベースライン値のまま、
-# k_iのみ「逐次推定（緩和法）＋クリギング補完」で求めた値（k_i_relax_kriged_final）を
-# 使ってLUTIループを収束まで実行し、実データ（世帯数・家賃・床面積）と比較する
-
-library(patchwork)
-library(wCorr)
-
-make_map <- function(data, fill_var, title, option, limits) {
-  ggplot(data) +
-    geom_sf(aes(fill = .data[[fill_var]]), color = "gray50", linewidth = 0.1) +
-    scale_fill_viridis_c(option = option, direction = -1,
-                         limits = limits, oob = scales::squish,
-                         labels = scales::label_comma()) +
-    labs(title = title) +
-    theme_void() +
-    theme(plot.background = element_rect(fill = "white", color = NA))
-}
-
-k_i <- k_i_relax_kriged_final
-dists0.road <- dists0   # 交通配分を毎回同じ条件から独立に収束させる
-
-flag_kirelax  <- 0
-alpha_kirelax <- 0.5
-ii_kirelax    <- 1
-tt0_kirelax   <- proc.time()
-
-while (flag_kirelax == 0) {
-  V.car  <- para[1] * dists0.road + para[2] + para[4] * parkPrice / 2
-  den    <- exp(V.bike) + exp(V.car) + exp(V.rail)
-  P.bike <- exp(V.bike) / den
-  P.car  <- exp(V.car)  / den
-  P.rail <- exp(V.rail) / den
-  agcc   <- (P.bike * V.bike + P.car * V.car + P.rail * V.rail) / para[1]
-  c_ij   <- agcc * 1.600
-  disposable_income_ij <- pmax(-c_ij + omega_j_matrix, 0)
-
-  result_nleqslv_kirelax <- nleqslv(
-    x = v_start, fn = gapf_vj,
-    global = "dbldog",
-    control = list(ftol = 1e-8, xtol = 1e-8, maxit = 200)
-  )
-  v_equilibrium_kirelax <- result_nleqslv_kirelax$x %>% exp()
-  final_state_kirelax   <- caluculate_model_state(v_equilibrium_kirelax)
-
-  ODD.car <- final_state_kirelax$l_i_j * P.car
-  trips   <- as.data.frame.table(ODD.car, responseName = "demand")
-  names(trips) <- c("from", "to", "demand")
-
-  traffic_kirelax <- assign_traffic(
-    Graph     = sgr,
-    from      = trips$from,
-    to        = trips$to,
-    demand    = trips$demand,
-    max_gap   = 1e-2,
-    algorithm = "bfw",
-    verbose   = FALSE
-  )
-  sgr2_kirelax <- makegraph(
-    df       = traffic_kirelax$data[, c("from", "to", "cost")],
-    directed = TRUE,
-    capacity = 1e4,
-    alpha    = alpha,
-    beta     = beta,
-    coords   = nodes
-  )
-  dists0.road.b <- dists0.road
-  dists1.road   <- get_distance_matrix(sgr2_kirelax,
-                                       from      = zones,
-                                       to        = centers,
-                                       algorithm = "mch")
-  dists0.road  <- alpha_kirelax * dists1.road + (1 - alpha_kirelax) * dists0.road.b
-  diff_kirelax <- sum((dists0.road.b - dists0.road) ^ 2)
-  cat("[緩和法k_i・クリギング後 検証] ii=", ii_kirelax, ", diff=", diff_kirelax, "\n")
-  ii_kirelax <- ii_kirelax + 1
-  if (diff_kirelax < 100 | ii_kirelax > 1e3) flag_kirelax <- 1
-}
-proc.time() - tt0_kirelax
-
-
-## 世帯数の比較
-est_hh_df_kirelax <- tibble(
-  KEY_CODE = rownames(final_state_kirelax$l_i_j) %>% gsub("^mc_", "", .),
-  est_hh   = rowSums(final_state_kirelax$l_i_j, na.rm = TRUE)
-)
-
-hhC_kirelax <- key_code_sf %>%
-  left_join(est_hh_df_kirelax, by = "KEY_CODE") %>%
-  left_join(household, by = "KEY_CODE") %>%
-  mutate(obs_hh = tidyr::replace_na(obs_hh, 0))
-
-r_hh_weighted_kirelax <- weightedCorr(
-  x = hhC_kirelax$obs_hh,
-  y = hhC_kirelax$est_hh,
-  weights = hhC_kirelax$obs_hh,
-  method = "Pearson"
-)
-r2_hh_weighted_kirelax <- r_hh_weighted_kirelax^2
-r2_hh_kirelax <- (cor(hhC_kirelax$obs_hh, hhC_kirelax$est_hh, use = "complete.obs"))^2
-cat("[緩和法k_i・クリギング後] 世帯数 重みつきR²:", r2_hh_weighted_kirelax, "\n")
-
-plot(hhC_kirelax$obs_hh, hhC_kirelax$est_hh,
-     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Relaxation k_i, After Kriging)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_hh_kirelax))), bty = "n", cex = 1.1)
-png("project_log/calibration/05_ki-relaxation/plots/kirelax_hh_scatter.png", width = 900, height = 750, res = 150)
-plot(hhC_kirelax$obs_hh, hhC_kirelax$est_hh,
-     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Relaxation k_i, After Kriging)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_hh_kirelax))), bty = "n", cex = 1.1)
-
-dev.off()
-
-p_hh_obs_kirelax   <- make_map(hhC_kirelax, "obs_hh", "Observed: Number of Households",           "magma", c(0, 25000))
-p_hh_model_kirelax <- make_map(hhC_kirelax, "est_hh", "Model: Number of Households (Relaxation k_i, After Kriging)", "magma", c(0, 25000))
-print(p_hh_obs_kirelax + p_hh_model_kirelax)
-ggsave("project_log/calibration/05_ki-relaxation/plots/kirelax_hh_maps.png",
-       plot = p_hh_obs_kirelax + p_hh_model_kirelax, width = 9, height = 5, dpi = 150)
-
-
-## 家賃の比較
-est_rent_df_kirelax <- tibble(
-  KEY_CODE = names(final_state_kirelax$r_bar_i) %>% gsub("^mc_", "", .),
-  est_rent = as.numeric(final_state_kirelax$r_bar_i) * 1000
-)
-
-rentC_kirelax <- key_code_sf %>%
-  left_join(athome_df, by = "KEY_CODE") %>%
-  left_join(est_rent_df_kirelax, by = "KEY_CODE") %>%
-  left_join(household, by = "KEY_CODE")
-
-rentC_kirelax_flt <- rentC_kirelax %>%
-  st_drop_geometry() %>%
-  filter(!is.na(avg_rent), !is.na(est_rent), !is.na(obs_hh),
-         avg_rent > 0, est_rent > 0, obs_hh > 0)
-
-r_rent_weighted_kirelax <- weightedCorr(
-  x = rentC_kirelax_flt$avg_rent,
-  y = rentC_kirelax_flt$est_rent,
-  weights = rentC_kirelax_flt$obs_hh,
-  method = "Pearson"
-)
-r2_rent_weighted_kirelax <- r_rent_weighted_kirelax^2
-r2_rent_kirelax <- (cor(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent))^2
-cat("[緩和法k_i・クリギング後] 家賃 重みつきR²:", r2_rent_weighted_kirelax, "\n")
-
-plot(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent,
-     xlab = "Observed: Rent", ylab = "Model: Rent (Relaxation k_i, After Kriging)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_rent_kirelax))), bty = "n", cex = 1.1)
-png("project_log/calibration/05_ki-relaxation/plots/kirelax_rent_scatter.png", width = 900, height = 750, res = 150)
-
-plot(rentC_kirelax_flt$avg_rent, rentC_kirelax_flt$est_rent,
-     xlab = "Observed: Rent", ylab = "Model: Rent (Relaxation k_i, After Kriging)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_rent_kirelax))), bty = "n", cex = 1.1)
-dev.off()
-
-p_rent_obs_kirelax   <- make_map(rentC_kirelax, "avg_rent", "Observed: Rent",           "plasma", c(0, 3200))
-p_rent_model_kirelax <- make_map(rentC_kirelax, "est_rent", "Model: Rent (Relaxation k_i, After Kriging)", "plasma", c(0, 3200))
-print(p_rent_obs_kirelax + p_rent_model_kirelax)
-ggsave("project_log/calibration/05_ki-relaxation/plots/kirelax_rent_maps.png",
-       plot = p_rent_obs_kirelax + p_rent_model_kirelax, width = 9, height = 5, dpi = 150)
-
-
-## 床面積の比較
-est_ar_vec_kirelax <- rowSums(final_state_kirelax$a_fij_H * final_state_kirelax$l_i_j, na.rm = TRUE) /
-  rowSums(final_state_kirelax$l_i_j, na.rm = TRUE)
-est_ar_df_kirelax <- tibble(
-  KEY_CODE = rownames(final_state_kirelax$a_fij_H) %>% gsub("^mc_", "", .),
-  est_ar   = est_ar_vec_kirelax
-)
-
-arC_kirelax <- key_code_sf %>%
-  left_join(athome_ar, by = "KEY_CODE") %>%
-  left_join(est_ar_df_kirelax, by = "KEY_CODE") %>%
-  left_join(household, by = "KEY_CODE")
-
-arC_kirelax_flt <- arC_kirelax %>%
-  st_drop_geometry() %>%
-  filter(!is.na(avg_room_ar), !is.na(est_ar), !is.na(obs_hh),
-         avg_room_ar > 0, est_ar > 0, obs_hh > 0)
-
-r_ar_weighted_kirelax <- weightedCorr(
-  x = arC_kirelax_flt$avg_room_ar,
-  y = arC_kirelax_flt$est_ar,
-  weights = arC_kirelax_flt$obs_hh,
-  method = "Pearson"
-)
-r2_ar_weighted_kirelax <- r_ar_weighted_kirelax^2
-r2_ar_kirelax <- (cor(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar))^2
-cat("[緩和法k_i・クリギング後] 床面積 重みつきR²:", r2_ar_weighted_kirelax, "\n")
-
-plot(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar,
-     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Relaxation k_i, After Kriging)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_ar_kirelax))), bty = "n", cex = 1.1)
-png("project_log/calibration/05_ki-relaxation/plots/kirelax_ar_scatter.png", width = 900, height = 750, res = 150)
-plot(arC_kirelax_flt$avg_room_ar, arC_kirelax_flt$est_ar,
-     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Relaxation k_i, After Kriging)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_ar_kirelax))), bty = "n", cex = 1.1)
-dev.off()
-
-p_ar_obs_kirelax   <- make_map(arC_kirelax, "avg_room_ar", "Observed: Floor Area",           "viridis", c(0, 200))
-p_ar_model_kirelax <- make_map(arC_kirelax, "est_ar",      "Model: Floor Area (Relaxation k_i, After Kriging)", "viridis", c(0, 200))
-print(p_ar_obs_kirelax + p_ar_model_kirelax)
-ggsave("project_log/calibration/05_ki-relaxation/plots/kirelax_ar_maps.png",
-       plot = p_ar_obs_kirelax + p_ar_model_kirelax, width = 9, height = 5, dpi = 150)
-
-
-# ---- 決定係数（R²）の算出（緩和法k_i：世帯数・家賃・床面積）----
-# r2_hh_kirelax / r2_rent_kirelax / r2_ar_kirelax は各散布図の直前で計算済み
-
-cat("[緩和法k_i・クリギング後] 決定係数（R²）\n")
-cat("  世帯数：", r2_hh_kirelax,   "\n")
-cat("  家賃　：", r2_rent_kirelax, "\n")
-cat("  床面積：", r2_ar_kirelax,   "\n")
-
-
-# install.packages("GA")
-# install.packages("doParallel")
+# GA較正（住宅・土地統計調査ベース、852次元＝5変数+ゾーン別k_i）####
+# project_log/calibration/07_ga-housing-survey-target/ に対応。
 library(GA)
 library(parallel)
 library(doParallel)
-library(nleqslv)
 
-# ==== GA実行前の試算 ====
-# alpha_a, gamma_0, gamma_1, theta_H, theta_L はL.360-408のベースライン値のまま、
-# k_iのみクリギング補完後の値（k_i_estimated_final）を使ってLUTIループを収束まで
-# 実行し、実データと比較する（GA較正の前の妥当性チェック）
-# 直前の「緩和法k_i」検証でグローバルk_i・dists0.roadが書き換わっているため、明示的に戻す
-k_i <- k_i_estimated_final
-dists0.road <- dists0
+# 住宅・土地統計調査の年次系列（本体L.1137でも同じものを定義している）
+yyv1 <- c(1993, 2003, 2008, 2013, 2018, 2023)
 
-flag_preGA  <- 0
-alpha_preGA <- 0.5
-ii_preGA    <- 1
-tt0_preGA   <- proc.time()
+# ---- 世帯数（国勢調査メッシュ。世帯数の目標値とメッシュ→市区町村集計の重みに使う）----
+csv.household <- "data/raw/国勢調査_人口及び世帯数_1kmメッシュ/tblT001100S5030.csv"
+household <- read.csv(csv.household, fileEncoding = "CP932", stringsAsFactors = FALSE,
+                      na.strings = c("", "NA")) %>%
+  dplyr::select(KEY_CODE, T001100035) %>%
+  dplyr::rename(obs_hh = "T001100035") %>%
+  dplyr::mutate(KEY_CODE = as.character(KEY_CODE), obs_hh = as.numeric(obs_hh))
+household <- household[-1, ]
 
-while (flag_preGA == 0) {
-  V.car  <- para[1] * dists0.road + para[2] + para[4] * parkPrice / 2
-  den    <- exp(V.bike) + exp(V.car) + exp(V.rail)
-  P.bike <- exp(V.bike) / den
-  P.car  <- exp(V.car)  / den
-  P.rail <- exp(V.rail) / den
-  agcc   <- (P.bike * V.bike + P.car * V.car + P.rail * V.rail) / para[1]
-  c_ij   <- agcc * 1.600
-  disposable_income_ij <- pmax(-c_ij + omega_j_matrix, 0)
+# ---- 市区町村単位の実データ準備（住宅・土地統計調査、2023年）----
+load("data/area.df.xdr")   # area.df, dwelling size (m2)
+load("data/hhn.df.xdr")    # hhn.df, household size (member)
+load("data/rent.df.xdr")   # rent.df, 1か月当たり家賃（円/月、２人世帯・建て方総数・家賃０円を含まない。
+                           # 借家のみ。data/raw/住宅土地統計調査_家賃/README.md参照。
+                           # scripts/build_rent_df_from_estat.R で生成）
+target_year <- 2023  # モデルの推定時点に最も近い年（06トライアルと同じ方針）
 
-  result_nleqslv_preGA <- nleqslv(
-    x = v_start, fn = gapf_vj,
-    global = "dbldog",
-    control = list(ftol = 1e-8, xtol = 1e-8, maxit = 200)
-  )
-  v_equilibrium_preGA <- result_nleqslv_preGA$x %>% exp()
-  final_state_preGA   <- caluculate_model_state(v_equilibrium_preGA)
+# extract Fukuoka-ken
+tI01 <- grep("^40", area.df$mun)
+tI02 <- grep("^40", hhn.df$mun)
 
-  ODD.car <- final_state_preGA$l_i_j * P.car
-  trips   <- as.data.frame.table(ODD.car, responseName = "demand")
-  names(trips) <- c("from", "to", "demand")
+# Area per person
+ApP <- (area.df[tI01, -1] %>% mutate(across(everything(), as.numeric))) /
+  (hhn.df[tI02, -1]  %>% mutate(across(everything(), as.numeric)))
+area_2p <- ApP * 2  # 2人世帯換算 床面積(m2)。06トライアルと同じ変換
+colnames(area_2p) <- yyv1
+area_target_mun <- tibble(mun = area.df$mun[tI01], area_2p) %>%
+  dplyr::transmute(mun, area_target_mun = .data[[as.character(target_year)]])
 
-  traffic01 <- assign_traffic(
-    Graph     = sgr,
-    from      = trips$from,
-    to        = trips$to,
-    demand    = trips$demand,
-    max_gap   = 1e-2,
-    algorithm = "bfw",
-    verbose   = FALSE
-  )
-  sgr2 <- makegraph(
-    df       = traffic01$data[, c("from", "to", "cost")],
-    directed = TRUE,
-    capacity = 1e4,
-    alpha    = alpha,
-    beta     = beta,
-    coords   = nodes
-  )
-  dists0.road.b <- dists0.road
-  dists1.road   <- get_distance_matrix(sgr2,
-                                       from      = zones,
-                                       to        = centers,
-                                       algorithm = "mch")
-  dists0.road <- alpha_preGA * dists1.road + (1 - alpha_preGA) * dists0.road.b
-  diff_preGA  <- sum((dists0.road.b - dists0.road) ^ 2)
-  cat("[GA前試算] ii=", ii_preGA, ", diff=", diff_preGA, "\n")
-  ii_preGA <- ii_preGA + 1
-  if (diff_preGA < 100 | ii_preGA > 1e3) flag_preGA <- 1
+# rent.dfは build_rent_df_from_estat.R の時点で既に「２人」世帯人員でフィルタ済み
+# （家賃は世帯人員別の統計表がそのまま存在するため、床面積のような2人世帯換算は不要）。
+# 単位は円/月なので、同じ２人世帯換算の床面積（m2）で割って円/m2/月にする
+# （モデル側のr_bar_i（千円/m2/月）×1000＝円/m2/月と比べるため）。
+# ★注意（07は承知の上で実行）：家賃は借家のみ、area_target_munは総数（持家込みと推定）なので
+# 分母が借家の実際の床面積より大きくなり、円/m2は低めに出る。
+# project_log/calibration/07_*/meta.yml のcaveats参照。
+rent_target_mun <- rent.df %>%
+  dplyr::filter(grepl("^40", mun)) %>%
+  dplyr::transmute(mun, rent_month = .data[[paste0("rent_", target_year)]]) %>%
+  dplyr::left_join(area_target_mun, by = "mun") %>%
+  dplyr::transmute(mun, rent_target_mun = rent_month / area_target_mun)  # 円/m2/月
+
+# ---- メッシュ(KEY_CODE)→市区町村の対応付け（06_housing-survey-comparisonと同じ）----
+# 市区町村境界の作成（国土数値情報N03、2023年）。詳細は data/raw/住宅土地統計調査_市区町村境界/README.md 参照。
+if(F){
+  city_raw <- st_read("data/raw/住宅土地統計調査_市区町村境界/N03-20230101_40_GML/N03-23_40_230101.shp",
+                       options = "ENCODING=CP932") %>%
+    st_transform(crs = target_crs) %>%
+    dplyr::rename(mun = N03_007, CITY_NAME = N03_004)
+  city_sf <- city_raw %>%
+    group_by(mun, CITY_NAME) %>%
+    summarise(geometry = st_union(geometry), .groups = "drop") %>%
+    st_make_valid()
+  save(city_sf, file = "data/city_sf.xdr")
 }
-proc.time() - tt0_preGA
+load("data/city_sf.xdr")
 
-
-# ---- 実データとモデル比較（GA前：クリギング後k_i、他パラメータはベースライン値）----
-library(patchwork)
-library(wCorr)
-
-make_map <- function(data, fill_var, title, option, limits) {
-  ggplot(data) +
-    geom_sf(aes(fill = .data[[fill_var]]), color = "gray50", linewidth = 0.1) +
-    scale_fill_viridis_c(option = option, direction = -1,
-                         limits = limits, oob = scales::squish,
-                         labels = scales::label_comma()) +
-    labs(title = title) +
-    theme_void() +
-    theme(plot.background = element_rect(fill = "white", color = NA))
-}
-
-## 世帯数の比較
-est_hh_df_preGA <- tibble(
-  KEY_CODE = rownames(final_state_preGA$l_i_j) %>% gsub("^mc_", "", .),
-  est_hh   = rowSums(final_state_preGA$l_i_j, na.rm = TRUE)
-)
-
-hhC_preGA <- key_code_sf %>%
-  left_join(est_hh_df_preGA, by = "KEY_CODE") %>%
-  left_join(household, by = "KEY_CODE") %>%
-  mutate(obs_hh = tidyr::replace_na(obs_hh, 0))
-
-r_hh_weighted_preGA <- weightedCorr(
-  x = hhC_preGA$obs_hh,
-  y = hhC_preGA$est_hh,
-  weights = hhC_preGA$obs_hh,
-  method = "Pearson"
-)
-r2_hh_weighted_preGA <- r_hh_weighted_preGA^2
-r2_hh_preGA <- (cor(hhC_preGA$obs_hh, hhC_preGA$est_hh, use = "complete.obs"))^2
-cat("[GA前] 世帯数 重みつきR²:", r2_hh_weighted_preGA, "\n")
-
-plot(hhC_preGA$obs_hh, hhC_preGA$est_hh,
-     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Pre-GA)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_hh_preGA))), bty = "n", cex = 1.1)
-png("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_hh_scatter.png", width = 900, height = 750, res = 150)
-plot(hhC_preGA$obs_hh, hhC_preGA$est_hh,
-     xlab = "Observed: Number of Households", ylab = "Model: Number of Households (Pre-GA)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_hh_preGA))), bty = "n", cex = 1.1)
-dev.off()
-
-p_hh_obs_preGA   <- make_map(hhC_preGA, "obs_hh", "Observed: Number of Households",       "magma", c(0, 25000))
-p_hh_model_preGA <- make_map(hhC_preGA, "est_hh", "Model: Number of Households (Pre-GA)", "magma", c(0, 25000))
-print(p_hh_obs_preGA + p_hh_model_preGA)
-ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_hh_maps.png",
-       plot = p_hh_obs_preGA + p_hh_model_preGA, width = 9, height = 5, dpi = 150)
-
-
-## 家賃の比較
-est_rent_df_preGA <- tibble(
-  KEY_CODE = names(final_state_preGA$r_bar_i) %>% gsub("^mc_", "", .),
-  est_rent = as.numeric(final_state_preGA$r_bar_i) * 1000
-)
-
-rentC_preGA <- key_code_sf %>%
-  left_join(athome_df, by = "KEY_CODE") %>%
-  left_join(est_rent_df_preGA, by = "KEY_CODE") %>%
-  left_join(household, by = "KEY_CODE")
-
-rentC_preGA_flt <- rentC_preGA %>%
+key_code_mun <- key_code_sf %>%
+  st_centroid() %>%
+  st_join(city_sf, join = st_within) %>%
   st_drop_geometry() %>%
-  filter(!is.na(avg_rent), !is.na(est_rent), !is.na(obs_hh),
-         avg_rent > 0, est_rent > 0, obs_hh > 0)
+  dplyr::select(KEY_CODE, mun)
 
-r_rent_weighted_preGA <- weightedCorr(
-  x = rentC_preGA_flt$avg_rent,
-  y = rentC_preGA_flt$est_rent,
-  weights = rentC_preGA_flt$obs_hh,
-  method = "Pearson"
-)
-r2_rent_weighted_preGA <- r_rent_weighted_preGA^2
-r2_rent_preGA <- (cor(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent))^2
-cat("[GA前] 家賃 重みつきR²:", r2_rent_weighted_preGA, "\n")
+# 市区町村単位の重み（国勢調査メッシュ世帯数householdを市区町村に集計）
+household_mun <- household %>%
+  dplyr::left_join(key_code_mun, by = "KEY_CODE") %>%
+  dplyr::filter(!is.na(mun)) %>%
+  dplyr::group_by(mun) %>%
+  dplyr::summarise(obs_hh_mun = sum(obs_hh, na.rm = TRUE), .groups = "drop")
 
-plot(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent,
-     xlab = "Observed: Rent", ylab = "Model: Rent (Pre-GA)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_rent_preGA))), bty = "n", cex = 1.1)
-png("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_rent_scatter.png", width = 900, height = 750, res = 150)
-plot(rentC_preGA_flt$avg_rent, rentC_preGA_flt$est_rent,
-     xlab = "Observed: Rent", ylab = "Model: Rent (Pre-GA)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_rent_preGA))), bty = "n", cex = 1.1)
-dev.off()
+# 比較に使う市区町村（study area内 かつ 2023年データあり）
+comparison_mun_ga <- Reduce(intersect, list(
+  unique(na.omit(key_code_mun$mun)),
+  area_target_mun$mun[!is.na(area_target_mun$area_target_mun)],
+  rent_target_mun$mun[!is.na(rent_target_mun$rent_target_mun)]
+))
+cat("[GA住宅土地統計調査版] 比較に使う市区町村数:", length(comparison_mun_ga), "\n")
 
-p_rent_obs_preGA   <- make_map(rentC_preGA, "avg_rent", "Observed: Rent",       "plasma", c(0, 3200))
-p_rent_model_preGA <- make_map(rentC_preGA, "est_rent", "Model: Rent (Pre-GA)", "plasma", c(0, 3200))
-print(p_rent_obs_preGA + p_rent_model_preGA)
-ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_rent_maps.png",
-       plot = p_rent_obs_preGA + p_rent_model_preGA, width = 9, height = 5, dpi = 150)
+# k_iの探索範囲（05_ki-relaxationと同じ）
+k_lower <- 0.01
+k_upper <- 0.4
 
 
-## 床面積の比較
-est_ar_vec_preGA <- rowSums(final_state_preGA$a_fij_H * final_state_preGA$l_i_j, na.rm = TRUE) /
-  rowSums(final_state_preGA$l_i_j, na.rm = TRUE)
-est_ar_df_preGA <- tibble(
-  KEY_CODE = rownames(final_state_preGA$a_fij_H) %>% gsub("^mc_", "", .),
-  est_ar   = est_ar_vec_preGA
-)
+# ---- fitness関数 ----
+# LUTIループ本体は01のGA前検証用fitnessと同一。異なるのは「観測値との誤差計算」で
+# athome_df/athome_arの代わりに市区町村集計した住宅・土地統計調査の値を使う点、
+# およびk_iをxの6番目以降（GAの探索対象）から取る点。
+# x = c(alpha_a, gamma_0, gamma_1, theta_H, theta_L, k_i[1:nz_res])（長さ 5 + nz_res）
+calibration_fitness_housing_survey <- function(x) {
 
-arC_preGA <- key_code_sf %>%
-  left_join(athome_ar, by = "KEY_CODE") %>%
-  left_join(est_ar_df_preGA, by = "KEY_CODE") %>%
-  left_join(household, by = "KEY_CODE")
-
-arC_preGA_flt <- arC_preGA %>%
-  st_drop_geometry() %>%
-  filter(!is.na(avg_room_ar), !is.na(est_ar), !is.na(obs_hh),
-         avg_room_ar > 0, est_ar > 0, obs_hh > 0)
-
-r_ar_weighted_preGA <- weightedCorr(
-  x = arC_preGA_flt$avg_room_ar,
-  y = arC_preGA_flt$est_ar,
-  weights = arC_preGA_flt$obs_hh,
-  method = "Pearson"
-)
-r2_ar_weighted_preGA <- r_ar_weighted_preGA^2
-r2_ar_preGA <- (cor(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar))^2
-cat("[GA前] 床面積 重みつきR²:", r2_ar_weighted_preGA, "\n")
-
-plot(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar,
-     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Pre-GA)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_ar_preGA))), bty = "n", cex = 1.1)
-png("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_ar_scatter.png", width = 900, height = 750, res = 150)
-plot(arC_preGA_flt$avg_room_ar, arC_preGA_flt$est_ar,
-     xlab = "Observed: Floor Area", ylab = "Model: Floor Area (Pre-GA)")
-abline(0, 1, col = "red")
-legend("topleft", legend = bquote(R^2 == .(sprintf("%.3f", r2_ar_preGA))), bty = "n", cex = 1.1)
-dev.off()
-
-p_ar_obs_preGA   <- make_map(arC_preGA, "avg_room_ar", "Observed: Floor Area",       "viridis", c(0, 200))
-p_ar_model_preGA <- make_map(arC_preGA, "est_ar",      "Model: Floor Area (Pre-GA)", "viridis", c(0, 200))
-print(p_ar_obs_preGA + p_ar_model_preGA)
-ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_ar_maps.png",
-       plot = p_ar_obs_preGA + p_ar_model_preGA, width = 9, height = 5, dpi = 150)
-
-# ---- 床面積の誤差（モデルー実データ）の空間分布（GA前）----
-arC_preGA_diff <- arC_preGA_flt %>%
-  mutate(diff_ar_preGA = est_ar - avg_room_ar) %>%
-  left_join(key_code_sf %>% dplyr::select(KEY_CODE), by = "KEY_CODE") %>%
-  st_as_sf()
-
-lim_ar_preGA <- max(abs(arC_preGA_diff$diff_ar_preGA), na.rm = TRUE)
-
-p_arC_diff_preGA <- ggplot(arC_preGA_diff) +
-  geom_sf(aes(fill = diff_ar_preGA), color = "gray70", linewidth = 0.1) +
-  scale_fill_gradient2(
-    low = "blue", mid = "white", high = "red", midpoint = 0,
-    limits = c(-lim_ar_preGA, lim_ar_preGA),
-    labels = scales::label_comma(),
-    name = "(m^2)"
-  ) +
-  labs(title = "Floor Area Error (Model - Observed, Pre-GA)") +
-  theme_void() +
-  theme(
-    plot.title       = element_text(size = 10, hjust = 0.5),
-    legend.title     = element_text(size = 8),
-    legend.text      = element_text(size = 7),
-    plot.background  = element_rect(fill = "white", color = NA),
-    panel.background = element_rect(fill = "gray80", color = NA)
-  )
-
-plot(p_arC_diff_preGA)
-ggsave("project_log/calibration/04_ki-outlier-crop-kriging/plots/preGA_floor_area_error_map.png",
-       plot = p_arC_diff_preGA, width = 6, height = 5.5, dpi = 150)
-
-
-# ---- 決定係数（R²）の算出（GA前：世帯数・家賃・床面積）----
-# r2_hh_preGA / r2_rent_preGA / r2_ar_preGA は各散布図の直前で計算済み
-
-cat("[GA前] 決定係数（R²）\n")
-cat("  世帯数：", r2_hh_preGA,   "\n")
-cat("  家賃　：", r2_rent_preGA, "\n")
-cat("  床面積：", r2_ar_preGA,   "\n")
-
-
-calibration_fitness <- function(x) {
-  
-  # ---- パラメータを展開 ----
   alpha_a_c <- x[1]
   alpha_z_c <- 1 - alpha_a_c
   alpha_0_c <- (alpha_z_c ^ alpha_z_c) * (alpha_a_c ^ alpha_a_c)
@@ -1797,19 +838,17 @@ calibration_fitness <- function(x) {
   gamma_1_c <- x[3]
   theta_H_c <- x[4]
   theta_L_c <- x[5]
-  k_i_c     <- k_i_estimated_final   # グローバルから参照
-  
-  
+  k_i_c     <- x[6:(5 + nz_res)]        # ゾーン別k_i（GAの探索対象、長さnz_res）
+
   tryCatch({
-    
-    # ---- LUTIループをfitness内部で完走させる ----
-    dists_road_local <- dists0.road*1
+
+    # ---- LUTIループ ----
+    dists_road_local <- dists0.road * 1
     flag_local <- 0
     ii_local   <- 1
-    
+
     while (flag_local == 0) {
-      
-      # ① モード選択
+
       V.car_l  <- para[1] * dists_road_local + para[2] + para[4] * parkPrice / 2
       den_l    <- exp(V.bike) + exp(V.car_l) + exp(V.rail)
       P.bike_l <- exp(V.bike)  / den_l
@@ -1818,8 +857,7 @@ calibration_fitness <- function(x) {
       agcc_l   <- (P.bike_l * V.bike + P.car_l * V.car_l + P.rail_l * V.rail) / para[1]
       c_ij_l   <- agcc_l * 1.600
       disp_inc_l <- pmax(-c_ij_l + omega_j_matrix, 0)
-      
-      # ② 土地利用均衡（ローカルパラメータ版）
+
       calc_state_local <- function(v_j_vec) {
         v_j_mat  <- matrix(v_j_vec, nrow = nz_res, ncol = nz_work, byrow = TRUE)
         r_ij_H   <- (alpha_0_c * disp_inc_l / v_j_mat) ^ (1 / alpha_a_c)
@@ -1846,12 +884,12 @@ calibration_fitness <- function(x) {
              a_fij_H   = a_fij_H,
              L_j_tilde = colSums(l_i_j, na.rm = TRUE))
       }
-      
+
       gapf_local <- function(v_j_vec2) {
         s <- calc_state_local(exp(v_j_vec2))
         s$L_j_tilde - L_j_hat$L_j_hat
       }
-      
+
       res_lu <- nleqslv(
         x       = v_start,
         fn      = gapf_local,
@@ -1859,14 +897,13 @@ calibration_fitness <- function(x) {
         control = list(ftol = 1e-6, xtol = 1e-6, maxit = 100)
       )
       if (!(res_lu$termcd %in% c(1, 2))) return(-200)
-      
+
       state_l <- calc_state_local(exp(res_lu$x))
-      
-      # ③ 交通配分
+
       ODD.car_l <- state_l$l_i_j * P.car_l
       trips_l   <- as.data.frame.table(ODD.car_l, responseName = "demand")
       names(trips_l) <- c("from", "to", "demand")
-      
+
       traffic_l <- assign_traffic(
         Graph     = sgr,
         from      = trips_l$from,
@@ -1890,22 +927,21 @@ calibration_fitness <- function(x) {
                                               to        = centers,
                                               algorithm = "mch")
       dists_road_local <- 0.5 * dists_road_new + 0.5 * dists_road_prev
-      
+
       diff_local <- sum((dists_road_prev - dists_road_local) ^ 2)
       ii_local   <- ii_local + 1
-      
+
       # GA評価中は反復回数を制限（本番LUTIは ii>1000 まで）
       if (diff_local < 1000 | ii_local > 20) {
-        cat("ii=", ii_local, "diff=", diff_local, "\n")  # 何回目で打ち切られたか確認
         flag_local <- 1
       }
     }
     # ---- LUTIループここまで ----
-    
-    
-    # ---- 観測値との誤差計算（全指標を対数変換）----
-    
-    # 世帯数
+
+
+    # ---- 観測値との誤差計算（世帯数はメッシュ、家賃・床面積は市区町村集計）----
+
+    # 世帯数（メッシュ単位、国勢調査。athome由来ではないため変更しない）
     est_hh_df <- tibble(
       KEY_CODE = rownames(state_l$l_i_j) %>% gsub("^mc_", "", .),
       est_hh   = rowSums(state_l$l_i_j, na.rm = TRUE)
@@ -1915,197 +951,210 @@ calibration_fitness <- function(x) {
       filter(!is.na(obs_hh), !is.na(est_hh),
              obs_hh > 0, est_hh > 0)
     w_hh_i <- comp_hh$obs_hh / sum(comp_hh$obs_hh)
-    f_hh <- sum(w_hh_i*(log(comp_hh$est_hh) - log(comp_hh$obs_hh)) ^ 2) #ここを変えた
-    
-    # 家賃（r_bar_i は千円/m2 → ×1000 で円/m2 に換算）
+    f_hh <- sum(w_hh_i * (log(comp_hh$est_hh) - log(comp_hh$obs_hh)) ^ 2)
+
+    # 家賃・床面積：メッシュ→市区町村に世帯数加重平均で集計してから住宅・土地統計調査と比較
     est_rent_df <- tibble(
       KEY_CODE = names(state_l$r_bar_i) %>% gsub("^mc_", "", .),
-      est_rent = as.numeric(state_l$r_bar_i) * 1000
+      est_rent = as.numeric(state_l$r_bar_i) * 1000  # 千円/m2 → 円/m2
     )
-    comp_rent <- athome_df %>%
-      left_join(est_rent_df, by = "KEY_CODE") %>%
-      left_join(household, by = "KEY_CODE") %>%
-      filter(!is.na(avg_rent), !is.na(est_rent),
-             avg_rent > 0, est_rent > 0,
-            !is.na(obs_hh), obs_hh > 0)
-    w_rent_i <- comp_rent$obs_hh / sum(comp_rent$obs_hh)
-    f_rent <- sum(w_rent_i*(log(comp_rent$est_rent) - log(comp_rent$avg_rent)) ^ 2) #変えた
-    
-    # 床面積
     est_ar_vec <- rowSums(state_l$a_fij_H * state_l$l_i_j, na.rm = TRUE) /
       rowSums(state_l$l_i_j, na.rm = TRUE)
     est_ar_df <- tibble(
       KEY_CODE = rownames(state_l$a_fij_H) %>% gsub("^mc_", "", .),
       est_ar   = est_ar_vec
     )
-    comp_ar <- athome_ar %>%
+
+    est_mun <- est_rent_df %>%
       left_join(est_ar_df, by = "KEY_CODE") %>%
+      left_join(key_code_mun, by = "KEY_CODE") %>%
       left_join(household, by = "KEY_CODE") %>%
-      filter(!is.na(avg_room_ar), !is.na(est_ar),
-             avg_room_ar > 0, est_ar > 0,
-            !is.na(obs_hh), obs_hh > 0)
-    w_ar_i <- comp_ar$obs_hh / sum(comp_ar$obs_hh)
-    f_ar <- sum(w_ar_i*(log(comp_ar$est_ar) - log(comp_ar$avg_room_ar)) ^ 2) #変えた
-    
+      filter(!is.na(mun), !is.na(obs_hh), obs_hh > 0,
+             !is.na(est_rent), !is.na(est_ar)) %>%
+      group_by(mun) %>%
+      summarise(
+        est_rent_mun = weighted.mean(est_rent, w = obs_hh, na.rm = TRUE),
+        est_ar_mun   = weighted.mean(est_ar,   w = obs_hh, na.rm = TRUE),
+        .groups = "drop"
+      )
+
+    comp_rent <- rent_target_mun %>%
+      inner_join(est_mun, by = "mun") %>%
+      left_join(household_mun, by = "mun") %>%
+      filter(!is.na(rent_target_mun), !is.na(est_rent_mun),
+             rent_target_mun > 0, est_rent_mun > 0,
+             !is.na(obs_hh_mun), obs_hh_mun > 0)
+    if (nrow(comp_rent) < 5) return(-200)  # 比較できる市区町村が少なすぎる場合は打ち切り
+    w_rent_mun <- comp_rent$obs_hh_mun / sum(comp_rent$obs_hh_mun)
+    f_rent <- sum(w_rent_mun * (log(comp_rent$est_rent_mun) - log(comp_rent$rent_target_mun)) ^ 2)
+
+    comp_ar <- area_target_mun %>%
+      inner_join(est_mun, by = "mun") %>%
+      left_join(household_mun, by = "mun") %>%
+      filter(!is.na(area_target_mun), !is.na(est_ar_mun),
+             area_target_mun > 0, est_ar_mun > 0,
+             !is.na(obs_hh_mun), obs_hh_mun > 0)
+    if (nrow(comp_ar) < 5) return(-200)
+    w_ar_mun <- comp_ar$obs_hh_mun / sum(comp_ar$obs_hh_mun)
+    f_ar <- sum(w_ar_mun * (log(comp_ar$est_ar_mun) - log(comp_ar$area_target_mun)) ^ 2)
+
     # ---- ペナルティ項 ----
+    # 注: xは長さ5+nz_res、x0は長さ5のため、(x - x0)がリサイクルされる
+    # （02と同条件のまま。元コード旧L.2355-2357の挙動をそのまま維持している）。
     x0      <- c(0.3, 0.2, 0.6, 0.1, 2.0)
     lambda  <- 0.05
     penalty <- lambda * sum(((x - x0) / x0) ^ 2)
-    
+
     # ---- 重みつき合計Loss ----
     w_hh   <- 1.0
     w_rent <- 0.5
     w_ar   <- 0.3
-    
+
     total_loss <- w_hh * f_hh + w_rent * f_rent + w_ar * f_ar + penalty
-    
+
     return(-total_loss)  # GAは最大化 → 符号反転
-    
+
   }, error = function(e) {
     return(-200)
   })
 }
 
 
-# k_iの探索範囲（元の定数0.1を基準に、現実的な範囲を設定）
-k_lower <- 0.01   # 下限：供給コストが極端に低い
-k_upper <- 0.4    # 上限：供給コストが極端に高い
+# ---- 単発テスト（852次元。k_iは基準値0.1で初期化）----
+x0_test <- c(0.3, 0.2, 0.6, 0.1, 2.0, rep(0.1, nz_res))
+test_result_hs <- calibration_fitness_housing_survey(x0_test)
+cat("[住宅土地統計調査版] 単発テスト fitness値:", test_result_hs, "\n")
+# -200が返る場合はcomp_rent/comp_arの行数不足やLUTIループの非収束が原因。
+# 2026-09-19の単発テストでは -20.199（比較市区町村29）だった（07のmeta.yml参照）。
+# 正常な値が出ることを確認してから下のGA本番実行に進むこと。
 
-lower_vec <- c(0.1,  0.05, 0.3,  0.02, 0.5)
-upper_vec <- c(0.5,  0.8,  0.9,  0.5,  5.0)
-
-if(T){
-# ---- クラスター準備 ----
-cl <- makeCluster(detectCores() - 1)
-# registerDoParallel(cl)
-
-clusterExport(cl, varlist = c(
-  # fitness関数本体
-  "calibration_fitness",
-  "k_i_estimated_final", 
-  # 距離行列・ネットワーク
-  "dists0.road", "dists0.bike", "dists0.rail",
-  "sgr", "nodes", "zones", "centers",
-  "alpha", "beta",
-  # モード選択（固定）
-  "V.bike", "V.rail", "para", "parkPrice",
-  # 経済データ
-  "omega_j_matrix", "L_j_hat",
-  # 土地利用（固定）
-  "G0_i", "phi", "phi_pub", "rr_a",
-  # 均衡計算
-  "nz_res", "nz_work", "v_start",
-  # 観測値（元コードと同じ変数名）
-  "household", "athome_df", "athome_ar",
-
-  "assign_traffic", "makegraph", "get_distance_matrix"
-))
-
-exists("sgr")  # TRUE が返るか確認
-
-clusterEvalQ(cl, {
-  library(nleqslv)
-  library(cppRouting)
-  library(dplyr)
-  library(tibble)
-})
-
-# ---- 単発テスト（800次元でも動くか先に確認）----
-x0_test <- c(0.3, 0.2, 0.6, 0.1, 2.0)
-test_result <- calibration_fitness(x0_test)
-cat("単発テスト fitness値:", test_result, "\n")
-# ここで正常な値（-10や-1e10ではない数値）が返ることを確認してから
-# 次のGA本番実行に進むこと
-# これをまず確認してほしい
+# 852次元でも動くか、ランダムなk_iを含めて確認
 set.seed(1)
-test_vals <- sapply(1:10, function(i) {
+test_vals_hs <- sapply(1:10, function(i) {
   x_random <- c(0.3, 0.2, 0.6, 0.1, 2.0, runif(nz_res, k_lower, k_upper))
-  calibration_fitness(x_random)
+  calibration_fitness_housing_survey(x_random)
 })
-print(round(test_vals, 2))
+print(round(test_vals_hs, 2))
 
-# ---- GA実行 ----
-cat("GA開始:", format(Sys.time(), "%H:%M:%S"), "\n")
-system.time({
-  ga_result_calib <- ga(
-    type    = "real-valued",
-    fitness = calibration_fitness,
 
-    #         alpha_a  gamma_0  gamma_1  theta_H  theta_L
-    lower   = lower_vec,
-    upper   = upper_vec,
+# ---- GA本番（852次元：5変数 + ゾーン別k_i。02_ga-800dimと同じ探索範囲・条件）----
+# 重いので、実行するときだけ TRUE にする。結果は ga_result.RData に保存され、
+# active_calibration <- "07_ga-housing-survey-target" で下の較正結果読込に反映できる。
+run_ga_852dim <- FALSE
+if (run_ga_852dim) {
+  popSize_852 <- 50
+  maxiter_852 <- 100
+  lower_vec <- c(0.1,  0.05, 0.3,  0.02, 0.5,  rep(k_lower, nz_res))
+  upper_vec <- c(0.5,  0.8,  0.9,  0.5,  5.0,  rep(k_upper, nz_res))
 
-    popSize = 50,    # 個体数、動作確認用：本番は50程度に増やす
-    maxiter = 100,    # 世代数、動作確認用：本番は100程度に増やす
+  cl <- makeCluster(detectCores() - 1)
+  clusterExport(cl, varlist = c(
+    "calibration_fitness_housing_survey",
+    "key_code_mun", "household_mun",
+    "area_target_mun", "rent_target_mun",
+    "dists0.road", "sgr", "nodes", "zones", "centers",
+    "alpha", "beta",
+    "V.bike", "V.rail", "para", "parkPrice",
+    "omega_j_matrix", "L_j_hat",
+    "G0_i", "phi", "phi_pub", "rr_a",
+    "nz_res", "nz_work", "v_start",
+    "k_lower", "k_upper",
+    "household",
+    "assign_traffic", "makegraph", "get_distance_matrix"
+  ), envir = .GlobalEnv)
+  clusterEvalQ(cl, {
+    library(nleqslv)
+    library(cppRouting)
+    library(dplyr)
+    library(tibble)
+  })
 
-    parallel = cl,
-    monitor  = TRUE
+  cat("[住宅土地統計調査版] GA開始:", format(Sys.time(), "%H:%M:%S"), "\n")
+  system.time({
+    ga_result_housing_survey <- ga(
+      type    = "real-valued",
+      fitness = calibration_fitness_housing_survey,
+      lower   = lower_vec,
+      upper   = upper_vec,
+      popSize = popSize_852,
+      maxiter = maxiter_852,
+      parallel = cl,
+      monitor  = TRUE
+    )
+  })
+  cat("[住宅土地統計調査版] GA終了:", format(Sys.time(), "%H:%M:%S"), "\n")
+
+  closeAllConnections()
+  stopCluster(cl)
+  gc(); gc()
+
+  cat("最良fitness（-Loss）:", ga_result_housing_survey@fitnessValue, "\n")
+  print(ga_result_housing_survey@solution)
+
+  # ---- 較正結果読込（load_calibration_result）が読む形式に正規化して保存 ----
+  # calib_result$params（5変数named vector）と calib_result$k_i（長さnz_res）の共通形式。
+  best_x <- ga_result_housing_survey@solution[1, ]
+  params_852 <- best_x[1:5]
+  names(params_852) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
+
+  calib_result <- list(
+    params    = params_852,
+    k_i       = best_x[6:(5 + nz_res)],
+    fitness   = ga_result_housing_survey@fitnessValue,
+    ga_result = ga_result_housing_survey
   )
-})
-cat("GA終了:", format(Sys.time(), "%H:%M:%S"), "\n")
-
-
-closeAllConnections()
-stopCluster(cl)
-gc()
-gc()
-# 接続数が正常に戻ったか確認
-showConnections(all = TRUE)
-
-# ---- 結果の確認 ----
-save(ga_result_calib, best_x, file = "project_log/calibration/03_ki-backward-calc/ga_result.RData")
+  save(calib_result,
+       file = "project_log/calibration/07_ga-housing-survey-target/ga_result.RData")
 }
-} # end if(FALSE) - k_i backward-calc / relaxation / GA calibration trial code（保存のみ、未実行）
-
-if(FALSE){ # 260808方針: project_log/calibration/02_ga-800dim/ga_result.RData（k_iを含む852次元GA較正）は今回使わない。コードは残すが未実行。
-load("project_log/calibration/02_ga-800dim/ga_result.RData")
-
-best_x <- ga_result_calib@solution[1, ]
-best_params_global <- best_x[1:5]
-names(best_params_global) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
-best_k_i <- best_x[6:(5 + nz_res)]   # ← ゾーンごとのk_iの最適値
-cat("\n最適グローバルパラメータ:\n")
-print(round(best_params_global, 4))
-cat("最良fitness（-Loss）:", ga_result_calib@fitnessValue, "\n\n")
-
-plot(ga_result_calib)  # 収束曲線
-cat("\nk_iの分布（要約統計）:\n")
-print(summary(best_k_i))
-# k_iの空間分布を確認（都心と郊外で値が分かれているか）
-hist(best_k_i, main = "Distribution of k_i After GA Optimization", xlab = "k_i")
 
 
-# fitness関数の中身を一部再現して、各項の値を確認
-summary(best_k_i)
-hist(best_k_i)
 
-zone_ids <- rownames(dists0) %>% gsub("^mc_","", .)
+# 較正まわりの各パターンは scripts/calibration/ に分割済み（scripts/calibration/README.md参照。
+# 07はこの上のGAセクションに戻してあり、このディレクトリには無い）。
+# ここでは「どの較正結果を使うか」を1行で選び、対応するキャッシュ済みga_result.RDataを
+# 読み込んでグローバルパラメータ・k_iに反映する。GAは再実行しない
+# （再実行したい場合は scripts/calibration/ga_baseline_5var.R 等の calibrate_*() を
+# 手動で実行し、project_log/calibration/<試行>/ga_result.RData を更新すること）。
 
-k_i_df <- tibble(
-  KEY_CODE = zone_ids,
-  best_k_i = best_k_i
-)
+# 選べる値:
+#   "01_baseline-5param-ga"       — 5変数GA、k_i=0.1固定。ga_result.RDataあり、すぐ使える。
+#   "05_ki-relaxation"            — k_iは03-05の解析的推定（scripts/calibration/ki_estimation.R
+#                                    のcalibrate_ki_relaxation()）、5変数は01を暫定的に借用。
+#                                    使うには一度 calibrate_ki_relaxation() を実行してキャッシュを
+#                                    作る必要がある（未実行ならga_result.RDataが無くエラーになる）。
+#   "07_ga-housing-survey-target" — 852次元GA（5変数+ゾーン別k_i）、住宅・土地統計調査ベース。
+#                                    上の「GA較正（住宅・土地統計調査ベース…）」セクションで
+#                                    run_ga_852dim <- TRUE にして実行し、ga_result.RData を作る必要がある
+#                                    （未実行ならga_result.RDataが無くエラーになる）。
+active_calibration <- "01_baseline-5param-ga"
 
-# key_code_sfに結合して地図化
-k_i_map_data <- left_join(key_code_sf, k_i_df, by = "KEY_CODE")
+# ---- 選んだ較正パターンのキャッシュ（ga_result.RData）を読み込む ----
+# scripts/calibration/*.R の calibrate_*() はどれも calib_result$params（5変数named vector）
+# と calib_result$k_i（長さnz_resのベクトル）を持つ同じ形式で保存するので、
+# ここではパターンごとの分岐は不要（新しい較正パターンを追加しても、この関数は変更不要）。
+load_calibration_result <- function(name) {
+  rdata_path <- file.path("project_log", "calibration", name, "ga_result.RData")
+  if (!file.exists(rdata_path)) {
+    stop(
+      "較正パターン '", name, "' のキャッシュ（", rdata_path, "）が見つかりません。\n",
+      "scripts/calibration/README.md を参照し、対応する calibrate_*() を先に実行して\n",
+      "結果を保存してください（07はdata/rent.df.xdrが揃うまで実行できません）。"
+    )
+  }
+  e <- new.env()
+  load(rdata_path, envir = e)
+  if (is.null(e$calib_result) || is.null(e$calib_result$params) || is.null(e$calib_result$k_i)) {
+    stop(
+      "キャッシュの形式が不正です（calib_result$params / $k_i が必要）: ", rdata_path, "\n",
+      "scripts/calibration/*.R の calibrate_*() で作り直してください。"
+    )
+  }
+  e$calib_result
+}
 
-ggplot(k_i_map_data) +
-  geom_sf(aes(fill = best_k_i), color = "gray50", linewidth = 0.1) +
-  scale_fill_viridis_c(option = "viridis", direction = -1) +
-  labs(title = "Spatial Distribution of k_i After GA Optimization") +
-  theme_void()
-} # end if(FALSE) - project_log/calibration/02_ga-800dim/ga_result.RData(852次元)は未使用
-
-# 260808方針: 5変数GA（k_iは同時最適化していない較正）で得られていた値を直接使用する
-# （このGA実行結果のRDataは保存されていなかったため、控えていた数値を直書きする）
-best_params_global <- c(
-  alpha_a = 0.3227,
-  gamma_0 = 0.4438,
-  gamma_1 = 0.5501,
-  theta_H = 0.2555,
-  theta_L = 2.7657
-)
-cat("\n使用するグローバルパラメータ（5変数GA、控え値）:\n")
+calib_result      <- load_calibration_result(active_calibration)
+best_params_global <- calib_result$params
+cat("\n使用するグローバルパラメータ（", active_calibration, " の記録値）:\n", sep = "")
 print(best_params_global)
 
 
@@ -2119,7 +1168,7 @@ gamma_1 <- best_params_global["gamma_1"]
 theta_H <- best_params_global["theta_H"]
 theta_L <- best_params_global["theta_L"]
 
-k_i <- rep(0.1, nz_res)  # 260807方針: GA較正のk_i(best_k_i)は使わず固定値0.1とする
+k_i <- calib_result$k_i
 # k_iが正しく代入されているか確認
 length(k_i)
 range(k_i, na.rm = TRUE)
@@ -2244,7 +1293,7 @@ Gi_df <- data.frame(
   mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
 
 
-if(T){ # 260807方針: モデル適合度検証セクション（make_diff_map2の定義順序バグあり、別途修正予定のため今回はスキップ）
+if(T){ # モデル適合度検証セクション（アットホームデータとの比較）
 #実データとモデル比較#####
 # install.packages("patchwork")
 library(patchwork)
@@ -2452,7 +1501,7 @@ Hi_df <- data.frame(
   est_height = as.numeric(final_state$height_i)
 ) %>%
   mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
-} # end if(FALSE) - 実データとモデル比較
+} # end モデル適合度検証セクション
 
 
 ## 床面積の比較（住宅・土地統計調査、市区町村・2人世帯換算） ----
@@ -2494,20 +1543,7 @@ ggplot(housing_survey_fukuoka, aes(x = year, y = area_2p_m2, group = mun)) +
 ggsave("project_log/calibration/06_housing-survey-comparison/plots/housing_survey_area2p_trend.png",
        width = 6, height = 5, dpi = 150)
 
-# --- (b) 市区町村境界の作成とメッシュ(KEY_CODE)→市区町村の対応付け ---
-if(F){
-  city_raw <- st_read("data/raw/小地域(町丁・字等)/h27ka40.shp") %>%
-    st_transform(crs = target_crs) %>%
-    mutate(mun = paste0(PREF, CITY))
-  city_sf <- city_raw %>%
-    group_by(mun, CITY_NAME) %>%
-    summarise(geometry = st_union(geometry), .groups = "drop") %>%
-    st_make_valid()
-  save(city_sf, file = "data/city_sf.xdr")
-}
-load("data/city_sf.xdr")
-
-# メッシュ(KEY_CODE)ゾーンの重心が属する市区町村を判定
+# --- (b) メッシュ(KEY_CODE)→市区町村の対応付け（CITY_NAME付き。city_sf自体は上の方で読込済み）---
 key_code_mun <- key_code_sf %>%
   st_centroid() %>%
   st_join(city_sf, join = st_within) %>%
@@ -2779,7 +1815,7 @@ run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn,
     it <- it + 1
     if (diff < tol | it > max_iter) flag <- 1
   }
-
+  
   # 鉄道リンク配分（均衡収束後の最終stateに対して一度だけ実行、混雑は考慮しない）
   ODD.rail <- state$l_i_j * P.rail_l
   trips_rail <- as.data.frame.table(ODD.rail, responseName = "demand")
@@ -2917,11 +1953,11 @@ library(patchwork)
 combined_flow_speed_map <- scn_flow_speed_plots$scn0 + scn_flow_speed_plots$scn1 + scn_flow_speed_plots$scn2 +
   plot_layout(ncol = 3, guides = "collect")
 print(combined_flow_speed_map)
-ggsave("project_log/scenario-analysis/plots/scenario_flow_speed_maps.png",
+ggsave("project_log/scenario-analysis/plots/road/scenario_flow_speed_maps.png",
        plot = combined_flow_speed_map, width = 18, height = 6, dpi = 150)
 
 for (scn_name in names(scn_flow_speed_plots)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_flow_speed_map.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_flow_speed_map.png", scn_name),
          plot = scn_flow_speed_plots[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -2993,19 +2029,19 @@ speed_diff_plots <- Map(make_speed_diff_map, scn_diff_maps, diff_titles[names(sc
 combined_flow_diff_map <- flow_diff_plots$scn1 + flow_diff_plots$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_flow_diff_map)
-ggsave("project_log/scenario-analysis/plots/scenario_flow_diff_maps.png",
+ggsave("project_log/scenario-analysis/plots/road/scenario_flow_diff_maps.png",
        plot = combined_flow_diff_map, width = 12, height = 6, dpi = 150)
 
 combined_speed_diff_map <- speed_diff_plots$scn1 + speed_diff_plots$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_speed_diff_map)
-ggsave("project_log/scenario-analysis/plots/scenario_speed_diff_maps.png",
+ggsave("project_log/scenario-analysis/plots/road/scenario_speed_diff_maps.png",
        plot = combined_speed_diff_map, width = 12, height = 6, dpi = 150)
 
 for (scn_name in names(scn_diff_maps)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_flow_diff_map.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_flow_diff_map.png", scn_name),
          plot = flow_diff_plots[[scn_name]], width = 7, height = 6, dpi = 150)
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_speed_diff_map.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_speed_diff_map.png", scn_name),
          plot = speed_diff_plots[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -3064,19 +2100,19 @@ speed_diff_plots_major <- Map(function(d, t) make_speed_diff_map_major(d, t, spe
 combined_flow_diff_map_major <- flow_diff_plots_major$scn1 + flow_diff_plots_major$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_flow_diff_map_major)
-ggsave("project_log/scenario-analysis/plots/scenario_flow_diff_maps_major.png",
+ggsave("project_log/scenario-analysis/plots/road/scenario_flow_diff_maps_major.png",
        plot = combined_flow_diff_map_major, width = 12, height = 6, dpi = 150)
 
 combined_speed_diff_map_major <- speed_diff_plots_major$scn1 + speed_diff_plots_major$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_speed_diff_map_major)
-ggsave("project_log/scenario-analysis/plots/scenario_speed_diff_maps_major.png",
+ggsave("project_log/scenario-analysis/plots/road/scenario_speed_diff_maps_major.png",
        plot = combined_speed_diff_map_major, width = 12, height = 6, dpi = 150)
 
 for (scn_name in names(scn_diff_maps_major)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_flow_diff_map_major.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_flow_diff_map_major.png", scn_name),
          plot = flow_diff_plots_major[[scn_name]], width = 7, height = 6, dpi = 150)
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_speed_diff_map_major.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_speed_diff_map_major.png", scn_name),
          plot = speed_diff_plots_major[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -3125,19 +2161,19 @@ speed_diff_plots_major_mesh <- Map(function(d, t) make_speed_diff_map_major_mesh
 combined_flow_diff_map_major_mesh <- flow_diff_plots_major_mesh$scn1 + flow_diff_plots_major_mesh$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_flow_diff_map_major_mesh)
-ggsave("project_log/scenario-analysis/plots/scenario_flow_diff_maps_major_mesh.png",
+ggsave("project_log/scenario-analysis/plots/road/scenario_flow_diff_maps_major_mesh.png",
        plot = combined_flow_diff_map_major_mesh, width = 12, height = 6, dpi = 150)
 
 combined_speed_diff_map_major_mesh <- speed_diff_plots_major_mesh$scn1 + speed_diff_plots_major_mesh$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_speed_diff_map_major_mesh)
-ggsave("project_log/scenario-analysis/plots/scenario_speed_diff_maps_major_mesh.png",
+ggsave("project_log/scenario-analysis/plots/road/scenario_speed_diff_maps_major_mesh.png",
        plot = combined_speed_diff_map_major_mesh, width = 12, height = 6, dpi = 150)
 
 for (scn_name in names(scn_diff_maps_major)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_flow_diff_map_major_mesh.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_flow_diff_map_major_mesh.png", scn_name),
          plot = flow_diff_plots_major_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_speed_diff_map_major_mesh.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_speed_diff_map_major_mesh.png", scn_name),
          plot = speed_diff_plots_major_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -3217,13 +2253,13 @@ p_hh_scn1 <- make_map(diff_household, "diff_household_01", "Change in Number of 
 p_hh_scn2 <- make_map(diff_household, "diff_household_02", "Change in Number of Resident Households", "magma", hh_lim)
 p_hh_combined <- p_hh_scn1 + p_hh_scn2 # patchwork
 plot(p_hh_combined)
-ggsave("project_log/scenario-analysis/plots/scenario_household_diff_maps.png",
+ggsave("project_log/scenario-analysis/plots/landuse/scenario_household_diff_maps.png",
        plot = p_hh_combined, width = 12, height = 6, dpi = 150)
 
 p_hh_diverging <- make_diff_map2(diff_household, c("diff_household_01", "diff_household_02"),
                         c("ScenarioB", "ScenarioC"), "(Households)")
 print(p_hh_diverging)
-ggsave("project_log/scenario-analysis/plots/scenario_household_diff_maps_diverging.png",
+ggsave("project_log/scenario-analysis/plots/landuse/scenario_household_diff_maps_diverging.png",
        plot = p_hh_diverging, width = 12, height = 6, dpi = 150)
 
 scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
@@ -3261,13 +2297,13 @@ p_rent_scn1 <- make_map(diff_rent, "diff_rent_01", "Change in Average Imputed La
 p_rent_scn2 <- make_map(diff_rent, "diff_rent_02", "Change in Average Imputed Land Rent", "plasma", rent_lim)
 p_rent_combined <- p_rent_scn1 + p_rent_scn2 # patchwork
 plot(p_rent_combined)
-ggsave("project_log/scenario-analysis/plots/scenario_rent_diff_maps.png",
+ggsave("project_log/scenario-analysis/plots/landuse/scenario_rent_diff_maps.png",
        plot = p_rent_combined, width = 12, height = 6, dpi = 150)
 
 p_rent_diverging <- make_diff_map2(diff_rent, c("diff_rent_01", "diff_rent_02"),
                         c("ScenarioB", "ScenarioC"), "(Yen/Month)")
 print(p_rent_diverging)
-ggsave("project_log/scenario-analysis/plots/scenario_rent_diff_maps_diverging.png",
+ggsave("project_log/scenario-analysis/plots/landuse/scenario_rent_diff_maps_diverging.png",
        plot = p_rent_diverging, width = 12, height = 6, dpi = 150)
 
 
@@ -3307,13 +2343,13 @@ p_ar_scn1 <- make_map(diff_ar, "diff_ar_01", "Change in Average Floor Area", "vi
 p_ar_scn2 <- make_map(diff_ar, "diff_ar_02", "Change in Average Floor Area", "viridis", ar_lim)
 p_ar_combined <- p_ar_scn1 + p_ar_scn2 # patchwork
 plot(p_ar_combined)
-ggsave("project_log/scenario-analysis/plots/scenario_floor_area_diff_maps.png",
+ggsave("project_log/scenario-analysis/plots/landuse/scenario_floor_area_diff_maps.png",
        plot = p_ar_combined, width = 12, height = 6, dpi = 150)
 
 p_ar_diverging <- make_diff_map2(diff_ar, c("diff_ar_01", "diff_ar_02"),
                         c("ScenarioB", "ScenarioC"), "(m^2)")
 print(p_ar_diverging)
-ggsave("project_log/scenario-analysis/plots/scenario_floor_area_diff_maps_diverging.png",
+ggsave("project_log/scenario-analysis/plots/landuse/scenario_floor_area_diff_maps_diverging.png",
        plot = p_ar_diverging, width = 12, height = 6, dpi = 150)
 
 # 比較　宅地割合
@@ -3343,7 +2379,7 @@ p_Gi_scn1 <- make_map(diff_Gi, "diff_Gi_01", "Change in Residential Land Ratio",
 p_Gi_scn2 <- make_map(diff_Gi, "diff_Gi_02", "Change in Residential Land Ratio", "mako", Gi_lim)
 p_Gi_combined <- p_Gi_scn1 + p_Gi_scn2 # patchwork
 plot(p_Gi_combined)
-ggsave("project_log/scenario-analysis/plots/scenario_residential_land_ratio_diff_maps.png",
+ggsave("project_log/scenario-analysis/plots/landuse/scenario_residential_land_ratio_diff_maps.png",
        plot = p_Gi_combined, width = 12, height = 6, dpi = 150)
 
 scn1_Gi <- left_join(key_code_sf, scn1_Gi , by = "KEY_CODE")
@@ -3352,7 +2388,7 @@ scn2_Gi <- left_join(key_code_sf, scn2_Gi , by = "KEY_CODE")
 p_Gi_diverging <- make_diff_map2(diff_Gi, c("diff_Gi_01", "diff_Gi_02"),
                         c("ScenarioB", "ScenarioC"), "(m^2)")
 print(p_Gi_diverging)
-ggsave("project_log/scenario-analysis/plots/scenario_residential_land_ratio_diff_maps_diverging.png",
+ggsave("project_log/scenario-analysis/plots/landuse/scenario_residential_land_ratio_diff_maps_diverging.png",
        plot = p_Gi_diverging, width = 12, height = 6, dpi = 150)
 
 
@@ -3383,7 +2419,7 @@ p_height_scn1 <- make_map(diff_height, "diff_height_01", "Change in Estimated Bu
 p_height_scn2 <- make_map(diff_height, "diff_height_02", "Change in Estimated Building Height", "inferno", height_lim)
 p_height_combined <- p_height_scn1 + p_height_scn2 # patchwork
 plot(p_height_combined)
-ggsave("project_log/scenario-analysis/plots/scenario_building_height_diff_maps.png",
+ggsave("project_log/scenario-analysis/plots/landuse/scenario_building_height_diff_maps.png",
        plot = p_height_combined, width = 12, height = 6, dpi = 150)
 
 scn1_height <- left_join(key_code_sf, scn1_height, by = "KEY_CODE")
@@ -3392,7 +2428,7 @@ scn2_height <- left_join(key_code_sf, scn2_height, by = "KEY_CODE")
 p_height_diverging <- make_diff_map2(diff_height, c("diff_height_01", "diff_height_02"),
                         c("ScenarioB", "ScenarioC"), "(m)")
 print(p_height_diverging)
-ggsave("project_log/scenario-analysis/plots/scenario_building_height_diff_maps_diverging.png",
+ggsave("project_log/scenario-analysis/plots/landuse/scenario_building_height_diff_maps_diverging.png",
        plot = p_height_diverging, width = 12, height = 6, dpi = 150)
 
 
@@ -3577,19 +2613,19 @@ names(rail_work_maps) <- names(rail_work_list)
 combined_rail_res_map <- rail_res_maps$scn0 + rail_res_maps$scn1 + rail_res_maps$scn2 +
   plot_layout(ncol = 3, guides = "collect")
 print(combined_rail_res_map)
-ggsave("project_log/scenario-analysis/plots/scenario_rail_ridership_residence_maps.png",
+ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_ridership_residence_maps.png",
        plot = combined_rail_res_map, width = 18, height = 6, dpi = 150)
 
 combined_rail_work_map <- rail_work_maps$scn0 + rail_work_maps$scn1 + rail_work_maps$scn2 +
   plot_layout(ncol = 3, guides = "collect")
 print(combined_rail_work_map)
-ggsave("project_log/scenario-analysis/plots/scenario_rail_ridership_workplace_maps.png",
+ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_ridership_workplace_maps.png",
        plot = combined_rail_work_map, width = 18, height = 6, dpi = 150)
 
 for (scn in names(rail_res_maps)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_rail_ridership_residence_map.png", scn),
+  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_rail_ridership_residence_map.png", scn),
          plot = rail_res_maps[[scn]], width = 7, height = 6, dpi = 150)
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_rail_ridership_workplace_map.png", scn),
+  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_rail_ridership_workplace_map.png", scn),
          plot = rail_work_maps[[scn]], width = 7, height = 6, dpi = 150)
 }
 
@@ -3615,13 +2651,13 @@ diff_rail_work <- key_code_sf %>%
 p_rail_res_diverging <- make_diff_map2(diff_rail_res, c("diff_rail_res_01", "diff_rail_res_02"),
                         c("ScenarioB", "ScenarioC"), "(Households)")
 print(p_rail_res_diverging)
-ggsave("project_log/scenario-analysis/plots/scenario_rail_ridership_residence_diff_maps.png",
+ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_ridership_residence_diff_maps.png",
        plot = p_rail_res_diverging, width = 12, height = 6, dpi = 150)
 
 p_rail_work_diverging <- make_diff_map2(diff_rail_work, c("diff_rail_work_01", "diff_rail_work_02"),
                         c("ScenarioB", "ScenarioC"), "(Households)")
 print(p_rail_work_diverging)
-ggsave("project_log/scenario-analysis/plots/scenario_rail_ridership_workplace_diff_maps.png",
+ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_ridership_workplace_diff_maps.png",
        plot = p_rail_work_diverging, width = 12, height = 6, dpi = 150)
 
 
@@ -3676,11 +2712,11 @@ scn_rail_flow_plots <- Map(make_rail_flow_map, scn_rail_maps, scn_titles[names(s
 combined_rail_flow_map <- scn_rail_flow_plots$scn0 + scn_rail_flow_plots$scn1 + scn_rail_flow_plots$scn2 +
   plot_layout(ncol = 3, guides = "collect")
 print(combined_rail_flow_map)
-ggsave("project_log/scenario-analysis/plots/scenario_rail_flow_maps.png",
+ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_flow_maps.png",
        plot = combined_rail_flow_map, width = 18, height = 6, dpi = 150)
 
 for (scn_name in names(scn_rail_flow_plots)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_rail_flow_map.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_rail_flow_map.png", scn_name),
          plot = scn_rail_flow_plots[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -3731,11 +2767,11 @@ rail_flow_diff_plots <- Map(function(d, t) make_rail_flow_diff_map(d, t, rail_fl
 combined_rail_flow_diff_map <- rail_flow_diff_plots$scn1 + rail_flow_diff_plots$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_rail_flow_diff_map)
-ggsave("project_log/scenario-analysis/plots/scenario_rail_flow_diff_maps.png",
+ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_flow_diff_maps.png",
        plot = combined_rail_flow_diff_map, width = 12, height = 6, dpi = 150)
 
 for (scn_name in names(scn_rail_diff_maps)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_rail_flow_diff_map.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_vs_scn0_rail_flow_diff_map.png", scn_name),
          plot = rail_flow_diff_plots[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -3763,11 +2799,11 @@ scn_rail_flow_plots_mesh <- Map(make_rail_flow_map_mesh, scn_rail_maps, scn_titl
 combined_rail_flow_map_mesh <- scn_rail_flow_plots_mesh$scn0 + scn_rail_flow_plots_mesh$scn1 + scn_rail_flow_plots_mesh$scn2 +
   plot_layout(ncol = 3, guides = "collect")
 print(combined_rail_flow_map_mesh)
-ggsave("project_log/scenario-analysis/plots/scenario_rail_flow_maps_mesh.png",
+ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_flow_maps_mesh.png",
        plot = combined_rail_flow_map_mesh, width = 18, height = 6, dpi = 150)
 
 for (scn_name in names(scn_rail_flow_plots_mesh)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_rail_flow_map_mesh.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_rail_flow_map_mesh.png", scn_name),
          plot = scn_rail_flow_plots_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -3793,11 +2829,11 @@ rail_flow_diff_plots_mesh <- Map(function(d, t) make_rail_flow_diff_map_mesh(d, 
 combined_rail_flow_diff_map_mesh <- rail_flow_diff_plots_mesh$scn1 + rail_flow_diff_plots_mesh$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_rail_flow_diff_map_mesh)
-ggsave("project_log/scenario-analysis/plots/scenario_rail_flow_diff_maps_mesh.png",
+ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_flow_diff_maps_mesh.png",
        plot = combined_rail_flow_diff_map_mesh, width = 12, height = 6, dpi = 150)
 
 for (scn_name in names(scn_rail_diff_maps)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/%s_vs_scn0_rail_flow_diff_map_mesh.png", scn_name),
+  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_vs_scn0_rail_flow_diff_map_mesh.png", scn_name),
          plot = rail_flow_diff_plots_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 

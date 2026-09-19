@@ -15,6 +15,7 @@ params:
 metrics:
   対象ゾーン数: "341（has_data=TRUEのみ更新）"
 verdict: adopted
+paper: none                       # 論文採否（none / adopted）。採用はユーザーが判定し、promote-to-paperで記録する
 note: >
   現状のk_iの最新版（逆算→外れ値カット→クリギング→緩和法→再クリギング）。
   次のステップ：この k_i を固定して5変数GA（alpha_a, gamma_0, gamma_1, theta_H, theta_L）を

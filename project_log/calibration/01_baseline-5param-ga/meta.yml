@@ -16,6 +16,7 @@ metrics:
   theta_H: 0.0957
   theta_L: 2.2811
 verdict: adopted
+paper: none                       # 論文採否（none / adopted）。採用はユーザーが判定し、promote-to-paperで記録する
 note: >
   ベースラインとして採用。次はk_iも較正対象に含めることを試す（→02_ga-800dim）。
 plot: plots/ga_convergence.png

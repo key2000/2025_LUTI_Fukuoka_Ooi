@@ -9,6 +9,16 @@
 2. その中に `meta.yml` を作る（下のテンプレート参照）。
 3. その試行で見せたいプロットを `plots/` に保存する（`ggsave()` や `png()`/`dev.off()` でそのまま保存すればよい）。
 
+## 計算結果のキャッシュ（`ga_result.RData`）
+
+GAなど計算に時間がかかる較正の結果は、各試行フォルダ内に `ga_result.RData` として保存する
+（例: `02_ga-800dim/ga_result.RData`）。`meta.yml` の `result_rdata:` に、読み込み方法と再現に
+必要な設定を記載する。
+
+- `.RData` は `.gitignore`（`*.RData`）対象で、ローカルキャッシュ専用。Gitでは追跡しない。
+- 再計算を避けたいだけなら、ファイル名を増やしてバックアップを作るのではなく、この場所に上書き/追記する。
+- メインスクリプトから読み込む場合の形式（`calib_result`）は `scripts/calibration/README.md` を参照。
+
 ## meta.yml テンプレート
 
 ```yaml
@@ -24,13 +34,20 @@ params:                           # 何を書いてもよい。key: value がそ
 metrics:                          # 同上。数値でも文字列でもよい
   解が求まったゾーン数: 341
   r2_hh: 0.81
-verdict: adopted                  # adopted / rejected / in_progress のいずれか
+verdict: adopted                  # adopted / rejected / in_progress のいずれか（試行の中での判定）
+paper: none                       # 論文採否。none（既定）/ adopted。採用はユーザーが判定する
+# paper_ref: paper/ch3_method.md#3.3  # paper: adopted のときだけ、paper/ 内の書き込み先を記す
 note: >
   データがないゾーンは初期値0.1のまま残し、後続のクリギングで補間する前提。
 plot: plots/ki_backward_hist.png  # この試行を代表する画像1枚（相対パス）
 ```
 
 - `verdict` は `adopted`（採用）/ `rejected`（不採用）/ `in_progress`（進行中）の3種類。
+  これは**較正の試行の中での判定**であり、論文に載せるかどうかとは別。
+- `paper` は論文採否で、`none`（既定）/ `adopted` の2種類。`adopted` にできるのは、ユーザーが
+  「論文に採用」と判定したときだけ。記入は `paper/` への昇格と同時に、スキル `promote-to-paper` が行う
+  （`paper/README.md`）。`verdict: adopted` でも `paper: none` のことは普通にある。
+  論文採用済みの試行を一覧するには `grep -l "^paper: adopted" project_log/calibration/*/meta.yml`。
 - `plot` は1枚だけ。複数見せたい場合は先に `magick` などで1枚に合成してから指定する。
 - `params` / `metrics` はどちらも自由なキーを使ってよい（順不同で箇条書きになる）。
 

@@ -14,6 +14,7 @@ metrics:
   解が求まったゾーン数: "341（has_data=TRUE）"
   求まらなかったゾーン数: "506（初期値0.1のまま）"
 verdict: adopted
+paper: none                       # 論文採否（none / adopted）。採用はユーザーが判定し、promote-to-paperで記録する
 note: >
   GAでの852次元探索（→02_ga-800dim）がpopSize=50では収束しなかったことを受けた方針転換。
   データがない506ゾーンは、このあとのクリギング（→04）で補間する前提。

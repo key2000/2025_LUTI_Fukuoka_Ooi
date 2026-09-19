@@ -1,23 +1,55 @@
-# 2025_LUTI_Fukuoka_Ooi
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## プロジェクト概要（2025_LUTI_Fukuoka_Ooi）
 
 福岡都市圏を対象にしたLUTI（土地利用交通統合）モデル。R言語（Positron/RStudio想定）で構築。
 コード・コメントは基本的に日本語。
 
+ビルド・lint・テストの仕組みはない（`.Rproj` があるのみ）。スクリプトはPositron/RStudioで
+リポジトリルートをカレントディレクトリにして、上から順番に通しで実行する運用（`Rscript`でも可）。
+セクション単位でのつまみ食い実行は前提にしない。
+
 ## 全体像
 
-1つの都市モデルを、GA（遺伝的アルゴリズム）や解析的逆算でパラメータ較正しながら開発している。
-較正は何度も試行錯誤しており、各試行の設定・結果や、モデル自体の改良テーマは `project_log/` に
-テーマフォルダ単位で記録する運用にしている（詳細は各テーマフォルダの README/メモを参照）。
+福岡都市圏の1つの都市モデル（土地利用モデル＋交通モデル）を完成させることが目的で、
+パラメータ較正・モデル構造の改良・シナリオ分析など、複数のテーマを並行して進めている。
+試行・プロット・方針メモなど、まだ論文に採用すると決めていないものは全て `project_log/` にテーマフォルダ単位で記録し、
+ユーザーが論文に載せると決めたものだけを `paper/` に置く運用にしている（次々節「記録先の振り分け」、
+詳細は各フォルダの README/メモを参照）。
+
+### モデルの流れ（メインスクリプトを読む前の見取り図）
+
+1. **データ読込・前処理** — 1kmメッシュ（`KEY_CODE`）を居住ゾーン（`nz_res`）・従業ゾーン（`nz_work`）とし、
+   所要時間行列 `dists0`、給料 `omega_j`、居住可能面積 `G0_i` などを `data/*.xdr` から `load()` する。
+2. **土地利用モデル** — `caluculate_model_state(v_j_vec)` が与えられた効用水準から家賃・床面積・立地確率
+   （Cobb-Douglas型、`alpha_a` `gamma_0` `gamma_1` `theta_H` `theta_L` `k_i` がパラメータ）を返す。
+   `gapf_vj` を `nleqslv` で解いて均衡効用 `v_equilibrium` を求める。
+3. **交通** — 手段選択（自転車/自動車/鉄道のロジット、係数 `para`）と道路網への配分（`assign_traffic`、
+   グラフ `sgr`）。配分結果の混雑で `dists0.road` が更新され、`c_ij` → `disposable_income_ij` を通じて
+   土地利用側に戻る。この土地利用⇄交通の反復（MSAで平滑化）がLUTIループ。
+4. **較正結果の読込** — パラメータ（5変数）と `k_i` は `active_calibration` の1行で切り替える（次節）。
+   そのパラメータでLUTIループを再実行して現状（scn0）を得る。
+5. **シナリオ分析** — `run_scenario()` にシナリオ別の雇用分布・賃金行列を渡して再実行し、現状との差分を
+   マップ化する（B: 雇用一律再配置、C: CBD距離加重再配置）。
 
 ## scripts/ — Rスクリプト
 
-- **`scripts/Fukuoka_LUTI_model_260617.R`** — 現在のメインスクリプト（3000行超）。データ読込→道路網→
-  土地利用モデル→GA較正→k_i逆算/緩和→シナリオ分析まで一通り含む。`####` 見出しでフェーズが
-  区切られているので、目的の処理を探すときはまず `grep -n "####" scripts/Fukuoka_LUTI_model_260617.R` で
-  目次を出すとよい。過去の試行錯誤コードは `if(FALSE){...}` で無効化されたまま残されている箇所がある
-  （削除はされていないが実行はされない）。実行時のカレントディレクトリはリポジトリルート想定
-  （`project_log/...`・`data/...` へのパスはすべてルート相対）。
-- **`scripts/Fukuoka_LUmodel_251207.R`** — 上記の旧版。参照用に残っているが現行ではない。
+- **`scripts/Fukuoka_LUTI_model_260617.R`** — 現在のメインスクリプト（約2700行）。データ読込→道路網→
+  鉄道網→土地利用モデル→較正結果読込→LUTIループ→実データ比較→シナリオ分析・比較マップまで含む。
+  `####` 見出しでフェーズが区切られているので、目的の処理を探すときはまず
+  `grep -n "####" scripts/Fukuoka_LUTI_model_260617.R` で目次を出すとよい。
+  過去の試行錯誤コードは `if(FALSE){...}` / `if(F){...}` で無効化されたまま残されている箇所がある
+  （削除はされていないが実行はされない。`#LUTI ####` 直後の最初のループも `if(F)` 内）。
+  実行時のカレントディレクトリはリポジトリルート想定（`project_log/...`・`data/...` へのパスはすべてルート相対）。
+- **`scripts/calibration/`** — 較正まわり（GA・k_i解析的推定）をメインスクリプトの `if(FALSE)` から切り出したもの。
+  `calibrate_*()` 関数として定義されており、メインスクリプトから `source()` はされない
+  （較正を再実行したいときだけ手動で読み込んで呼ぶ）。**どのファイルがどの試行に対応するか・
+  現在ライブか・実行可能かは `scripts/calibration/README.md` の対応表を必ず先に読むこと。**
+- **`scripts/build_rent_df_from_estat.R`** — e-Stat（住宅・土地統計調査）の家賃CSVを `data/rent.df.xdr` に変換する。
+  `07_ga-housing-survey-target` の前提データ。手順はスクリプト冒頭コメント（Step 0〜2）参照。
+- **`scripts/Fukuoka_LUmodel_251207.R`** — メインスクリプトの旧版。参照用に残っているが現行ではない。
 - **`scripts/Fukuoka_OSM_03_copied.R`** — OSMから道路ネットワークを抽出する処理。
 - **`scripts/Fukuoka_modeChoide_260309_copied.R`** — 交通手段選択モデルの推定。
 
@@ -27,39 +59,57 @@
 `_copied` 接尾辞や日付入りファイル名は過去の手動バージョン管理の名残で、統一された命名規則ではない。
 新しいファイルを作る際は接尾辞に頼らず、役割が分かる名前にする。
 
-### シナリオ間差分マップのスケール
+### 較正結果の切り替え（`active_calibration`）
 
-シナリオ間比較（`シナリオ比較####`セクション）の差分マップは、`c(-500, 300)` のようなキリのいい
-固定値をスケール上下限に使わない。固定値は実データの分布とずれやすく、実際の差分がスケール中央に
-偏って発色が薄くなり視認性が落ちるため。代わりに `sym_limits()`（同セクション内で定義）で、
-比較対象シナリオ（B・C）の差分値の絶対値の最大値を求め、その値を `c(-lim, lim)` として
-両シナリオ共通のスケールに使う。新しい指標の差分マップを追加する際もこのパターンに従うこと。
+メインスクリプトの `active_calibration <- "01_baseline-5param-ga"`（約L.750）を書き換えるだけで、
+モデルが使うパラメータ（`alpha_a`, `gamma_0`, `gamma_1`, `theta_H`, `theta_L`）と `k_i` を切り替えられる。
+`load_calibration_result()` は `project_log/calibration/<試行>/ga_result.RData` の `calib_result`
+（`list(params = 5変数のnamed vector, k_i = 長さnz_resのベクトル, fitness, ...)`）を読むだけでGAは再実行しない。
+新しい較正パターンを追加するときも、この `calib_result` 形式で保存すればローダーは変更不要。
+キャッシュが無い試行（`07` 等）を選ぶとエラーで止まる。
 
-### マップの背景色
+### 地図プロットの規約
 
-`theme_void()`を使う地図プロット関数（`make_map()`、`make_diff_map2()`など）は背景関連の要素も
-`element_blank()`になるため、明示的に`theme(plot.background = element_rect(fill = "white", color = NA))`
-を追加しないと`ggsave()`したPNGの背景が透明になる。透明のままだと資料に貼ったときに背景色を拾って
-見た目が崩れるため、新しい地図プロット関数を追加する際もこのパターンに従うこと。
+地図（差分マップ・`make_map()` 系の関数・`ggsave()` でのPNG保存）を新規作成・修正するときは、
+スキル `map-plot-conventions`（`.claude/skills/map-plot-conventions/`）を参照する。
+差分マップのスケールは固定値ではなく `sym_limits()` で決め、`theme_void()` の地図は背景を白で明示する。
 
 ## project_log/ — 較正試行・改良テーマの記録（source of truth）
 
-`project_log/<テーマ>/` がテーマフォルダ、その下の `NN_短い名前/` フォルダ1つが1試行・1計画。
-このディレクトリはGit管理下（`*.RData` と `.DS_Store` のみ除外）。
+`project_log/<テーマ>/` がテーマフォルダ。Git管理下（`*.RData` と `.DS_Store` のみ除外）。
+記録の形式・手順はテーマごとにフォルダ内のREADME/メモに書いてあるので、記録を追加する前に必ず読む。
 
-- **`project_log/calibration/`** — GA較正・k_i逆算などパラメータ較正の試行記録。
-  `NN_短い名前/` の中身は `meta.yml`（パラメータ・結果・採否）と `plots/`。
-  新しい試行の追加手順・`meta.yml` のテンプレートは `project_log/calibration/README.md` に詳細あり。
-  GAなど計算に時間がかかる較正の結果は、各試行フォルダ内に `ga_result.RData` として保存し
-  （例: `project_log/calibration/02_ga-800dim/ga_result.RData`）、`meta.yml` の `result_rdata:` に
-  読み込み方法と再現に必要な設定を記載する。`.RData` はどれも `.gitignore`（`*.RData`）対象で
-  ローカルキャッシュ専用 — Gitでは追跡しない。再計算を避けたいだけなら、ファイル名を増やして
-  バックアップを作るのではなく、この場所に上書き/追記する。
-- **`project_log/scenario-analysis/`** — シナリオ分析（交通量・速度マップ等）まわりの改良テーマ。
-  較正のようなGA試行ではないため、`calibration/` とは分けている。
+- **`calibration/`** — GA較正・k_i逆算などパラメータ較正の試行記録。`NN_短い名前/` が1試行。
+  追加手順・`meta.yml` テンプレート・`ga_result.RData`（Git管理外のローカルキャッシュ）の扱いは
+  `project_log/calibration/README.md`。
+- **`scenario-analysis/`** — シナリオ分析（交通量・速度・鉄道・土地利用のマップ）。NNフォルダは使わず、
+  `plots/` 内のサブフォルダに固定ファイル名で上書きする。詳細は `plots/note.md`。
+- **`paper-direction/`** — 論文としてまとめる方向性、指導教員とのやり取り、次のTODO（`notes.md`、日付順に追記）、
+  第3章・第4章の素材の下書き（`ch3_ch4_materials.md`、未確定・要確認を含む）。
+  モデル改良の動機（例: Stone-Geary型効用関数の検討）もここ。作業の前提となる方針を確認したいときに読む。
+  詳細は `paper-direction/README.md`。
 
-較正でも既存テーマでもない改良（フォルダ構成の見直しやスクリプト分割など）を計画する場合は、
+上記のどれにも当てはまらない改良（フォルダ構成の見直し、スクリプト分割など）を計画する場合は、
 `project_log/` の下に新しいテーマフォルダを作り、同じ「テーマフォルダ > NN連番」の構造で記録する。
+
+## 記録先の振り分け（`project_log/` と `paper/`）
+
+- **`project_log/`** — まだ論文に採用すると決めていない全て。試行錯誤、途中経過、不採用の案、未確定の方針、TODO、
+  先生とのやり取り、素材の下書き。コードや設定を変更したら、その内容・結果もここに記録する。
+- **`paper/`** — ユーザーが「論文に載せる」と決めた内容だけ（式・パラメータ・データ・図・数値）。
+  形式・ファイル構成は `paper/README.md`。
+
+守ること：
+- **`paper/` への書き込みは、ユーザーが論文への採用を明言したときだけ。** 採用の判定はユーザー本人で、
+  Claudeが「採用してよさそう」と判断して書くことはしない。「先生がOKと言った」「結果が良かった」だけでも
+  採用にはならない。迷ったら `project_log/` に書き、採用するか尋ねる。
+- 採用が決まったら、スキル `promote-to-paper`（`.claude/skills/promote-to-paper/`）で昇格する。
+  昇格すると、元の試行の `meta.yml` に `paper: adopted`（と `paper_ref:`）が記録される。未採用は `paper: none`。
+  `verdict:`（試行の中での採用／不採用／進行中）とは別の項目で、`verdict: adopted` でも `paper: none` のことがある。
+- `paper/**` へのファイル書き込み（Edit/Write ツール）は、`.claude/settings.json` の `permissions.ask`
+  （`Edit(/paper/**)`）で毎回確認が出る（承認が採用の確認を兼ねる）。この設定は Bash 経由の書き換え
+  （`sed -i`、リダイレクトなど）は止めないので、Bash で `paper/` を書き換えることも同じルールに従い、
+  ユーザーの採用明言なしには行わない。
 
 ## data/ — 完全にGit管理外（.gitignore で `data/` を丸ごと除外）
 

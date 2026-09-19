@@ -29,6 +29,7 @@ metrics:
   参考_床面積_メッシュ比較のR2（アットホーム、重みなしcor()^2、上と同一arC_fltに対して算出）: 0.0580
   参考_家賃_メッシュ比較のR2（アットホーム、重みつきweightedCorr、obs_household重み）: 0.5460
 verdict: adopted
+paper: none                       # 論文採否（none / adopted）。採用はユーザーが判定し、promote-to-paperで記録する
 note: >
   モデル本体（5変数GA控え値パラメータ、k_i=0.1固定、L.1-2555相当）を実行してest_ar・
   final_stateを取得し、市区町村比較まで実行済み。

@@ -14,6 +14,7 @@ metrics:
   クリギング学習データ数: "341ゾーンの中央90%"
   補間対象ゾーン数: "外れ値＋データなしの合計 約500超"
 verdict: adopted
+paper: none                       # 論文採否（none / adopted）。採用はユーザーが判定し、promote-to-paperで記録する
 note: >
   Gaussianモデルは外れ値カット前のデータにはフィットしたが、カット後は不安定になったため、
   最終的にSphericalモデルを採用（コードにコメントとして経緯を残してある）。

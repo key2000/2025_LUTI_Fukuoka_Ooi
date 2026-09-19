@@ -13,6 +13,7 @@ metrics:
   fitness (-Loss): -14.39047
   Loss (ベースライン比): "約36倍"
 verdict: rejected
+paper: none                       # 論文採否（none / adopted）。採用はユーザーが判定し、promote-to-paperで記録する
 note: >
   探索変数を増やしたらLossが大幅に悪化。popSize=50では852次元を実用的な
   世代数で探索しきれていないと判断。GAでゾーン別k_iを丸ごと探す方針は
