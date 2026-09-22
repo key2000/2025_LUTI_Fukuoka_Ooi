@@ -1084,8 +1084,8 @@ if (run_ga_852dim) {
   })
   cat("[住宅土地統計調査版] GA終了:", format(Sys.time(), "%H:%M:%S"), "\n")
 
-  closeAllConnections()
-  stopCluster(cl)
+  stopCluster(cl)  # closeAllConnections()は削除：stopCluster()より先に呼ぶとワーカーとの接続を潰してしまい、
+                   # stopCluster()内のsummary.connection()が「コネクションが不正です」で失敗する（260922発覚）
   gc(); gc()
 
   cat("最良fitness（-Loss）:", ga_result_housing_survey@fitnessValue, "\n")
@@ -1126,7 +1126,7 @@ if (run_ga_852dim) {
 #                                    上の「GA較正（住宅・土地統計調査ベース…）」セクションで
 #                                    run_ga_852dim <- TRUE にして実行し、ga_result.RData を作る必要がある
 #                                    （未実行ならga_result.RDataが無くエラーになる）。
-active_calibration <- "01_baseline-5param-ga"
+active_calibration <- "07_ga-housing-survey-target"
 
 # ---- 選んだ較正パターンのキャッシュ（ga_result.RData）を読み込む ----
 # scripts/calibration/*.R の calibrate_*() はどれも calib_result$params（5変数named vector）
