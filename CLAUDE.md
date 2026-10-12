@@ -80,7 +80,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 記録の形式・手順はテーマごとにフォルダ内のREADME/メモに書いてあるので、記録を追加する前に必ず読む。
 
 - **`calibration/`** — GA較正・k_i逆算などパラメータ較正の試行記録。`NN_短い名前/` が1試行。
-  追加手順・`meta.yml` テンプレート・`ga_result.RData`（Git管理外のローカルキャッシュ）の扱いは
+  追加手順・`meta.md` テンプレート・`ga_result.RData`（Git管理外のローカルキャッシュ）の扱いは
   `project_log/calibration/README.md`。
 - **`scenario-analysis/`** — シナリオ分析（交通量・速度・鉄道・土地利用のマップ）。NNフォルダは使わず、
   `plots/` 内のサブフォルダに固定ファイル名で上書きする。詳細は `plots/note.md`。
@@ -104,7 +104,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   Claudeが「採用してよさそう」と判断して書くことはしない。「先生がOKと言った」「結果が良かった」だけでも
   採用にはならない。迷ったら `project_log/` に書き、採用するか尋ねる。
 - 採用が決まったら、スキル `promote-to-paper`（`.claude/skills/promote-to-paper/`）で昇格する。
-  昇格すると、元の試行の `meta.yml` に `paper: adopted`（と `paper_ref:`）が記録される。未採用は `paper: none`。
+  昇格すると、元の試行の `meta.md` に `paper: adopted`（と `paper_ref:`）が記録される。未採用は `paper: none`。
   `verdict:`（試行の中での採用／不採用／進行中）とは別の項目で、`verdict: adopted` でも `paper: none` のことがある。
 - `paper/**` へのファイル書き込み（Edit/Write ツール）は、`.claude/settings.json` の `permissions.ask`
   （`Edit(/paper/**)`）で毎回確認が出る（承認が採用の確認を兼ねる）。この設定は Bash 経由の書き換え

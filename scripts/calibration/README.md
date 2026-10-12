@@ -10,7 +10,7 @@
 | project_log/calibration/ の試行 | このディレクトリのファイル | 状態 |
 |---|---|---|
 | `01_baseline-5param-ga` | `ga_baseline_5var.R` | **現在ライブ**（本体スクリプトの `active_calibration` の既定値） |
-| `02_ga-800dim` | （なし） | この試行のga()/fitness関数のコードは今回の分割より前に既に本体スクリプトから失われている。`project_log/calibration/02_ga-800dim/meta.yml` と `ga_result.RData` のみが記録として残る |
+| `02_ga-800dim` | （なし） | この試行のga()/fitness関数のコードは今回の分割より前に既に本体スクリプトから失われている。`project_log/calibration/02_ga-800dim/meta.md` と `ga_result.RData` のみが記録として残る |
 | `03_ki-backward-calc` → `04_ki-outlier-crop-kriging` → `05_ki-relaxation` | `ki_estimation.R` | 1つながりの試行（代替案ではなく積み上げ）。`calibrate_ki_relaxation()`で`active_calibration`から選べる（5変数は01を暫定借用、下記参照） |
 | `07_ga-housing-survey-target` | （なし） | 本体スクリプトの「GA較正（住宅・土地統計調査ベース…）####」セクションに戻した（対話実行で1つずつ確認したいため関数化をやめた）。データは揃い単発テストまで実施済み、GA本番は未実行（`run_ga_852dim <- FALSE`） |
 
@@ -19,7 +19,7 @@
 - `07` → このディレクトリには無い。本体スクリプトの「GA較正（住宅・土地統計調査ベース…）####」セクション
 - `03` → `04` → `05` → `ki_estimation.R`の`calibrate_ki_relaxation()`（k_iはこの系譜の推定値、
   5変数は01を暫定借用）
-- `02` → 抽出できるコードが残っていない（今回の分割より前に本体スクリプトから失われた。`meta.yml` と `ga_result.RData` キャッシュのみ参照可能）
+- `02` → 抽出できるコードが残っていない（今回の分割より前に本体スクリプトから失われた。`meta.md` と `ga_result.RData` キャッシュのみ参照可能）
 
 ## 方針
 

@@ -2,7 +2,7 @@
 # project_log/calibration/01_baseline-5param-ga/ に対応する、5構造パラメータのみのGA較正（k_i=0.1固定）。
 # 元は scripts/Fukuoka_LUTI_model_260617.R の if(FALSE) ブロック内（旧L.1790-1967付近）にあった
 # calibration_fitness() を、k_i を 01 の仕様通り固定値0.1に補正した上で抽出したもの
-# （project_log/calibration/01_baseline-5param-ga/meta.yml: 「k_i はモデル本来の定数0.1に
+# （project_log/calibration/01_baseline-5param-ga/meta.md: 「k_i はモデル本来の定数0.1に
 # 固定したまま動かさない」）。元コードは k_i_c <- k_i_estimated_final
 # （scripts/calibration/ki_estimation.R 系統の逆算値、01の較正とは無関係な変数）を参照しており
 # 01の実際の仕様とは食い違っていたため、この抽出時に k_i_c <- rep(0.1, nz_res) に修正した。

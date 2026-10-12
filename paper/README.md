@@ -14,7 +14,7 @@ Claudeが「良さそう」と判断して書き込むことはしない。試�
 1. 試行や方針は、まず `project_log/` に記録する。
 2. ユーザーが「これを論文に採用」と言ったときだけ、スキル `promote-to-paper`
    （`.claude/skills/promote-to-paper/`）で `paper/` の該当節へ昇格する。
-3. 昇格した試行の `meta.yml` には `paper: adopted` と `paper_ref:` を記録する（未採用は `paper: none`）。
+3. 昇格した試行の `meta.md` には `paper: adopted` と `paper_ref:` を記録する（未採用は `paper: none`）。
 4. `paper/**` への書き込みは `.claude/settings.json` の権限設定で毎回確認が出る。承認は採用の確認を兼ねる。
 
 ## ファイル構成
@@ -49,7 +49,7 @@ Claudeが「良さそう」と判断して書き込むことはしない。試�
 
 - 数値や図は、根拠の試行にあるものと一致させる。図は `project_log/` のPNGへのパスで参照する
   （コピーしない。論文用に作り直したときだけ `paper/figures/` に置く）。
-- 採用を取り消す・差し替えるときは、該当項目を書き換え（または削除）し、元の試行の `meta.yml` の
+- 採用を取り消す・差し替えるときは、該当項目を書き換え（または削除）し、元の試行の `meta.md` の
   `paper:` も更新する（詳細は `promote-to-paper` スキル）。
 
 ## 素材の下書き

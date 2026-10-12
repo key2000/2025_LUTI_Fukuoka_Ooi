@@ -21,7 +21,7 @@ NNフォルダ運用はせず、このファイルに追記していく
 - モデルは現状Cobb-Douglas型効用関数（`a_fij_H = alpha_a * disposable_income_ij / r_ij_H`、
   `scripts/Fukuoka_LUTI_model_260617.R` L.515付近）を使っており、所得が増えると床面積需要が
   ほぼ比例的に増え続ける。実際には住宅面積の効用は所得が増えるほど頭打ちになる（限界効用逓減が
-  強い）はずで、そのズレが床面積の過大推定（`06_housing-survey-comparison/meta.yml`のnote参照、
+  強い）はずで、そのズレが床面積の過大推定（`06_housing-survey-comparison/meta.md`のnote参照、
   市区町村比較で高所得層が多い地域ほど過大推定が目立つ)の一因かもしれない、という問題意識。
 - 対策候補としてStone-Geary型効用関数（最低限必要な消費量を差し引いた上で効用を最大化するモデル。
   床面積に「最低居住面積」的な下限パラメータが入り、限界効用逓減の効き方をCobb-Douglasより

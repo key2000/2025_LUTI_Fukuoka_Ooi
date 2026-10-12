@@ -776,7 +776,7 @@ area_target_mun <- tibble(mun = area.df$mun[tI01], area_2p) %>%
 # （モデル側のr_bar_i（千円/m2/月）×1000＝円/m2/月と比べるため）。
 # ★注意（07は承知の上で実行）：家賃は借家のみ、area_target_munは総数（持家込みと推定）なので
 # 分母が借家の実際の床面積より大きくなり、円/m2は低めに出る。
-# project_log/calibration/07_*/meta.yml のcaveats参照。
+# project_log/calibration/07_*/meta.md のcaveats参照。
 rent_target_mun <- rent.df %>%
   dplyr::filter(grepl("^40", mun)) %>%
   dplyr::transmute(mun, rent_month = .data[[paste0("rent_", target_year)]]) %>%
@@ -1025,7 +1025,7 @@ x0_test <- c(0.3, 0.2, 0.6, 0.1, 2.0, rep(0.1, nz_res))
 test_result_hs <- calibration_fitness_housing_survey(x0_test)
 cat("[住宅土地統計調査版] 単発テスト fitness値:", test_result_hs, "\n")
 # -200が返る場合はcomp_rent/comp_arの行数不足やLUTIループの非収束が原因。
-# 2026-09-19の単発テストでは -20.199（比較市区町村29）だった（07のmeta.yml参照）。
+# 2026-09-19の単発テストでは -20.199（比較市区町村29）だった（07のmeta.md参照）。
 # 正常な値が出ることを確認してから下のGA本番実行に進むこと。
 
 # 852次元でも動くか、ランダムなk_iを含めて確認
@@ -1293,7 +1293,7 @@ Gi_df <- data.frame(
   mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
 
 
-if(T){ # モデル適合度検証セクション（アットホームデータとの比較）
+if(F){ # モデル適合度検証セクション（アットホームデータとの比較）
 #実データとモデル比較#####
 # install.packages("patchwork")
 library(patchwork)
