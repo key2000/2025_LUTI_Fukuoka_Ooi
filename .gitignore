@@ -1,6 +1,11 @@
 .Rproj.user
 .Rhistory
-.RData
+*.RData
 .Ruserdata
+.DS_Store
 
 data/
+.positai
+
+Rplots.pdf
+260610_大井.pptx
