@@ -1105,6 +1105,12 @@ if (run_ga_852dim) {
   )
   save(calib_result,
        file = "project_log/calibration/07_ga-housing-survey-target/ga_result.RData")
+
+  plot(ga_result_housing_survey)
+  png("project_log/calibration/07_ga-housing-survey-target/plots/ga_convergence.png",
+      width = 900, height = 750, res = 150)
+  plot(ga_result_housing_survey)
+  dev.off()
 }
 
 
@@ -1293,7 +1299,222 @@ Gi_df <- data.frame(
   mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
 
 
-if(F){ # モデル適合度検証セクション（アットホームデータとの比較）
+#モデル適合度検証（GA目標値と同じデータ）####
+# 07のGA目標値（household / rent_target_mun / area_target_mun）と同じデータ・同じ集計で比較する。
+library(patchwork)
+library(wCorr)
+
+fit_plot_dir <- file.path("project_log", "calibration", active_calibration, "plots")
+dir.create(fit_plot_dir, showWarnings = FALSE, recursive = TRUE)
+
+# 散布図（1:1線つき）。df$keepがFALSEの点は白抜き
+fit_scatter <- function(df, obs, est, title, unit, label) {
+  lim <- range(c(df[[obs]], df[[est]]), na.rm = TRUE)
+  if (is.null(df$keep)) df$keep <- TRUE
+  ggplot(df, aes(x = .data[[obs]], y = .data[[est]])) +
+    geom_abline(slope = 1, intercept = 0, color = "red") +
+    geom_point(aes(shape = keep), alpha = 0.7) +
+    scale_shape_manual(values = c(`TRUE` = 16, `FALSE` = 1), guide = "none") +
+    annotate("text", x = lim[2], y = lim[1], hjust = 1, vjust = 0, size = 3.5, label = label) +
+    scale_x_continuous(limits = lim) +
+    scale_y_continuous(limits = lim) +
+    labs(title = title, x = paste0("実データ ", unit), y = paste0("モデル ", unit)) +
+    theme_minimal() +
+    theme(aspect.ratio = 1, plot.background = element_rect(fill = "white", color = NA))
+}
+
+# R²・重みつきR²・GAと同じ重みつき対数二乗誤差
+fit_log_err <- function(obs, est, w) sum(w / sum(w) * (log(est) - log(obs)) ^ 2)
+fit_metrics <- function(obs, est, w) {
+  c(R2      = cor(obs, est)^2,
+    R2_w    = weightedCorr(obs, est, weights = w, method = "Pearson")^2,
+    log_err = fit_log_err(obs, est, w))
+}
+
+# ---- 世帯数（国勢調査、メッシュ単位）----
+fit_hh <- key_code_sf %>%
+  left_join(est_household, by = "KEY_CODE") %>%
+  left_join(household, by = "KEY_CODE")
+fit_hh_flt <- fit_hh %>%
+  st_drop_geometry() %>%
+  filter(!is.na(obs_hh), !is.na(est_household), obs_hh > 0, est_household > 0)
+
+fit_m_hh <- fit_metrics(fit_hh_flt$obs_hh, fit_hh_flt$est_household, fit_hh_flt$obs_hh)
+
+hh_lim <- c(0, max(fit_hh$obs_hh, fit_hh$est_household, na.rm = TRUE))
+p_fit_hh <- fit_scatter(fit_hh_flt, "obs_hh", "est_household", "世帯数（メッシュ）", "(世帯)",
+                        sprintf("R² = %.3f\n重みつきR² = %.3f\nn = %d",
+                                fit_m_hh["R2"], fit_m_hh["R2_w"], nrow(fit_hh_flt))) +
+  make_map(fit_hh, "obs_hh", "実データ：国勢調査", "magma", hh_lim) +
+  make_map(fit_hh, "est_household", "モデル", "magma", hh_lim)
+plot(p_fit_hh)
+ggsave(file.path(fit_plot_dir, "fit_household_mesh.png"), p_fit_hh,
+       width = 15, height = 5.5, dpi = 150)
+
+# ---- 家賃・床面積（住宅・土地統計調査、市区町村単位）----
+fit_est_mun <- rent_df %>%
+  left_join(est_ar, by = "KEY_CODE") %>%
+  left_join(key_code_mun, by = "KEY_CODE") %>%
+  left_join(household, by = "KEY_CODE") %>%
+  filter(!is.na(mun), !is.na(obs_hh), obs_hh > 0, !is.na(est_rent), !is.na(est_ar)) %>%
+  group_by(mun) %>%
+  summarise(
+    est_rent_mun = weighted.mean(est_rent, w = obs_hh, na.rm = TRUE),
+    est_ar_mun   = weighted.mean(est_ar,   w = obs_hh, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+fit_mun <- fit_est_mun %>%
+  left_join(rent_target_mun, by = "mun") %>%
+  left_join(area_target_mun, by = "mun") %>%
+  left_join(household_mun, by = "mun")
+
+fit_rent_flt <- fit_mun %>%
+  filter(!is.na(rent_target_mun), rent_target_mun > 0, est_rent_mun > 0, obs_hh_mun > 0)
+fit_ar_flt <- fit_mun %>%
+  filter(!is.na(area_target_mun), area_target_mun > 0, est_ar_mun > 0, obs_hh_mun > 0)
+
+# ---- 市区町村と分析対象メッシュの重なり（市区町村面積に占めるメッシュ被覆率）----
+mesh_union <- st_union(key_code_sf)
+cov_mun <- city_sf %>%
+  filter(lengths(st_intersects(., mesh_union)) > 0) %>%
+  mutate(
+    area_km2   = as.numeric(st_area(.)) / 1e6,
+    cover_km2  = as.numeric(st_area(st_intersection(geometry, mesh_union))) / 1e6,
+    cover_rate = cover_km2 / area_km2,
+    used       = mun %in% fit_rent_flt$mun
+  ) %>%
+  left_join(key_code_mun %>% count(mun, name = "n_mesh"), by = "mun") %>%
+  mutate(n_mesh = tidyr::replace_na(n_mesh, 0L))
+
+cov_label <- cov_mun %>%
+  st_point_on_surface() %>%
+  mutate(label = sprintf("%s\n%.0f%%", CITY_NAME, 100 * cover_rate))
+
+# 表示範囲は離島（1km2未満の部分）を除いた範囲
+cov_bbox <- cov_mun %>%
+  st_cast("MULTIPOLYGON") %>%
+  st_cast("POLYGON") %>%
+  filter(as.numeric(st_area(.)) > 1e6) %>%
+  st_bbox()
+
+p_cov <- ggplot() +
+  geom_sf(data = cov_mun, aes(fill = 100 * cover_rate), color = "gray30", linewidth = 0.3) +
+  geom_sf(data = key_code_sf, fill = NA, color = "black", linewidth = 0.1) +
+  geom_sf(data = filter(cov_mun, !used), fill = NA, color = "red", linewidth = 0.6, linetype = "dashed") +
+  geom_sf_text(data = cov_label, aes(label = label), size = 2.2, lineheight = 0.85) +
+  scale_fill_distiller(palette = "Blues", direction = 1, limits = c(0, 100), name = "メッシュ被覆率(%)") +
+  labs(title = "市区町村（住宅・土地統計調査の集計単位）と分析対象メッシュの重なり",
+       subtitle = "塗り：市区町村面積に占める分析対象メッシュの割合　黒枠：1kmメッシュ　赤破線：比較に未使用（データなし）") +
+  coord_sf(xlim = cov_bbox[c("xmin", "xmax")], ylim = cov_bbox[c("ymin", "ymax")]) +
+  theme_void() +
+  theme(plot.background = element_rect(fill = "white", color = NA))
+plot(p_cov)
+ggsave(file.path(fit_plot_dir, "mun_mesh_coverage.png"), p_cov, width = 9, height = 9, dpi = 200)
+
+# ---- 同上、可住地ベースの被覆率（市区町村の可住地100mメッシュのうち分析対象メッシュ内の割合）----
+# 可住地の定義はL.92と同じ（森林・荒地・河川湖沼・海水域・海浜・その他用地を除く）。
+# 土地利用細分メッシュは1次メッシュ5030のみのため、5030外にはみ出す市区町村（久留米市）は過大になる。
+hab_cell <- st_read("data/raw/NLNI_Fukuoka", options = "ENCODING=CP932", quiet = TRUE) %>%
+  filter(!土地利用種 %in% c("0500", "0600", "1100", "1500", "1400", "1000")) %>%
+  st_transform(st_crs(city_sf)) %>%
+  st_centroid() %>%
+  st_join(city_sf %>% select(mun), join = st_within) %>%
+  mutate(in_study = lengths(st_within(., mesh_union)) > 0) %>%
+  st_drop_geometry() %>%
+  filter(!is.na(mun)) %>%
+  group_by(mun) %>%
+  summarise(hab_km2 = n() / 100, hab_study_km2 = sum(in_study) / 100, .groups = "drop")
+
+ext_5030 <- st_as_sfc(st_bbox(c(xmin = 130, xmax = 131, ymin = 33 + 20 / 60, ymax = 34), crs = 4326)) %>%
+  st_transform(st_crs(city_sf))
+
+# 比較対象は可住地被覆率がhab_threshold以上の市区町村に限る
+hab_threshold <- 0.5
+cov_mun <- cov_mun %>%
+  left_join(hab_cell, by = "mun") %>%
+  mutate(
+    hab_rate = hab_study_km2 / hab_km2,
+    in_5030  = as.numeric(st_area(st_intersection(geometry, ext_5030))) / as.numeric(st_area(geometry)),
+    keep     = used & hab_rate >= hab_threshold
+  )
+mun_keep <- cov_mun$mun[cov_mun$keep]
+
+cov_label_hab <- cov_mun %>%
+  st_point_on_surface() %>%
+  mutate(label = sprintf("%s\n%.0f%%%s", CITY_NAME, 100 * hab_rate, ifelse(in_5030 < 0.9, "*", "")))
+
+p_cov_hab <- ggplot() +
+  geom_sf(data = cov_mun, aes(fill = 100 * hab_rate), color = "gray30", linewidth = 0.3) +
+  geom_sf(data = key_code_sf, fill = NA, color = "black", linewidth = 0.1) +
+  geom_sf(data = filter(cov_mun, !keep), fill = NA, color = "red", linewidth = 0.6, linetype = "dashed") +
+  geom_sf_text(data = cov_label_hab, aes(label = label), size = 2.2, lineheight = 0.85) +
+  scale_fill_distiller(palette = "Greens", direction = 1, limits = c(0, 100), name = "可住地被覆率(%)") +
+  labs(title = "市区町村の可住地のうち分析対象メッシュに含まれる割合",
+       subtitle = sprintf(paste0("可住地：土地利用細分メッシュ(L03-b-16)の森林・荒地・水面等以外　黒枠：1kmメッシュ\n",
+                                 "赤破線：比較から除外（データなし、または可住地被覆率%.0f%%未満）\n",
+                                 "*：土地利用データ(1次メッシュ5030)の範囲外に市区町村の大部分があり、値は過大"),
+                          100 * hab_threshold)) +
+  coord_sf(xlim = cov_bbox[c("xmin", "xmax")], ylim = cov_bbox[c("ymin", "ymax")]) +
+  theme_void() +
+  theme(plot.background = element_rect(fill = "white", color = NA))
+plot(p_cov_hab)
+ggsave(file.path(fit_plot_dir, "mun_mesh_coverage_habitable.png"), p_cov_hab, width = 9, height = 9, dpi = 200)
+
+print(cov_mun %>% st_drop_geometry() %>%
+        select(CITY_NAME, cover_rate, hab_rate, in_5030, used, keep) %>%
+        arrange(hab_rate), n = Inf)
+
+# ---- 市区町村の適合度（全市区町村 / 可住地被覆率hab_threshold以上）----
+fit_rent_flt <- fit_rent_flt %>% mutate(keep = mun %in% mun_keep)
+fit_ar_flt   <- fit_ar_flt   %>% mutate(keep = mun %in% mun_keep)
+
+fit_m_rent_all <- fit_metrics(fit_rent_flt$rent_target_mun, fit_rent_flt$est_rent_mun, fit_rent_flt$obs_hh_mun)
+fit_m_rent     <- with(filter(fit_rent_flt, keep), fit_metrics(rent_target_mun, est_rent_mun, obs_hh_mun))
+fit_m_ar_all   <- fit_metrics(fit_ar_flt$area_target_mun, fit_ar_flt$est_ar_mun, fit_ar_flt$obs_hh_mun)
+fit_m_ar       <- with(filter(fit_ar_flt, keep), fit_metrics(area_target_mun, est_ar_mun, obs_hh_mun))
+
+fit_mun_label <- function(m, m_all, df) {
+  sprintf("可住地被覆率%.0f%%以上（●, n = %d）\n  R² = %.3f / 重みつきR² = %.3f\n全市区町村（●+○, n = %d）\n  R² = %.3f / 重みつきR² = %.3f",
+          100 * hab_threshold, sum(df$keep), m["R2"], m["R2_w"], nrow(df), m_all["R2"], m_all["R2_w"])
+}
+
+fit_mun_sf <- city_sf %>%
+  filter(mun %in% unique(na.omit(key_code_mun$mun))) %>%
+  left_join(fit_mun, by = "mun")
+fit_excl_sf <- filter(fit_mun_sf, !mun %in% mun_keep)
+add_excl <- function(p) {
+  p + geom_sf(data = fit_excl_sf, fill = NA, color = "red", linewidth = 0.5, linetype = "dashed")
+}
+
+rent_lim <- range(c(fit_rent_flt$rent_target_mun, fit_rent_flt$est_rent_mun))
+p_fit_rent <- fit_scatter(fit_rent_flt, "rent_target_mun", "est_rent_mun", "家賃（市区町村）", "(円/m2/月)",
+                          fit_mun_label(fit_m_rent, fit_m_rent_all, fit_rent_flt)) +
+  add_excl(make_map(fit_mun_sf, "rent_target_mun", "実データ：住宅・土地統計調査2023", "plasma", rent_lim)) +
+  add_excl(make_map(fit_mun_sf, "est_rent_mun", "モデル（赤破線：比較から除外）", "plasma", rent_lim))
+plot(p_fit_rent)
+ggsave(file.path(fit_plot_dir, "fit_rent_mun.png"), p_fit_rent,
+       width = 15, height = 5.5, dpi = 150)
+
+ar_lim <- range(c(fit_ar_flt$area_target_mun, fit_ar_flt$est_ar_mun))
+p_fit_ar <- fit_scatter(fit_ar_flt, "area_target_mun", "est_ar_mun", "床面積（市区町村、2人世帯換算）", "(m2)",
+                        fit_mun_label(fit_m_ar, fit_m_ar_all, fit_ar_flt)) +
+  add_excl(make_map(fit_mun_sf, "area_target_mun", "実データ：住宅・土地統計調査2023", "viridis", ar_lim)) +
+  add_excl(make_map(fit_mun_sf, "est_ar_mun", "モデル（赤破線：比較から除外）", "viridis", ar_lim))
+plot(p_fit_ar)
+ggsave(file.path(fit_plot_dir, "fit_floor_area_mun.png"), p_fit_ar,
+       width = 15, height = 5.5, dpi = 150)
+
+fit_summary <- tibble(
+  indicator = c("household", "rent", "rent", "floor_area", "floor_area"),
+  target    = c("all", "all", "hab>=th", "all", "hab>=th"),
+  n         = c(nrow(fit_hh_flt), nrow(fit_rent_flt), sum(fit_rent_flt$keep), nrow(fit_ar_flt), sum(fit_ar_flt$keep))
+) %>%
+  bind_cols(as_tibble(rbind(fit_m_hh, fit_m_rent_all, fit_m_rent, fit_m_ar_all, fit_m_ar)))
+print(fit_summary)
+
+
+if(F){ # 旧モデル適合度検証セクション（アットホームとの比較。上の「モデル適合度検証（GA目標値と同じデータ）」に置き換え）
 #実データとモデル比較#####
 # install.packages("patchwork")
 library(patchwork)
