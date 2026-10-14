@@ -10,7 +10,7 @@
 - 作成日: 2026-09-19（行番号は同日時点の `scripts/Fukuoka_LUTI_model_260617.R`。以後ずれるので、
   探すときは行番号より `####` 見出しを頼る）
 - 略称: **本体** = `scripts/Fukuoka_LUTI_model_260617.R`、**MC** = `scripts/Fukuoka_modeChoide_260309_copied.R`、
-  **較正ログ** = `project_log/calibration/`、**シナリオ図** = `project_log/scenario-analysis/plots/`
+  **較正ログ** = `project_log/calibration/`、**シナリオ図** = `project_log/scenario-analysis/runs/<active_calibration>/plots/`
 - 印: ✅ リポジトリ／データから確認済み、🔶 コードコメント等の記述のみ（現在の較正で再確認が必要）、
   ⬜ 値が未記録（本体を実行して埋める）、❓ 判断・確認が必要
 
@@ -52,7 +52,7 @@
 **仮定（コードから読み取れるもの）** ✅
 | 仮定 | 根拠 |
 |---|---|
-| 1世帯＝1就業者、1日1往復通勤（需要 `l_ij × P.car` を1世帯1日1往復の台数として配分） | 本体 L.822、`scenario-analysis/plots/note.md`「交通量の単位」 |
+| 1世帯＝1就業者、1日1往復通勤（需要 `l_ij × P.car` を1世帯1日1往復の台数として配分） | 本体 L.822、`scenario-analysis/README.md`「交通量の単位」 |
 | 家計の異質性は従業地 `j` のみ（所得階層・世帯人数の次元を持たない） | `06_housing-survey-comparison/meta.md` |
 | 複合財の価格 `p=1`、`α_z+α_a=1` | 本体 L.359–361 |
 | 建蔽率 `φ=0.5`、公共空間係数 `φ_pub=0.6`、農地地代 `rr_a=0.1`（千円/m²/月）、階高3m | 本体 L.402–408 |
@@ -410,7 +410,7 @@
 
 **書くこと**: 3.5の指標ごとに、現状に対するシナリオB・Cの変化。以下の小節分けを提案。
 
-⬜ **全体の前提**: 図はすべて `k_i=0.1`・01の5変数で作成（`scenario-analysis/plots/note.md`、2026-08-24時点）。
+⬜ **全体の前提**: 以下の記述は旧出力（`scenario-analysis/runs/legacy_unknown-calibration/`、較正状態不明・旧メモでは `k_i=0.1`・01の5変数）に基づく。07で再実行後に見直す。
 論文にはこの前提を明記し、較正結果が変わった場合は図を再生成する。各シナリオの収束状況も併記すること。
 
 ### 4.2.1 雇用分布の変化（入力条件の確認）
@@ -429,7 +429,7 @@
   `scenario_speed_diff_maps.png`、主要道路のみ版（`*_major.png`）・メッシュ背景版（`*_major_mesh.png`）。
 - 鉄道 ✅ `plots/rail/`: `scenario_rail_flow_maps.png`、`scenario_rail_flow_diff_maps.png`、
   ゾーン別 `scenario_rail_ridership_{residence,workplace}_maps.png`・`…_diff_maps.png`。
-- 読み方の注意 ✅（`note.md`）:
+- 読み方の注意 ✅（`scenario-analysis/README.md`）:
   - 交通量の単位は pcu/日相当（K値換算）、鉄道は世帯/日で単位が異なる。
   - 鉄道の差分は博多駅周辺のハブに集中して大きく出る（放射状の鉄道網で末端の変化が積み上がるため。バグではない）。
     末端側を見たい場合は絞り込みが必要。

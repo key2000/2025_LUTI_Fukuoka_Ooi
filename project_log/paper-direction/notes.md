@@ -2,8 +2,7 @@
 
 較正の試行記録（`project_log/calibration/`）やシナリオ分析（`project_log/scenario-analysis/`）
 とは別に、論文としてまとめる方向性や先生とのやり取りを時系列で残す場所。
-NNフォルダ運用はせず、このファイルに追記していく
-（`project_log/scenario-analysis/plots/note.md`と同じ方針）。
+NNフォルダ運用はせず、このファイルに追記していく。
 
 ## 2026-08-30
 

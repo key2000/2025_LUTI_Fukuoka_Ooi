@@ -1,18 +1,35 @@
-# plots/
+# scenario-analysis/
 
 シナリオ別（現状 / シナリオB: 雇用一律再配置 / シナリオC: CBD距離加重再配置）の比較マップ。
-較正の複数手法を比較するログではないため、`project_log/calibration/` のようなNNフォルダ運用はせず、
-固定ファイル名で上書きしていく。過去版が見たい場合はGit履歴
-（`git log -- project_log/scenario-analysis/plots/`）を辿る。
 
-## フォルダ構成
+## フォルダ構成（較正パターン別）
 
-ファイル数が多いため内容別にサブフォルダへ分けている（`ggsave()`の保存先もこの構成に合わせている）。
+どの較正結果で回したかを区別するため、出力は `active_calibration`（メインスクリプトで選ぶ較正パターン名、
+`project_log/calibration/` のフォルダ名と同じ）ごとのフォルダに分ける。
 
-- `road/` — リンク別交通量・速度マップ（下記「交通量・速度マップ」節）
-- `landuse/` — シナリオ間の土地利用系指標（世帯数・家賃・床面積・宅地割合・建物高さ）の差分マップ
-- `rail/` — 鉄道（ゾーン別利用世帯数・リンク別利用者数）マップ（下記「鉄道リンク別利用者数マップ」節）
-- ルート直下（`study_area_map.png`）— 論文用の分析対象範囲図（シナリオ間比較ではないため単独）
+```
+scenario-analysis/
+├── README.md                     ← このファイル
+├── plots/study_area_map.png      ← 論文用の分析対象範囲図（較正に依存しないため共通）
+└── runs/
+    ├── <active_calibration>/     ← 例: 07_ga-housing-survey-target/
+    │   ├── run_info.md           ← 実行記録（自動生成）
+    │   ├── summary_indicators.md ← 総合指標の表（便益・CO2・地代収入・宅地面積など、自動生成）
+    │   └── plots/{road,landuse,rail}/*.png
+    └── legacy_unknown-calibration/  ← 2026-10-13 以前の出力（較正状態不明）
+```
+
+- `scripts/Fukuoka_LUTI_model_260617.R` の `#シナリオ結果の保存先（較正パターン別）####` セクションで
+  `scn_plot_dir <- runs/<active_calibration>/plots` を決め、以降の `ggsave()` はすべてここに保存する。
+  `active_calibration` を切り替えて再実行すれば、別フォルダに出力される（他の較正の結果は上書きしない）。
+- 同じ `active_calibration` で再実行した場合は、そのフォルダ内を固定ファイル名で上書きする。
+  過去版はGit履歴（`git log -- project_log/scenario-analysis/runs/<active_calibration>/`）を辿る。
+- `run_info.md` は実行のたびに自動で上書きされる。実行日時・`active_calibration`・git commit
+  （`scripts/` に未コミット変更があればその旨）・5パラメータ・k_iの要約・各シナリオの収束状況を記録する。
+  `summary_indicators.md` も同様に実行ごとに上書きされる（`#総合指標の表（シナリオ別）####` セクション）。
+  結果の考察などは手で書き足さず、このREADMEか `paper-direction/notes.md` に書く（自動上書きで消えるため）。
+
+以下の各節のファイル名は `runs/<active_calibration>/plots/` からの相対パス。
 
 ## 交通量・速度マップ（`road/`）
 
@@ -26,7 +43,7 @@
 
 `scripts/Fukuoka_LUTI_model_260617.R` の `#シナリオ別 交通量・速度マップ####` および
 `#シナリオ別 交通量・速度 差分マップ（シナリオB/C − 現状）####` セクションで生成される
-（`project_log/scenario-analysis/plots/road/` に `ggsave()` で保存）。差分マップは色が発散配色（青=減少、赤=増加）、
+（`runs/<active_calibration>/plots/road/` に `ggsave()` で保存）。差分マップは色が発散配色（青=減少、赤=増加）、
 太さが変化量の絶対値（大きく変化したリンクほど太い）。
 
 ## 土地利用系の差分マップ（`landuse/`）
@@ -42,7 +59,7 @@ pcu = Passenger Car Unit（乗用車換算台数）。車種ごとの道路容�
 道路交通工学で容量を表す標準的な単位。`link10$cap`（道路種別ごとの容量、`scripts/Fukuoka_LUTI_model_260617.R`
 のcap.df）はpcu/hour表記（国総研資料に基づく）だが、`capacity = link10$cap/KK`（`KK=0.1`、いわゆるK値＝
 ピーク時/日交通量の比率）により日単位相当に換算して交通配分している。需要側（`l_i_j × P.car`）も
-「1世帯1日1往復通勤」想定の日単位の量のため、`flow`（このplots/の交通量マップが示す値）は
+「1世帯1日1往復通勤」想定の日単位の量のため、`flow`（`road/` の交通量マップが示す値）は
 pcu/hourではなく**pcu/日相当**。
 
 ## 鉄道リンク別利用者数マップ（`rail/`）
@@ -98,10 +115,8 @@ pcu/hourではなく**pcu/日相当**。
 このケースでは`rail_network`側で同じ場所に同じflow値の線が重なって描画されるため
 見た目には影響しないが、リンク数を数える集計をする場合は注意。
 
-## この内容がどの較正状態に基づくか
+## 旧出力（`runs/legacy_unknown-calibration/`）
 
-現時点（2026-08-24）は **k_i を固定値0.1** で実行した結果（`k_i <- rep(0.1, nz_res) # 260807方針:
-GA較正のk_i(best_k_i)は使わず固定値0.1とする`）。`project_log/calibration/` のいずれの較正結果
-（k_iの逆算・緩和・クリギング等）も現時点では反映されていない。
-
-**再生成してこのファイルを上書きするたびに、この節を実際に使ったk_iの状態に書き換えること。**
+2026-10-13 に較正パターン別フォルダへ移行する前に `plots/` 直下に上書き保存されていたもの。
+どの較正状態で生成したかは記録が残っていない（2026-08-24 時点の旧メモでは「k_i を固定値0.1」で
+実行したとされていたが、その後再生成されたかは不明）。比較用に残しているだけで、参照する場合は注意。

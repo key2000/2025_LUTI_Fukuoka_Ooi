@@ -83,7 +83,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   追加手順・`meta.md` テンプレート・`ga_result.RData`（Git管理外のローカルキャッシュ）の扱いは
   `project_log/calibration/README.md`。
 - **`scenario-analysis/`** — シナリオ分析（交通量・速度・鉄道・土地利用のマップ）。NNフォルダは使わず、
-  `plots/` 内のサブフォルダに固定ファイル名で上書きする。詳細は `plots/note.md`。
+  `runs/<active_calibration>/` に較正パターン別に出力する（`run_info.md` に実行時の較正・パラメータ・commitを
+  自動記録、同じ較正での再実行は固定ファイル名で上書き）。詳細は `scenario-analysis/README.md`。
 - **`paper-direction/`** — 論文としてまとめる方向性、指導教員とのやり取り、次のTODO（`notes.md`、日付順に追記）、
   第3章・第4章の素材の下書き（`ch3_ch4_materials.md`、未確定・要確認を含む）。
   モデル改良の動機（例: Stone-Geary型効用関数の検討）もここ。作業の前提となる方針を確認したいときに読む。

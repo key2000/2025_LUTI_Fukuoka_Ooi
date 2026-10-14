@@ -106,6 +106,7 @@ R²は $\mathrm{cor}(R_m, \hat R_m)^2$、重みつきR²は $w_m$ で重みづ�
 - GA本番（2026-09-22、ga_result.RData）: 最良fitness = -19.784。100世代目でもBestは微増中で未収束
   （plots/ga_convergence.png）。5変数 = alpha_a 0.2845, gamma_0 0.4965, gamma_1 0.5758, theta_H 0.2519,
   theta_L 3.3893。k_iは0.074〜0.310（中央値0.202）。
+  メッシュ別のk_iは `k_i_by_mesh.csv`（zone_index, KEY_CODE, k_i。calib_result$k_iの順＝孤立メッシュ除外後のdists0の行順）。
 - 適合度検証（2026-10-12、GA目標値と同じデータ・同じ集計。本体「モデル適合度検証（GA目標値と同じデータ）####」）:
 
   | 指標 | 実データ | 単位 | n | R² | 重みつきR² | GAと同じ誤差項 |
