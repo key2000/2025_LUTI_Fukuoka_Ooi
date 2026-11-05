@@ -564,6 +564,7 @@ cap.df=data.frame(hwy=unique(link10$highway) %>% sort(),
 KK=0.1
 #https://www.jstage.jst.go.jp/article/thagis/17/2/17_203/_pdf
 alpha=0.48;beta=2.89 # yamada/matsui (1998)
+ta_max_gap <- 1e-3 # 現状・シナリオの道路配分の収束判定（1e-2では配分の打ち切りでLUTIループが振動）
 
 link10=link10 %>% mutate(FFtime=linklen/maxspeed*60/10^3) %>%  # fftime (minutes)
   merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
@@ -1224,7 +1225,7 @@ while (flag01 == 0) {
     from      = trips$from,
     to        = trips$to,
     demand    = trips$demand,
-    max_gap   = 1e-2,
+    max_gap   = ta_max_gap,
     algorithm = "bfw",
     verbose   = FALSE
   )
@@ -2028,7 +2029,7 @@ run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn,
     names(trips) <- c("from", "to", "demand")
     
     ta <- assign_traffic(Graph = sgr, from = trips$from, to = trips$to, 
-                         demand = trips$demand, max_gap = 1e-2, 
+                         demand = trips$demand, max_gap = ta_max_gap,
                          algorithm = "bfw", verbose = FALSE)
     
     sgr2 <- makegraph(df = ta$data[, c("from", "to", "cost")], 
@@ -2155,6 +2156,7 @@ writeLines(c(
   "",
   "## シナリオ収束",
   "",
+  paste0("- 道路配分 max_gap = ", ta_max_gap, "、LUTIループ msa = 0.5, tol = 100"),
   sapply(names(results), function(s) sprintf(
     "- %s（%s）: converged = %s, iterations = %d, final_diff = %.3g, 総雇用 = %.0f",
     s, scenarios[[s]]$name, results[[s]]$converged, results[[s]]$iterations,
