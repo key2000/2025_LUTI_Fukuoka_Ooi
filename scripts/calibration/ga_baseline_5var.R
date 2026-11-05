@@ -291,5 +291,11 @@ calibrate_ga_baseline_5var <- function(dists0.road, sgr, nodes, zones, centers, 
   )
   save(calib_result, file = "project_log/calibration/01_baseline-5param-ga/ga_result.RData")
 
+  plot(ga_result_calib)
+  png("project_log/calibration/01_baseline-5param-ga/plots/ga_convergence.png",
+      width = 900, height = 750, res = 150)
+  plot(ga_result_calib)
+  dev.off()
+
   calib_result
 }

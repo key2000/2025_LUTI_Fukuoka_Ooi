@@ -564,6 +564,7 @@ cap.df=data.frame(hwy=unique(link10$highway) %>% sort(),
 KK=0.1
 #https://www.jstage.jst.go.jp/article/thagis/17/2/17_203/_pdf
 alpha=0.48;beta=2.89 # yamada/matsui (1998)
+ta_max_gap <- 1e-3 # 現状・シナリオの道路配分の収束判定（1e-2では配分の打ち切りでLUTIループが振動）
 
 link10=link10 %>% mutate(FFtime=linklen/maxspeed*60/10^3) %>%  # fftime (minutes)
   merge(cap.df, by.x = "highway", by.y = "hwy", all.x = TRUE)
@@ -1105,6 +1106,12 @@ if (run_ga_852dim) {
   )
   save(calib_result,
        file = "project_log/calibration/07_ga-housing-survey-target/ga_result.RData")
+
+  plot(ga_result_housing_survey)
+  png("project_log/calibration/07_ga-housing-survey-target/plots/ga_convergence.png",
+      width = 900, height = 750, res = 150)
+  plot(ga_result_housing_survey)
+  dev.off()
 }
 
 
@@ -1218,7 +1225,7 @@ while (flag01 == 0) {
     from      = trips$from,
     to        = trips$to,
     demand    = trips$demand,
-    max_gap   = 1e-2,
+    max_gap   = ta_max_gap,
     algorithm = "bfw",
     verbose   = FALSE
   )
@@ -1292,8 +1299,235 @@ Gi_df <- data.frame(
 ) %>%
   mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
 
+Hi_df <- data.frame(
+  KEY_CODE = names(final_state$height_i),
+  est_stories = as.numeric(final_state$stories_i),
+  est_height = as.numeric(final_state$height_i)
+) %>%
+  mutate(KEY_CODE = gsub("^mc_", "", KEY_CODE))
 
-if(F){ # モデル適合度検証セクション（アットホームデータとの比較）
+obs_household <- household %>%
+  dplyr::rename(obs_household = obs_hh)
+
+
+#モデル適合度検証（GA目標値と同じデータ）####
+# 07のGA目標値（household / rent_target_mun / area_target_mun）と同じデータ・同じ集計で比較する。
+library(patchwork)
+library(wCorr)
+
+fit_plot_dir <- file.path("project_log", "calibration", active_calibration, "plots")
+dir.create(fit_plot_dir, showWarnings = FALSE, recursive = TRUE)
+
+# 散布図（1:1線つき）。df$keepがFALSEの点は白抜き
+fit_scatter <- function(df, obs, est, title, unit, label) {
+  lim <- range(c(df[[obs]], df[[est]]), na.rm = TRUE)
+  if (is.null(df$keep)) df$keep <- TRUE
+  ggplot(df, aes(x = .data[[obs]], y = .data[[est]])) +
+    geom_abline(slope = 1, intercept = 0, color = "red") +
+    geom_point(aes(shape = keep), alpha = 0.7) +
+    scale_shape_manual(values = c(`TRUE` = 16, `FALSE` = 1), guide = "none") +
+    annotate("text", x = lim[2], y = lim[1], hjust = 1, vjust = 0, size = 3.5, label = label) +
+    scale_x_continuous(limits = lim) +
+    scale_y_continuous(limits = lim) +
+    labs(title = title, x = paste0("実データ ", unit), y = paste0("モデル ", unit)) +
+    theme_minimal() +
+    theme(aspect.ratio = 1, plot.background = element_rect(fill = "white", color = NA))
+}
+
+# R²・重みつきR²・GAと同じ重みつき対数二乗誤差
+fit_log_err <- function(obs, est, w) sum(w / sum(w) * (log(est) - log(obs)) ^ 2)
+fit_metrics <- function(obs, est, w) {
+  c(R2      = cor(obs, est)^2,
+    R2_w    = weightedCorr(obs, est, weights = w, method = "Pearson")^2,
+    log_err = fit_log_err(obs, est, w))
+}
+
+# ---- 世帯数（国勢調査、メッシュ単位）----
+# 国勢調査CSVに無いメッシュ（人口0）は0世帯とする
+fit_hh <- key_code_sf %>%
+  left_join(est_household, by = "KEY_CODE") %>%
+  left_join(household, by = "KEY_CODE") %>%
+  mutate(obs_hh = tidyr::replace_na(obs_hh, 0))
+fit_hh_flt <- fit_hh %>%
+  st_drop_geometry() %>%
+  filter(!is.na(obs_hh), !is.na(est_household), obs_hh > 0, est_household > 0)
+
+fit_m_hh <- fit_metrics(fit_hh_flt$obs_hh, fit_hh_flt$est_household, fit_hh_flt$obs_hh)
+
+hh_lim <- c(0, max(fit_hh$obs_hh, fit_hh$est_household, na.rm = TRUE))
+p_fit_hh <- fit_scatter(fit_hh_flt, "obs_hh", "est_household", "世帯数（メッシュ）", "(世帯)",
+                        sprintf("R² = %.3f\n重みつきR² = %.3f\nn = %d",
+                                fit_m_hh["R2"], fit_m_hh["R2_w"], nrow(fit_hh_flt))) +
+  make_map(fit_hh, "obs_hh", "実データ：国勢調査", "magma", hh_lim) +
+  make_map(fit_hh, "est_household", "モデル", "magma", hh_lim)
+plot(p_fit_hh)
+ggsave(file.path(fit_plot_dir, "fit_household_mesh.png"), p_fit_hh,
+       width = 15, height = 5.5, dpi = 150)
+
+# ---- 家賃・床面積（住宅・土地統計調査、市区町村単位）----
+fit_est_mun <- rent_df %>%
+  left_join(est_ar, by = "KEY_CODE") %>%
+  left_join(key_code_mun, by = "KEY_CODE") %>%
+  left_join(household, by = "KEY_CODE") %>%
+  filter(!is.na(mun), !is.na(obs_hh), obs_hh > 0, !is.na(est_rent), !is.na(est_ar)) %>%
+  group_by(mun) %>%
+  summarise(
+    est_rent_mun = weighted.mean(est_rent, w = obs_hh, na.rm = TRUE),
+    est_ar_mun   = weighted.mean(est_ar,   w = obs_hh, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+fit_mun <- fit_est_mun %>%
+  left_join(rent_target_mun, by = "mun") %>%
+  left_join(area_target_mun, by = "mun") %>%
+  left_join(household_mun, by = "mun")
+
+fit_rent_flt <- fit_mun %>%
+  filter(!is.na(rent_target_mun), rent_target_mun > 0, est_rent_mun > 0, obs_hh_mun > 0)
+fit_ar_flt <- fit_mun %>%
+  filter(!is.na(area_target_mun), area_target_mun > 0, est_ar_mun > 0, obs_hh_mun > 0)
+
+# ---- 市区町村と分析対象メッシュの重なり（市区町村面積に占めるメッシュ被覆率）----
+mesh_union <- st_union(key_code_sf)
+cov_mun <- city_sf %>%
+  filter(lengths(st_intersects(., mesh_union)) > 0) %>%
+  mutate(
+    area_km2   = as.numeric(st_area(.)) / 1e6,
+    cover_km2  = as.numeric(st_area(st_intersection(geometry, mesh_union))) / 1e6,
+    cover_rate = cover_km2 / area_km2,
+    used       = mun %in% fit_rent_flt$mun
+  ) %>%
+  left_join(key_code_mun %>% count(mun, name = "n_mesh"), by = "mun") %>%
+  mutate(n_mesh = tidyr::replace_na(n_mesh, 0L))
+
+cov_label <- cov_mun %>%
+  st_point_on_surface() %>%
+  mutate(label = sprintf("%s\n%.0f%%", CITY_NAME, 100 * cover_rate))
+
+# 表示範囲は離島（1km2未満の部分）を除いた範囲
+cov_bbox <- cov_mun %>%
+  st_cast("MULTIPOLYGON") %>%
+  st_cast("POLYGON") %>%
+  filter(as.numeric(st_area(.)) > 1e6) %>%
+  st_bbox()
+
+p_cov <- ggplot() +
+  geom_sf(data = cov_mun, aes(fill = 100 * cover_rate), color = "gray30", linewidth = 0.3) +
+  geom_sf(data = key_code_sf, fill = NA, color = "black", linewidth = 0.1) +
+  geom_sf(data = filter(cov_mun, !used), fill = NA, color = "red", linewidth = 0.6, linetype = "dashed") +
+  geom_sf_text(data = cov_label, aes(label = label), size = 2.2, lineheight = 0.85) +
+  scale_fill_distiller(palette = "Blues", direction = 1, limits = c(0, 100), name = "メッシュ被覆率(%)") +
+  labs(title = "市区町村（住宅・土地統計調査の集計単位）と分析対象メッシュの重なり",
+       subtitle = "塗り：市区町村面積に占める分析対象メッシュの割合　黒枠：1kmメッシュ　赤破線：比較に未使用（データなし）") +
+  coord_sf(xlim = cov_bbox[c("xmin", "xmax")], ylim = cov_bbox[c("ymin", "ymax")]) +
+  theme_void() +
+  theme(plot.background = element_rect(fill = "white", color = NA))
+plot(p_cov)
+ggsave(file.path(fit_plot_dir, "mun_mesh_coverage.png"), p_cov, width = 9, height = 9, dpi = 200)
+
+# ---- 同上、可住地ベースの被覆率（市区町村の可住地100mメッシュのうち分析対象メッシュ内の割合）----
+# 可住地の定義はL.92と同じ（森林・荒地・河川湖沼・海水域・海浜・その他用地を除く）。
+# 土地利用細分メッシュは1次メッシュ5030のみのため、5030外にはみ出す市区町村（久留米市）は過大になる。
+hab_cell <- st_read("data/raw/NLNI_Fukuoka", options = "ENCODING=CP932", quiet = TRUE) %>%
+  filter(!土地利用種 %in% c("0500", "0600", "1100", "1500", "1400", "1000")) %>%
+  st_transform(st_crs(city_sf)) %>%
+  st_centroid() %>%
+  st_join(city_sf %>% dplyr::select(mun), join = st_within) %>%
+  mutate(in_study = lengths(st_within(., mesh_union)) > 0) %>%
+  st_drop_geometry() %>%
+  filter(!is.na(mun)) %>%
+  group_by(mun) %>%
+  summarise(hab_km2 = n() / 100, hab_study_km2 = sum(in_study) / 100, .groups = "drop")
+
+ext_5030 <- st_as_sfc(st_bbox(c(xmin = 130, xmax = 131, ymin = 33 + 20 / 60, ymax = 34), crs = 4326)) %>%
+  st_transform(st_crs(city_sf))
+
+# 比較対象は可住地被覆率がhab_threshold以上の市区町村に限る
+hab_threshold <- 0.5
+cov_mun <- cov_mun %>%
+  left_join(hab_cell, by = "mun") %>%
+  mutate(
+    hab_rate = hab_study_km2 / hab_km2,
+    in_5030  = as.numeric(st_area(st_intersection(geometry, ext_5030))) / as.numeric(st_area(geometry)),
+    keep     = used & hab_rate >= hab_threshold
+  )
+mun_keep <- cov_mun$mun[cov_mun$keep]
+
+cov_label_hab <- cov_mun %>%
+  st_point_on_surface() %>%
+  mutate(label = sprintf("%s\n%.0f%%%s", CITY_NAME, 100 * hab_rate, ifelse(in_5030 < 0.9, "*", "")))
+
+p_cov_hab <- ggplot() +
+  geom_sf(data = cov_mun, aes(fill = 100 * hab_rate), color = "gray30", linewidth = 0.3) +
+  geom_sf(data = key_code_sf, fill = NA, color = "black", linewidth = 0.1) +
+  geom_sf(data = filter(cov_mun, !keep), fill = NA, color = "red", linewidth = 0.6, linetype = "dashed") +
+  geom_sf_text(data = cov_label_hab, aes(label = label), size = 2.2, lineheight = 0.85) +
+  scale_fill_distiller(palette = "Greens", direction = 1, limits = c(0, 100), name = "可住地被覆率(%)") +
+  labs(title = "市区町村の可住地のうち分析対象メッシュに含まれる割合",
+       subtitle = sprintf(paste0("可住地：土地利用細分メッシュ(L03-b-16)の森林・荒地・水面等以外　黒枠：1kmメッシュ\n",
+                                 "赤破線：比較から除外（データなし、または可住地被覆率%.0f%%未満）\n",
+                                 "*：土地利用データ(1次メッシュ5030)の範囲外に市区町村の大部分があり、値は過大"),
+                          100 * hab_threshold)) +
+  coord_sf(xlim = cov_bbox[c("xmin", "xmax")], ylim = cov_bbox[c("ymin", "ymax")]) +
+  theme_void() +
+  theme(plot.background = element_rect(fill = "white", color = NA))
+plot(p_cov_hab)
+ggsave(file.path(fit_plot_dir, "mun_mesh_coverage_habitable.png"), p_cov_hab, width = 9, height = 9, dpi = 200)
+
+print(cov_mun %>% st_drop_geometry() %>%
+        dplyr::select(CITY_NAME, cover_rate, hab_rate, in_5030, used, keep) %>%
+        arrange(hab_rate), n = Inf)
+
+# ---- 市区町村の適合度（全市区町村 / 可住地被覆率hab_threshold以上）----
+fit_rent_flt <- fit_rent_flt %>% mutate(keep = mun %in% mun_keep)
+fit_ar_flt   <- fit_ar_flt   %>% mutate(keep = mun %in% mun_keep)
+
+fit_m_rent_all <- fit_metrics(fit_rent_flt$rent_target_mun, fit_rent_flt$est_rent_mun, fit_rent_flt$obs_hh_mun)
+fit_m_rent     <- with(filter(fit_rent_flt, keep), fit_metrics(rent_target_mun, est_rent_mun, obs_hh_mun))
+fit_m_ar_all   <- fit_metrics(fit_ar_flt$area_target_mun, fit_ar_flt$est_ar_mun, fit_ar_flt$obs_hh_mun)
+fit_m_ar       <- with(filter(fit_ar_flt, keep), fit_metrics(area_target_mun, est_ar_mun, obs_hh_mun))
+
+fit_mun_label <- function(m, m_all, df) {
+  sprintf("可住地被覆率%.0f%%以上（●, n = %d）\n  R² = %.3f / 重みつきR² = %.3f\n全市区町村（●+○, n = %d）\n  R² = %.3f / 重みつきR² = %.3f",
+          100 * hab_threshold, sum(df$keep), m["R2"], m["R2_w"], nrow(df), m_all["R2"], m_all["R2_w"])
+}
+
+fit_mun_sf <- city_sf %>%
+  filter(mun %in% unique(na.omit(key_code_mun$mun))) %>%
+  left_join(fit_mun, by = "mun")
+fit_excl_sf <- filter(fit_mun_sf, !mun %in% mun_keep)
+add_excl <- function(p) {
+  p + geom_sf(data = fit_excl_sf, fill = NA, color = "red", linewidth = 0.5, linetype = "dashed")
+}
+
+rent_lim <- range(c(fit_rent_flt$rent_target_mun, fit_rent_flt$est_rent_mun))
+p_fit_rent <- fit_scatter(fit_rent_flt, "rent_target_mun", "est_rent_mun", "家賃（市区町村）", "(円/m2/月)",
+                          fit_mun_label(fit_m_rent, fit_m_rent_all, fit_rent_flt)) +
+  add_excl(make_map(fit_mun_sf, "rent_target_mun", "実データ：住宅・土地統計調査2023", "plasma", rent_lim)) +
+  add_excl(make_map(fit_mun_sf, "est_rent_mun", "モデル（赤破線：比較から除外）", "plasma", rent_lim))
+plot(p_fit_rent)
+ggsave(file.path(fit_plot_dir, "fit_rent_mun.png"), p_fit_rent,
+       width = 15, height = 5.5, dpi = 150)
+
+ar_lim <- range(c(fit_ar_flt$area_target_mun, fit_ar_flt$est_ar_mun))
+p_fit_ar <- fit_scatter(fit_ar_flt, "area_target_mun", "est_ar_mun", "床面積（市区町村、2人世帯換算）", "(m2)",
+                        fit_mun_label(fit_m_ar, fit_m_ar_all, fit_ar_flt)) +
+  add_excl(make_map(fit_mun_sf, "area_target_mun", "実データ：住宅・土地統計調査2023", "viridis", ar_lim)) +
+  add_excl(make_map(fit_mun_sf, "est_ar_mun", "モデル（赤破線：比較から除外）", "viridis", ar_lim))
+plot(p_fit_ar)
+ggsave(file.path(fit_plot_dir, "fit_floor_area_mun.png"), p_fit_ar,
+       width = 15, height = 5.5, dpi = 150)
+
+fit_summary <- tibble(
+  indicator = c("household", "rent", "rent", "floor_area", "floor_area"),
+  target    = c("all", "all", "hab>=th", "all", "hab>=th"),
+  n         = c(nrow(fit_hh_flt), nrow(fit_rent_flt), sum(fit_rent_flt$keep), nrow(fit_ar_flt), sum(fit_ar_flt$keep))
+) %>%
+  bind_cols(as_tibble(rbind(fit_m_hh, fit_m_rent_all, fit_m_rent, fit_m_ar_all, fit_m_ar)))
+print(fit_summary)
+
+
+if(F){ # 旧モデル適合度検証セクション（アットホームとの比較。上の「モデル適合度検証（GA目標値と同じデータ）」に置き換え）
 #実データとモデル比較#####
 # install.packages("patchwork")
 library(patchwork)
@@ -1795,7 +2029,7 @@ run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn,
     names(trips) <- c("from", "to", "demand")
     
     ta <- assign_traffic(Graph = sgr, from = trips$from, to = trips$to, 
-                         demand = trips$demand, max_gap = 1e-2, 
+                         demand = trips$demand, max_gap = ta_max_gap,
                          algorithm = "bfw", verbose = FALSE)
     
     sgr2 <- makegraph(df = ta$data[, c("from", "to", "cost")], 
@@ -1895,6 +2129,40 @@ scn2_disposable_income_ij <- results$scn2$disposable_income_ij
 # disposable_income_ij <- results$scn0$disposable_income_ij
 # L_j_hat <- scenarios$scn0$L_j_hat
 
+#シナリオ結果の保存先（較正パターン別）####
+# 詳細は project_log/scenario-analysis/README.md
+scn_run_dir  <- file.path("project_log", "scenario-analysis", "runs", active_calibration)
+scn_plot_dir <- file.path(scn_run_dir, "plots")
+for (d in c("road", "landuse", "rail")) {
+  dir.create(file.path(scn_plot_dir, d), recursive = TRUE, showWarnings = FALSE)
+}
+
+git_commit <- tryCatch(system("git rev-parse --short HEAD", intern = TRUE), error = function(e) NA)
+git_dirty  <- tryCatch(length(system("git status --porcelain -- scripts", intern = TRUE)) > 0,
+                       error = function(e) NA)
+writeLines(c(
+  "# シナリオ分析 実行記録（自動生成）",
+  "",
+  paste0("- 実行日時: ", format(Sys.time(), "%Y-%m-%d %H:%M")),
+  paste0("- active_calibration: `", active_calibration, "`（project_log/calibration/", active_calibration, "/）"),
+  paste0("- git commit: ", git_commit, ifelse(isTRUE(git_dirty), "（scripts/ に未コミットの変更あり）", "")),
+  "",
+  "## パラメータ",
+  "",
+  paste0("- ", names(best_params_global), " = ", signif(best_params_global, 6)),
+  paste0("- k_i: n = ", length(k_i), ", min = ", signif(min(k_i, na.rm = TRUE), 4),
+         ", median = ", signif(median(k_i, na.rm = TRUE), 4),
+         ", max = ", signif(max(k_i, na.rm = TRUE), 4)),
+  "",
+  "## シナリオ収束",
+  "",
+  paste0("- 道路配分 max_gap = ", ta_max_gap, "、LUTIループ msa = 0.5, tol = 100"),
+  sapply(names(results), function(s) sprintf(
+    "- %s（%s）: converged = %s, iterations = %d, final_diff = %.3g, 総雇用 = %.0f",
+    s, scenarios[[s]]$name, results[[s]]$converged, results[[s]]$iterations,
+    results[[s]]$final_diff, sum(scenarios[[s]]$L_j_hat$L_j_hat, na.rm = TRUE)))
+), file.path(scn_run_dir, "run_info.md"))
+
 #シナリオ別 交通量・速度マップ####
 # 太さ = リンク別交通量(flow, pcu/日相当)、色 = リンク別速度(km/h)
 # ※ 容量は link10$cap（pcu/hour）を KK=0.1（K値）で除して日単位相当にスケールしたもの。
@@ -1902,7 +2170,6 @@ scn2_disposable_income_ij <- results$scn2$disposable_income_ij
 # results$scn0（現状）/ scn1（シナリオB）/ scn2（シナリオC）の link_flow(from, to, ftt, cost, flow, capacity)を
 # link10（道路網ジオメトリ）に結合してマップ化する
 
-dir.create("project_log/scenario-analysis/plots", recursive = TRUE, showWarnings = FALSE)
 
 scn_titles <- c(
   scn0 = "現状シナリオ",
@@ -1953,11 +2220,11 @@ library(patchwork)
 combined_flow_speed_map <- scn_flow_speed_plots$scn0 + scn_flow_speed_plots$scn1 + scn_flow_speed_plots$scn2 +
   plot_layout(ncol = 3, guides = "collect")
 print(combined_flow_speed_map)
-ggsave("project_log/scenario-analysis/plots/road/scenario_flow_speed_maps.png",
+ggsave(file.path(scn_plot_dir, "road/scenario_flow_speed_maps.png"),
        plot = combined_flow_speed_map, width = 18, height = 6, dpi = 150)
 
 for (scn_name in names(scn_flow_speed_plots)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_flow_speed_map.png", scn_name),
+  ggsave(sprintf("%s/road/%s_flow_speed_map.png", scn_plot_dir, scn_name),
          plot = scn_flow_speed_plots[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -2029,19 +2296,19 @@ speed_diff_plots <- Map(make_speed_diff_map, scn_diff_maps, diff_titles[names(sc
 combined_flow_diff_map <- flow_diff_plots$scn1 + flow_diff_plots$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_flow_diff_map)
-ggsave("project_log/scenario-analysis/plots/road/scenario_flow_diff_maps.png",
+ggsave(file.path(scn_plot_dir, "road/scenario_flow_diff_maps.png"),
        plot = combined_flow_diff_map, width = 12, height = 6, dpi = 150)
 
 combined_speed_diff_map <- speed_diff_plots$scn1 + speed_diff_plots$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_speed_diff_map)
-ggsave("project_log/scenario-analysis/plots/road/scenario_speed_diff_maps.png",
+ggsave(file.path(scn_plot_dir, "road/scenario_speed_diff_maps.png"),
        plot = combined_speed_diff_map, width = 12, height = 6, dpi = 150)
 
 for (scn_name in names(scn_diff_maps)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_flow_diff_map.png", scn_name),
+  ggsave(sprintf("%s/road/%s_vs_scn0_flow_diff_map.png", scn_plot_dir, scn_name),
          plot = flow_diff_plots[[scn_name]], width = 7, height = 6, dpi = 150)
-  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_speed_diff_map.png", scn_name),
+  ggsave(sprintf("%s/road/%s_vs_scn0_speed_diff_map.png", scn_plot_dir, scn_name),
          plot = speed_diff_plots[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -2100,19 +2367,19 @@ speed_diff_plots_major <- Map(function(d, t) make_speed_diff_map_major(d, t, spe
 combined_flow_diff_map_major <- flow_diff_plots_major$scn1 + flow_diff_plots_major$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_flow_diff_map_major)
-ggsave("project_log/scenario-analysis/plots/road/scenario_flow_diff_maps_major.png",
+ggsave(file.path(scn_plot_dir, "road/scenario_flow_diff_maps_major.png"),
        plot = combined_flow_diff_map_major, width = 12, height = 6, dpi = 150)
 
 combined_speed_diff_map_major <- speed_diff_plots_major$scn1 + speed_diff_plots_major$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_speed_diff_map_major)
-ggsave("project_log/scenario-analysis/plots/road/scenario_speed_diff_maps_major.png",
+ggsave(file.path(scn_plot_dir, "road/scenario_speed_diff_maps_major.png"),
        plot = combined_speed_diff_map_major, width = 12, height = 6, dpi = 150)
 
 for (scn_name in names(scn_diff_maps_major)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_flow_diff_map_major.png", scn_name),
+  ggsave(sprintf("%s/road/%s_vs_scn0_flow_diff_map_major.png", scn_plot_dir, scn_name),
          plot = flow_diff_plots_major[[scn_name]], width = 7, height = 6, dpi = 150)
-  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_speed_diff_map_major.png", scn_name),
+  ggsave(sprintf("%s/road/%s_vs_scn0_speed_diff_map_major.png", scn_plot_dir, scn_name),
          plot = speed_diff_plots_major[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -2161,19 +2428,19 @@ speed_diff_plots_major_mesh <- Map(function(d, t) make_speed_diff_map_major_mesh
 combined_flow_diff_map_major_mesh <- flow_diff_plots_major_mesh$scn1 + flow_diff_plots_major_mesh$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_flow_diff_map_major_mesh)
-ggsave("project_log/scenario-analysis/plots/road/scenario_flow_diff_maps_major_mesh.png",
+ggsave(file.path(scn_plot_dir, "road/scenario_flow_diff_maps_major_mesh.png"),
        plot = combined_flow_diff_map_major_mesh, width = 12, height = 6, dpi = 150)
 
 combined_speed_diff_map_major_mesh <- speed_diff_plots_major_mesh$scn1 + speed_diff_plots_major_mesh$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_speed_diff_map_major_mesh)
-ggsave("project_log/scenario-analysis/plots/road/scenario_speed_diff_maps_major_mesh.png",
+ggsave(file.path(scn_plot_dir, "road/scenario_speed_diff_maps_major_mesh.png"),
        plot = combined_speed_diff_map_major_mesh, width = 12, height = 6, dpi = 150)
 
 for (scn_name in names(scn_diff_maps_major)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_flow_diff_map_major_mesh.png", scn_name),
+  ggsave(sprintf("%s/road/%s_vs_scn0_flow_diff_map_major_mesh.png", scn_plot_dir, scn_name),
          plot = flow_diff_plots_major_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
-  ggsave(sprintf("project_log/scenario-analysis/plots/road/%s_vs_scn0_speed_diff_map_major_mesh.png", scn_name),
+  ggsave(sprintf("%s/road/%s_vs_scn0_speed_diff_map_major_mesh.png", scn_plot_dir, scn_name),
          plot = speed_diff_plots_major_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -2253,13 +2520,13 @@ p_hh_scn1 <- make_map(diff_household, "diff_household_01", "Change in Number of 
 p_hh_scn2 <- make_map(diff_household, "diff_household_02", "Change in Number of Resident Households", "magma", hh_lim)
 p_hh_combined <- p_hh_scn1 + p_hh_scn2 # patchwork
 plot(p_hh_combined)
-ggsave("project_log/scenario-analysis/plots/landuse/scenario_household_diff_maps.png",
+ggsave(file.path(scn_plot_dir, "landuse/scenario_household_diff_maps.png"),
        plot = p_hh_combined, width = 12, height = 6, dpi = 150)
 
 p_hh_diverging <- make_diff_map2(diff_household, c("diff_household_01", "diff_household_02"),
                         c("ScenarioB", "ScenarioC"), "(Households)")
 print(p_hh_diverging)
-ggsave("project_log/scenario-analysis/plots/landuse/scenario_household_diff_maps_diverging.png",
+ggsave(file.path(scn_plot_dir, "landuse/scenario_household_diff_maps_diverging.png"),
        plot = p_hh_diverging, width = 12, height = 6, dpi = 150)
 
 scn1_household<-left_join(key_code_sf,scn1_household,by="KEY_CODE")
@@ -2297,13 +2564,13 @@ p_rent_scn1 <- make_map(diff_rent, "diff_rent_01", "Change in Average Imputed La
 p_rent_scn2 <- make_map(diff_rent, "diff_rent_02", "Change in Average Imputed Land Rent", "plasma", rent_lim)
 p_rent_combined <- p_rent_scn1 + p_rent_scn2 # patchwork
 plot(p_rent_combined)
-ggsave("project_log/scenario-analysis/plots/landuse/scenario_rent_diff_maps.png",
+ggsave(file.path(scn_plot_dir, "landuse/scenario_rent_diff_maps.png"),
        plot = p_rent_combined, width = 12, height = 6, dpi = 150)
 
 p_rent_diverging <- make_diff_map2(diff_rent, c("diff_rent_01", "diff_rent_02"),
                         c("ScenarioB", "ScenarioC"), "(Yen/Month)")
 print(p_rent_diverging)
-ggsave("project_log/scenario-analysis/plots/landuse/scenario_rent_diff_maps_diverging.png",
+ggsave(file.path(scn_plot_dir, "landuse/scenario_rent_diff_maps_diverging.png"),
        plot = p_rent_diverging, width = 12, height = 6, dpi = 150)
 
 
@@ -2343,13 +2610,13 @@ p_ar_scn1 <- make_map(diff_ar, "diff_ar_01", "Change in Average Floor Area", "vi
 p_ar_scn2 <- make_map(diff_ar, "diff_ar_02", "Change in Average Floor Area", "viridis", ar_lim)
 p_ar_combined <- p_ar_scn1 + p_ar_scn2 # patchwork
 plot(p_ar_combined)
-ggsave("project_log/scenario-analysis/plots/landuse/scenario_floor_area_diff_maps.png",
+ggsave(file.path(scn_plot_dir, "landuse/scenario_floor_area_diff_maps.png"),
        plot = p_ar_combined, width = 12, height = 6, dpi = 150)
 
 p_ar_diverging <- make_diff_map2(diff_ar, c("diff_ar_01", "diff_ar_02"),
                         c("ScenarioB", "ScenarioC"), "(m^2)")
 print(p_ar_diverging)
-ggsave("project_log/scenario-analysis/plots/landuse/scenario_floor_area_diff_maps_diverging.png",
+ggsave(file.path(scn_plot_dir, "landuse/scenario_floor_area_diff_maps_diverging.png"),
        plot = p_ar_diverging, width = 12, height = 6, dpi = 150)
 
 # 比較　宅地割合
@@ -2379,7 +2646,7 @@ p_Gi_scn1 <- make_map(diff_Gi, "diff_Gi_01", "Change in Residential Land Ratio",
 p_Gi_scn2 <- make_map(diff_Gi, "diff_Gi_02", "Change in Residential Land Ratio", "mako", Gi_lim)
 p_Gi_combined <- p_Gi_scn1 + p_Gi_scn2 # patchwork
 plot(p_Gi_combined)
-ggsave("project_log/scenario-analysis/plots/landuse/scenario_residential_land_ratio_diff_maps.png",
+ggsave(file.path(scn_plot_dir, "landuse/scenario_residential_land_ratio_diff_maps.png"),
        plot = p_Gi_combined, width = 12, height = 6, dpi = 150)
 
 scn1_Gi <- left_join(key_code_sf, scn1_Gi , by = "KEY_CODE")
@@ -2388,7 +2655,7 @@ scn2_Gi <- left_join(key_code_sf, scn2_Gi , by = "KEY_CODE")
 p_Gi_diverging <- make_diff_map2(diff_Gi, c("diff_Gi_01", "diff_Gi_02"),
                         c("ScenarioB", "ScenarioC"), "(m^2)")
 print(p_Gi_diverging)
-ggsave("project_log/scenario-analysis/plots/landuse/scenario_residential_land_ratio_diff_maps_diverging.png",
+ggsave(file.path(scn_plot_dir, "landuse/scenario_residential_land_ratio_diff_maps_diverging.png"),
        plot = p_Gi_diverging, width = 12, height = 6, dpi = 150)
 
 
@@ -2419,7 +2686,7 @@ p_height_scn1 <- make_map(diff_height, "diff_height_01", "Change in Estimated Bu
 p_height_scn2 <- make_map(diff_height, "diff_height_02", "Change in Estimated Building Height", "inferno", height_lim)
 p_height_combined <- p_height_scn1 + p_height_scn2 # patchwork
 plot(p_height_combined)
-ggsave("project_log/scenario-analysis/plots/landuse/scenario_building_height_diff_maps.png",
+ggsave(file.path(scn_plot_dir, "landuse/scenario_building_height_diff_maps.png"),
        plot = p_height_combined, width = 12, height = 6, dpi = 150)
 
 scn1_height <- left_join(key_code_sf, scn1_height, by = "KEY_CODE")
@@ -2428,7 +2695,7 @@ scn2_height <- left_join(key_code_sf, scn2_height, by = "KEY_CODE")
 p_height_diverging <- make_diff_map2(diff_height, c("diff_height_01", "diff_height_02"),
                         c("ScenarioB", "ScenarioC"), "(m)")
 print(p_height_diverging)
-ggsave("project_log/scenario-analysis/plots/landuse/scenario_building_height_diff_maps_diverging.png",
+ggsave(file.path(scn_plot_dir, "landuse/scenario_building_height_diff_maps_diverging.png"),
        plot = p_height_diverging, width = 12, height = 6, dpi = 150)
 
 
@@ -2613,19 +2880,19 @@ names(rail_work_maps) <- names(rail_work_list)
 combined_rail_res_map <- rail_res_maps$scn0 + rail_res_maps$scn1 + rail_res_maps$scn2 +
   plot_layout(ncol = 3, guides = "collect")
 print(combined_rail_res_map)
-ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_ridership_residence_maps.png",
+ggsave(file.path(scn_plot_dir, "rail/scenario_rail_ridership_residence_maps.png"),
        plot = combined_rail_res_map, width = 18, height = 6, dpi = 150)
 
 combined_rail_work_map <- rail_work_maps$scn0 + rail_work_maps$scn1 + rail_work_maps$scn2 +
   plot_layout(ncol = 3, guides = "collect")
 print(combined_rail_work_map)
-ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_ridership_workplace_maps.png",
+ggsave(file.path(scn_plot_dir, "rail/scenario_rail_ridership_workplace_maps.png"),
        plot = combined_rail_work_map, width = 18, height = 6, dpi = 150)
 
 for (scn in names(rail_res_maps)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_rail_ridership_residence_map.png", scn),
+  ggsave(sprintf("%s/rail/%s_rail_ridership_residence_map.png", scn_plot_dir, scn),
          plot = rail_res_maps[[scn]], width = 7, height = 6, dpi = 150)
-  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_rail_ridership_workplace_map.png", scn),
+  ggsave(sprintf("%s/rail/%s_rail_ridership_workplace_map.png", scn_plot_dir, scn),
          plot = rail_work_maps[[scn]], width = 7, height = 6, dpi = 150)
 }
 
@@ -2651,13 +2918,13 @@ diff_rail_work <- key_code_sf %>%
 p_rail_res_diverging <- make_diff_map2(diff_rail_res, c("diff_rail_res_01", "diff_rail_res_02"),
                         c("ScenarioB", "ScenarioC"), "(Households)")
 print(p_rail_res_diverging)
-ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_ridership_residence_diff_maps.png",
+ggsave(file.path(scn_plot_dir, "rail/scenario_rail_ridership_residence_diff_maps.png"),
        plot = p_rail_res_diverging, width = 12, height = 6, dpi = 150)
 
 p_rail_work_diverging <- make_diff_map2(diff_rail_work, c("diff_rail_work_01", "diff_rail_work_02"),
                         c("ScenarioB", "ScenarioC"), "(Households)")
 print(p_rail_work_diverging)
-ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_ridership_workplace_diff_maps.png",
+ggsave(file.path(scn_plot_dir, "rail/scenario_rail_ridership_workplace_diff_maps.png"),
        plot = p_rail_work_diverging, width = 12, height = 6, dpi = 150)
 
 
@@ -2712,11 +2979,11 @@ scn_rail_flow_plots <- Map(make_rail_flow_map, scn_rail_maps, scn_titles[names(s
 combined_rail_flow_map <- scn_rail_flow_plots$scn0 + scn_rail_flow_plots$scn1 + scn_rail_flow_plots$scn2 +
   plot_layout(ncol = 3, guides = "collect")
 print(combined_rail_flow_map)
-ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_flow_maps.png",
+ggsave(file.path(scn_plot_dir, "rail/scenario_rail_flow_maps.png"),
        plot = combined_rail_flow_map, width = 18, height = 6, dpi = 150)
 
 for (scn_name in names(scn_rail_flow_plots)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_rail_flow_map.png", scn_name),
+  ggsave(sprintf("%s/rail/%s_rail_flow_map.png", scn_plot_dir, scn_name),
          plot = scn_rail_flow_plots[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -2767,11 +3034,11 @@ rail_flow_diff_plots <- Map(function(d, t) make_rail_flow_diff_map(d, t, rail_fl
 combined_rail_flow_diff_map <- rail_flow_diff_plots$scn1 + rail_flow_diff_plots$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_rail_flow_diff_map)
-ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_flow_diff_maps.png",
+ggsave(file.path(scn_plot_dir, "rail/scenario_rail_flow_diff_maps.png"),
        plot = combined_rail_flow_diff_map, width = 12, height = 6, dpi = 150)
 
 for (scn_name in names(scn_rail_diff_maps)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_vs_scn0_rail_flow_diff_map.png", scn_name),
+  ggsave(sprintf("%s/rail/%s_vs_scn0_rail_flow_diff_map.png", scn_plot_dir, scn_name),
          plot = rail_flow_diff_plots[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -2799,11 +3066,11 @@ scn_rail_flow_plots_mesh <- Map(make_rail_flow_map_mesh, scn_rail_maps, scn_titl
 combined_rail_flow_map_mesh <- scn_rail_flow_plots_mesh$scn0 + scn_rail_flow_plots_mesh$scn1 + scn_rail_flow_plots_mesh$scn2 +
   plot_layout(ncol = 3, guides = "collect")
 print(combined_rail_flow_map_mesh)
-ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_flow_maps_mesh.png",
+ggsave(file.path(scn_plot_dir, "rail/scenario_rail_flow_maps_mesh.png"),
        plot = combined_rail_flow_map_mesh, width = 18, height = 6, dpi = 150)
 
 for (scn_name in names(scn_rail_flow_plots_mesh)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_rail_flow_map_mesh.png", scn_name),
+  ggsave(sprintf("%s/rail/%s_rail_flow_map_mesh.png", scn_plot_dir, scn_name),
          plot = scn_rail_flow_plots_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -2829,11 +3096,11 @@ rail_flow_diff_plots_mesh <- Map(function(d, t) make_rail_flow_diff_map_mesh(d, 
 combined_rail_flow_diff_map_mesh <- rail_flow_diff_plots_mesh$scn1 + rail_flow_diff_plots_mesh$scn2 +
   plot_layout(ncol = 2, guides = "collect")
 print(combined_rail_flow_diff_map_mesh)
-ggsave("project_log/scenario-analysis/plots/rail/scenario_rail_flow_diff_maps_mesh.png",
+ggsave(file.path(scn_plot_dir, "rail/scenario_rail_flow_diff_maps_mesh.png"),
        plot = combined_rail_flow_diff_map_mesh, width = 12, height = 6, dpi = 150)
 
 for (scn_name in names(scn_rail_diff_maps)) {
-  ggsave(sprintf("project_log/scenario-analysis/plots/rail/%s_vs_scn0_rail_flow_diff_map_mesh.png", scn_name),
+  ggsave(sprintf("%s/rail/%s_vs_scn0_rail_flow_diff_map_mesh.png", scn_plot_dir, scn_name),
          plot = rail_flow_diff_plots_mesh[[scn_name]], width = 7, height = 6, dpi = 150)
 }
 
@@ -2905,6 +3172,51 @@ sum(d_G_1[!increased_1])  # 減少分の総量
 # 増加ゾーンの平均地代単価（ベースライン）
 mean(scn0_state$rg_i[increased_1]) # 増加ゾーンは単価ちょい高い
 mean(scn0_state$rg_i[!increased_1]) # 減少ゾーンは単価ちょい低い
+
+
+#総合指標の表（シナリオ別）####
+# 出力: runs/<active_calibration>/summary_indicators.md（実行ごとに上書き）
+ind_vals <- rbind(
+  benefit   = c(0, Benefit.2_1, Benefit.2_2) / 10,                       # 万円/月
+  co2_car   = c(scn0_CO2_car, scn1_CO2_car, scn2_CO2_car),
+  co2_rail  = c(scn0_CO2_rail, scn1_CO2_rail, scn2_CO2_rail),
+  co2_house = c(co20, co21, co22),
+  co2_total = c(scn0_CO2_car + co20, scn1_CO2_car + co21, scn2_CO2_car + co22) +
+              c(scn0_CO2_rail, scn1_CO2_rail, scn2_CO2_rail),
+  land_rent = c(sum(GI0), sum(GI1), sum(GI2)) / 1e5,                     # 千円/月 → 億円/月
+  res_land  = c(sum(scn0_state$G_i), sum(scn1_state$G_i), sum(scn2_state$G_i)) / 1e6,  # km2
+  floor     = c(sum(scn0_total_ar), sum(scn1_total_ar), sum(scn2_total_ar)) / 1e6      # km2
+)
+ind_meta <- data.frame(
+  label  = c("便益（EV、現状比）", "自動車CO2排出量", "鉄道CO2排出量", "住宅CO2排出量",
+             "CO2排出量 合計", "総地代収入", "宅地面積", "総住宅床面積"),
+  unit   = c("万円/月", "tCO2/日", "tCO2/日", "tCO2/日", "tCO2/日", "億円/月", "km²", "km²"),
+  digits = c(0, 1, 1, 1, 1, 2, 3, 3)
+)
+fmt_num <- function(x, d) formatC(x, format = "f", digits = d, big.mark = ",")
+fmt_diff <- function(x, x0, d, rate = TRUE) {
+  s <- paste0(ifelse(x - x0 >= 0, "+", ""), fmt_num(x - x0, d))
+  if (rate) s <- paste0(s, sprintf("（%+.2f%%）", (x - x0) / x0 * 100))
+  s
+}
+ind_rows <- sapply(seq_len(nrow(ind_vals)), function(k) {
+  v <- ind_vals[k, ]; d <- ind_meta$digits[k]; is_benefit <- k == 1
+  paste("|", ind_meta$label[k], "|", ind_meta$unit[k], "|",
+        ifelse(is_benefit, "—", fmt_num(v[1], d)), "|", fmt_num(v[2], d), "|", fmt_num(v[3], d), "|",
+        fmt_diff(v[2], v[1], d, !is_benefit), "|", fmt_diff(v[3], v[1], d, !is_benefit), "|")
+})
+writeLines(c(
+  "# シナリオ別 総合指標（自動生成）",
+  "",
+  paste0("- active_calibration: `", active_calibration, "`"),
+  paste0("- 実行日時: ", format(Sys.time(), "%Y-%m-%d %H:%M"), "（同じ実行の記録は `run_info.md`）"),
+  "",
+  "| 指標 | 単位 | 現状 | シナリオB（一律再配置） | シナリオC（CBD距離加重） | B − 現状 | C − 現状 |",
+  "|---|---|--:|--:|--:|--:|--:|",
+  ind_rows,
+  "",
+  "便益はシナリオ間の差として定義されるため、現状の欄は空欄、差分の欄はB・Cの便益そのもの。"
+), file.path(scn_run_dir, "summary_indicators.md"))
 
 
 #####
