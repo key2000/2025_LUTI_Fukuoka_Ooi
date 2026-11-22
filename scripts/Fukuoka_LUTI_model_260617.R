@@ -227,6 +227,18 @@ library(stringr)
 #メートル座標系、JGD2011 2011 福岡2系
 target_crs <- 6670
 
+# 261108: モデルの設定。"orig17_2014"＝修論と同じ（17拠点・2014雇用・2022賃金・ボロノイ）
+# "base2021_<中心地>_<集約>"＝基準年2021（scripts/build_base2021_inputs.R、project_log/base-year-revision/09）
+model_setup <- "orig17_2014"
+if (!is.null(getOption("luti_model_setup"))) model_setup <- getOption("luti_model_setup")
+calib_trial <- switch(model_setup,
+                      orig17_2014 = "07_ga-housing-survey-target",
+                      base2021_E10000_time = "08_ga-base2021-E10000-time",
+                      paste0("ga-", model_setup))
+if (!is.null(getOption("luti_calib_trial"))) calib_trial <- getOption("luti_calib_trial")  # 261118
+setup_dir <- file.path("data/processed", sub("^base2021_(.*)_(time|voronoi)$", "centers_\\1", model_setup))
+setup_in  <- file.path(setup_dir, paste0("inputs_", sub("^.*_", "", model_setup), ".xdr"))
+
 
 load("data/dists0.xdr") # dists0
 # which(is.na(dists0))
@@ -305,7 +317,14 @@ L_j_hat<-voronoi_points%>%
   )%>%
   st_drop_geometry()%>%
   tibble::column_to_rownames(var="KEY_CODE.y")
-# sum(L_j_hat)  
+# sum(L_j_hat)
+
+# 261108: 基準年2021の設定では、中心地・L_j_hat・omega_j・道路の所要時間を差し替える
+if (model_setup != "orig17_2014") {
+  load(setup_in)  # work_zone_new, L_j_hat, omega_j, L_by_year, omega_by_year, assignment, share
+  work_zone <- work_zone_new
+  load(file.path(setup_dir, "dists0.xdr"))
+}
 
 
 #dist0のNAメッシュを除く####
@@ -414,6 +433,7 @@ load("data/result.mc02.xdr") # result: mode choice parameters
 # dists00 %>% dim()
 # travel time
 load("data/dists0.bike.xdr") # dists0.bike
+if (model_setup != "orig17_2014") load(file.path(setup_dir, "dists0.bike.xdr"))
 # dim(dists0.bike)
 dists0.bike <- dists0.bike[valid_res_rows, ]
 dists0.bike <- dists0.bike[, valid_work_cols]
@@ -431,6 +451,7 @@ dists0.road=dists0
 
 # E:/WorkDir01/prog/R/2025/2025_LUTI_Fukuoka_Ooi/Fukuoka_OSM_03.R
 load("data/railway_dist.xdr") # dists0, minutes per one way: do not depend on traffic　ここでdists0filter前に戻ってる
+if (model_setup != "orig17_2014") load(file.path(setup_dir, "railway_dist.xdr"))
 dists0.rail=dists0
 dists0 <- dists0.road 
 # 260824: dists0.railはkey_code_sf由来のゾーン集合で再構築しており、valid_res_rows/valid_work_cols
@@ -912,6 +933,7 @@ calibration_fitness_housing_survey <- function(x) {
         demand    = trips_l$demand,
         max_gap   = 1e-2,
         algorithm = "bfw",
+        aon_method = "d",  # 261118: 既定"bi"と同じ配分で約60倍速い（calibration/09 meta.md）
         verbose   = FALSE
       )
       sgr2_l <- makegraph(
@@ -1000,11 +1022,11 @@ calibration_fitness_housing_survey <- function(x) {
     f_ar <- sum(w_ar_mun * (log(comp_ar$est_ar_mun) - log(comp_ar$area_target_mun)) ^ 2)
 
     # ---- ペナルティ項 ----
-    # 注: xは長さ5+nz_res、x0は長さ5のため、(x - x0)がリサイクルされる
-    # （02と同条件のまま。元コード旧L.2355-2357の挙動をそのまま維持している）。
+    # 261118: k_i部分はx0の繰り返しでなく0.1と比べ、ゾーン数で平均（calibration/09 meta.md）
     x0      <- c(0.3, 0.2, 0.6, 0.1, 2.0)
     lambda  <- 0.05
-    penalty <- lambda * sum(((x - x0) / x0) ^ 2)
+    penalty <- lambda * sum(((x[1:5] - x0) / x0) ^ 2) +
+      lambda * mean(((x[-(1:5)] - 0.1) / 0.1) ^ 2)
 
     # ---- 重みつき合計Loss ----
     w_hh   <- 1.0
@@ -1030,7 +1052,7 @@ cat("[住宅土地統計調査版] 単発テスト fitness値:", test_result_hs,
 # 正常な値が出ることを確認してから下のGA本番実行に進むこと。
 
 # 852次元でも動くか、ランダムなk_iを含めて確認
-set.seed(1)
+set.seed(getOption("luti_seed", 1))  # 261118: 実行用スクリプトから乱数の種を変えられるように
 test_vals_hs <- sapply(1:10, function(i) {
   x_random <- c(0.3, 0.2, 0.6, 0.1, 2.0, runif(nz_res, k_lower, k_upper))
   calibration_fitness_housing_survey(x_random)
@@ -1042,11 +1064,27 @@ print(round(test_vals_hs, 2))
 # 重いので、実行するときだけ TRUE にする。結果は ga_result.RData に保存され、
 # active_calibration <- "07_ga-housing-survey-target" で下の較正結果読込に反映できる。
 run_ga_852dim <- FALSE
+if (isTRUE(getOption("luti_run_ga"))) run_ga_852dim <- TRUE  # 261108: 実行用スクリプトから回すとき
 if (run_ga_852dim) {
   popSize_852 <- 50
   maxiter_852 <- 100
+  if (!is.null(getOption("luti_ga_maxiter"))) maxiter_852 <- getOption("luti_ga_maxiter")  # 261118
   lower_vec <- c(0.1,  0.05, 0.3,  0.02, 0.5,  rep(k_lower, nz_res))
   upper_vec <- c(0.5,  0.8,  0.9,  0.5,  5.0,  rep(k_upper, nz_res))
+  # 261119: k_iを市区町村ごとに1つにまとめて探す（calibration/12 meta.md）。指定なしなら従来どおりゾーン別
+  ki_group_idx <- seq_len(nz_res)
+  if (identical(getOption("luti_ki_by"), "mun")) {
+    ki_mun <- key_code_mun$mun[match(gsub("^mc_", "", rownames(dists0)), key_code_mun$KEY_CODE)]
+    ki_mun[is.na(ki_mun)] <- "none"
+    ki_group_idx <- match(ki_mun, sort(unique(ki_mun)))
+    ki_group_name <- sort(unique(ki_mun))
+    cat("k_iのグループ数:", max(ki_group_idx), "（市区町村なし", sum(ki_mun == "none"), "ゾーン）\n")
+    lower_vec <- c(lower_vec[1:5], rep(k_lower, max(ki_group_idx)))
+    upper_vec <- c(upper_vec[1:5], rep(k_upper, max(ki_group_idx)))
+  }
+  expand_x <- function(x) c(x[1:5], x[5 + ki_group_idx])  # 261119
+  ga_sugg <- getOption("luti_ga_suggestions")
+  if (is.function(ga_sugg)) ga_sugg <- ga_sugg(length(lower_vec))  # 261119: 次元数から初期解を作る
 
   cl <- makeCluster(detectCores() - 1)
   clusterExport(cl, varlist = c(
@@ -1061,7 +1099,8 @@ if (run_ga_852dim) {
     "nz_res", "nz_work", "v_start",
     "k_lower", "k_upper",
     "household",
-    "assign_traffic", "makegraph", "get_distance_matrix"
+    "assign_traffic", "makegraph", "get_distance_matrix",
+    "ki_group_idx", "expand_x"  # 261119
   ), envir = .GlobalEnv)
   clusterEvalQ(cl, {
     library(nleqslv)
@@ -1069,16 +1108,18 @@ if (run_ga_852dim) {
     library(dplyr)
     library(tibble)
   })
+  registerDoParallel(cl)  # 261118: これが無いとga()はワーカーを使わず逐次実行になる
 
   cat("[住宅土地統計調査版] GA開始:", format(Sys.time(), "%H:%M:%S"), "\n")
   system.time({
     ga_result_housing_survey <- ga(
       type    = "real-valued",
-      fitness = calibration_fitness_housing_survey,
+      fitness = function(x) calibration_fitness_housing_survey(expand_x(x)),  # 261118: 直接渡すとワーカーでbetaがbase::betaに化ける。261119: expand_x
       lower   = lower_vec,
       upper   = upper_vec,
       popSize = popSize_852,
       maxiter = maxiter_852,
+      suggestions = ga_sugg,  # 261118: 初期集団に入れる解（行列、NULLなら無し）
       parallel = cl,
       monitor  = TRUE
     )
@@ -1087,6 +1128,7 @@ if (run_ga_852dim) {
 
   stopCluster(cl)  # closeAllConnections()は削除：stopCluster()より先に呼ぶとワーカーとの接続を潰してしまい、
                    # stopCluster()内のsummary.connection()が「コネクションが不正です」で失敗する（260922発覚）
+  registerDoSEQ()  # 261118
   gc(); gc()
 
   cat("最良fitness（-Loss）:", ga_result_housing_survey@fitnessValue, "\n")
@@ -1094,7 +1136,7 @@ if (run_ga_852dim) {
 
   # ---- 較正結果読込（load_calibration_result）が読む形式に正規化して保存 ----
   # calib_result$params（5変数named vector）と calib_result$k_i（長さnz_res）の共通形式。
-  best_x <- ga_result_housing_survey@solution[1, ]
+  best_x <- expand_x(ga_result_housing_survey@solution[1, ])  # 261119: expand_x
   params_852 <- best_x[1:5]
   names(params_852) <- c("alpha_a", "gamma_0", "gamma_1", "theta_H", "theta_L")
 
@@ -1105,10 +1147,11 @@ if (run_ga_852dim) {
     ga_result = ga_result_housing_survey
   )
   save(calib_result,
-       file = "project_log/calibration/07_ga-housing-survey-target/ga_result.RData")
+       file = file.path("project_log/calibration", calib_trial, "ga_result.RData"))
 
   plot(ga_result_housing_survey)
-  png("project_log/calibration/07_ga-housing-survey-target/plots/ga_convergence.png",
+  dir.create(file.path("project_log/calibration", calib_trial, "plots"), recursive = TRUE, showWarnings = FALSE)
+  png(file.path("project_log/calibration", calib_trial, "plots/ga_convergence.png"),
       width = 900, height = 750, res = 150)
   plot(ga_result_housing_survey)
   dev.off()
@@ -1133,7 +1176,7 @@ if (run_ga_852dim) {
 #                                    上の「GA較正（住宅・土地統計調査ベース…）」セクションで
 #                                    run_ga_852dim <- TRUE にして実行し、ga_result.RData を作る必要がある
 #                                    （未実行ならga_result.RDataが無くエラーになる）。
-active_calibration <- "07_ga-housing-survey-target"
+active_calibration <- calib_trial  # 261108: model_setup に対応する較正（上の設定）。orig17_2014 は "07_ga-housing-survey-target"
 
 # ---- 選んだ較正パターンのキャッシュ（ga_result.RData）を読み込む ----
 # scripts/calibration/*.R の calibrate_*() はどれも calib_result$params（5変数named vector）
@@ -1987,8 +2030,9 @@ for (scn in names(scenarios)) {
 # シナリオ実行関数 ####
 # Converted to while loop; passes parameters explicitly
 # Returns comprehensive result set including P.bike
-run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn, 
-                        v_init, max_iter = 50, msa = 0.5, tol = 100) {
+# 261108: msa = NULL で混合比 1/(n+1)・max_iter 回固定（project_log/base-year-revision/05_msa-step）。元の設定は msa = 0.5, tol = 100
+run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn,
+                        v_init, max_iter = 40, msa = NULL, tol = 100) {
   
   # Initialize loop control
   flag <- 0
@@ -2040,14 +2084,18 @@ run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn,
     
     # MSA averaging for convergence
     diff <- sum((dists_road_new - dists_road)^2)
-    dists_road <- msa * dists_road_new + (1 - msa) * dists_road
-    
-    cat("Scenario:", scenario_name, " | Iter:", it, " | diff:", 
-        formatC(diff, format = "e", digits = 2), "\n")
-    
+    step <- if (is.null(msa)) 1 / (it + 1) else msa
+    dists_road_upd <- step * dists_road_new + (1 - step) * dists_road
+    diff_avg <- sum((dists_road_upd - dists_road)^2)
+    dists_road <- dists_road_upd
+
+    cat("Scenario:", scenario_name, " | Iter:", it, " | diff:",
+        formatC(diff, format = "e", digits = 2), " | diff_avg:",
+        formatC(diff_avg, format = "e", digits = 2), "\n")
+
     # Check stopping conditions
     it <- it + 1
-    if (diff < tol | it > max_iter) flag <- 1
+    if ((!is.null(msa) && diff < tol) | it > max_iter) flag <- 1
   }
   
   # 鉄道リンク配分（均衡収束後の最終stateに対して一度だけ実行、混雑は考慮しない）
@@ -2072,8 +2120,9 @@ run_scenario <- function(scenario_name, L_j_hat_scn, omega_j_matrix_scn,
     link_flow = ta$data,  # リンク別交通量・所要時間（太さ=交通量／色=速度マップ用）
     rail_link_flow = ta_rail$data,  # 鉄道リンク別利用世帯数（太さ=色=利用世帯数マップ用）
     iterations = it - 1,
-    converged = (diff < tol),
-    final_diff = diff
+    converged = if (is.null(msa)) NA else (diff < tol),
+    final_diff = diff,
+    final_diff_avg = diff_avg
   )
 }
 
@@ -2093,9 +2142,8 @@ for (scn_name in names(scenarios)) {
     L_j_hat_scn = scenarios[[scn_name]]$L_j_hat,
     omega_j_matrix_scn = scenarios[[scn_name]]$omega_j_matrix,
     v_init = v_init_all,
-    max_iter = 50,
-    msa = 0.5,
-    tol = 100
+    max_iter = 40,
+    msa = NULL
   )
   
   cat("Converged:", results[[scn_name]]$converged, 
@@ -2156,11 +2204,11 @@ writeLines(c(
   "",
   "## シナリオ収束",
   "",
-  paste0("- 道路配分 max_gap = ", ta_max_gap, "、LUTIループ msa = 0.5, tol = 100"),
+  paste0("- 道路配分 max_gap = ", ta_max_gap, "、LUTIループ 混合比 1/(n+1)・40回固定"),
   sapply(names(results), function(s) sprintf(
-    "- %s（%s）: converged = %s, iterations = %d, final_diff = %.3g, 総雇用 = %.0f",
-    s, scenarios[[s]]$name, results[[s]]$converged, results[[s]]$iterations,
-    results[[s]]$final_diff, sum(scenarios[[s]]$L_j_hat$L_j_hat, na.rm = TRUE)))
+    "- %s（%s）: iterations = %d, final_diff = %.3g, final_diff_avg = %.3g, 総雇用 = %.0f",
+    s, scenarios[[s]]$name, results[[s]]$iterations,
+    results[[s]]$final_diff, results[[s]]$final_diff_avg, sum(scenarios[[s]]$L_j_hat$L_j_hat, na.rm = TRUE)))
 ), file.path(scn_run_dir, "run_info.md"))
 
 #シナリオ別 交通量・速度マップ####

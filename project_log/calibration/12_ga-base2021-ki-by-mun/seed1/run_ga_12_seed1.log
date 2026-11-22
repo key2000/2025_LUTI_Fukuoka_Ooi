@@ -1,0 +1,504 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+
+次のパッケージを付け加えます: ‘dplyr’
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    filter, lag
+
+以下のオブジェクトは ‘package:base’ からマスクされています:
+
+    intersect, setdiff, setequal, union
+
+要求されたパッケージ sp をロード中です
+
+次のパッケージを付け加えます: ‘raster’
+
+以下のオブジェクトは ‘package:dplyr’ からマスクされています:
+
+    select
+
+terra 1.9.27
+
+次のパッケージを付け加えます: ‘terra’
+
+以下のオブジェクトは ‘package:tidyr’ からマスクされています:
+
+    extract
+
+
+次のパッケージを付け加えます: ‘janitor’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    crosstab
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    crosstab
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    chisq.test, fisher.test
+
+Reading layer `MEAmap3' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/UEA' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 222 features and 30 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 123.4578 ymin: 24.32743 xmax: 146.4404 ymax: 45.52638
+Geodetic CRS:  JGD2000
+Reading layer `MESH05030' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/raw/1kmメッシュ福岡境界データ' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 5600 features and 5 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 130 ymin: 33.33333 xmax: 131 ymax: 34
+Geodetic CRS:  JGD2000
+Coordinate Reference System:
+  User input: EPSG:6670 
+  wkt:
+PROJCRS["JGD2011 / Japan Plane Rectangular CS II",
+    BASEGEOGCRS["JGD2011",
+        DATUM["Japanese Geodetic Datum 2011",
+            ELLIPSOID["GRS 1980",6378137,298.257222101,
+                LENGTHUNIT["metre",1]]],
+        PRIMEM["Greenwich",0,
+            ANGLEUNIT["degree",0.0174532925199433]],
+        ID["EPSG",6668]],
+    CONVERSION["Japan Plane Rectangular CS zone II",
+        METHOD["Transverse Mercator",
+            ID["EPSG",9807]],
+        PARAMETER["Latitude of natural origin",33,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8801]],
+        PARAMETER["Longitude of natural origin",131,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["Scale factor at natural origin",0.9999,
+            SCALEUNIT["unity",1],
+            ID["EPSG",8805]],
+        PARAMETER["False easting",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["northing (X)",north,
+            ORDER[1],
+            LENGTHUNIT["metre",1]],
+        AXIS["easting (Y)",east,
+            ORDER[2],
+            LENGTHUNIT["metre",1]],
+    USAGE[
+        SCOPE["Cadastre, engineering survey, topographic mapping (large and medium scale)."],
+        AREA["Japan - onshore - Kyushu east of approximately 130°E - Fukuoka-ken; Saga-ken; Kumamoto-ken; Oita-ken; Miyazaki-ken; Kagoshima-ken (except for area within Japan Plane Rectangular Coordinate System zone I)."],
+        BBOX[30.18,129.76,33.99,132.05]],
+    ID["EPSG",6670]]
+options:        ENCODING=CP932 
+Reading layer `L03-b-16_5030' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/raw/NLNI_Fukuoka' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 550000 features and 3 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 130 ymin: 33.33333 xmax: 131 ymax: 34
+Geodetic CRS:  JGD2000
+[1] "over10のメッシュ数: 895"
+[1] "総メッシュ数: 1356"
+Deleting layer `bnd_mesh_wL10' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10' to data source 
+  `data/processed/bnd_mesh_wL10' using driver `ESRI Shapefile'
+Writing 895 features with 1 fields and geometry type Polygon.
+Deleting layer `bnd_mesh_wL10_wE' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10_wE' to data source 
+  `data/processed/bnd_mesh_wL10_wE' using driver `ESRI Shapefile'
+Writing 895 features with 2 fields and geometry type Polygon.
+Reading layer `bnd_mesh_wL10_wE' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/processed/bnd_mesh_wL10_wE' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 895 features and 2 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -89473.49 ymin: 37055.84 xmax: -32407.09 ymax: 101815.2
+Projected CRS: JGD2011 / Japan Plane Rectangular CS II
+Deleting layer `bnd_mesh_wL10_filterd' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10_filterd' to data source 
+  `data/processed/bnd_mesh_wL10_filterd' using driver `ESRI Shapefile'
+Writing 883 features with 2 fields and geometry type Polygon.
+
+次のパッケージを付け加えます: ‘igraph’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    blocks, compare, union
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    union
+
+以下のオブジェクトは ‘package:dplyr’ からマスクされています:
+
+    as_data_frame, groups, union
+
+以下のオブジェクトは ‘package:tidyr’ からマスクされています:
+
+    crossing
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    decompose, spectrum
+
+以下のオブジェクトは ‘package:base’ からマスクされています:
+
+    union
+
+udunits database from /Library/Frameworks/R.framework/Versions/4.6/Resources/library/units/share/udunits/udunits2.xml
+[1] "削除された孤立居住地数: 37"
+[1] "削除された孤立従業地数: 1"
+要求されたパッケージ foreach をロード中です
+要求されたパッケージ iterators をロード中です
+Package 'GA' version 3.2.5
+Type 'citation("GA")' for citing this R package in publications.
+
+次のパッケージを付け加えます: ‘GA’
+
+以下のオブジェクトは ‘package:utils’ からマスクされています:
+
+    de
+
+[GA住宅土地統計調査版] 比較に使う市区町村数: 30 
+[住宅土地統計調査版] 単発テスト fitness値: -0.8298891 
+ [1] -4.12 -5.30 -4.85 -5.44 -5.79 -4.24 -4.81 -5.19 -5.67 -5.01
+k_iのグループ数: 32 （市区町村なし 40 ゾーン）
+[住宅土地統計調査版] GA開始: 12:32:49 
+GA | iter = 1 | Mean = -49.6096273 | Best =  -0.8298891
+GA | iter = 2 | Mean = -24.2985940 | Best =  -0.8298891
+GA | iter = 3 | Mean = -15.7997420 | Best =  -0.8298891
+GA | iter = 4 | Mean = -13.8212240 | Best =  -0.8298891
+GA | iter = 5 | Mean = -13.2917840 | Best =  -0.8199623
+GA | iter = 6 | Mean = -1.2149014 | Best = -0.6875644
+GA | iter = 7 | Mean = -5.0497735 | Best = -0.6875644
+GA | iter = 8 | Mean = -8.9412147 | Best = -0.6875644
+GA | iter = 9 | Mean = -16.8815661 | Best =  -0.6875644
+GA | iter = 10 | Mean = -8.8824473 | Best = -0.6731102
+GA | iter = 11 | Mean = -4.8804409 | Best = -0.6731102
+GA | iter = 12 | Mean = -8.8771283 | Best = -0.6731102
+GA | iter = 13 | Mean = -8.8179513 | Best = -0.6731102
+GA | iter = 14 | Mean = -0.8325306 | Best = -0.6731102
+GA | iter = 15 | Mean = -16.7445264 | Best =  -0.6731102
+GA | iter = 16 | Mean = -4.7901773 | Best = -0.6731102
+GA | iter = 17 | Mean = -4.7647601 | Best = -0.6731102
+GA | iter = 18 | Mean = -4.7589608 | Best = -0.6731102
+GA | iter = 19 | Mean = -4.7499439 | Best = -0.6731102
+GA | iter = 20 | Mean = -12.7360920 | Best =  -0.6731102
+GA | iter = 21 | Mean = -4.7405677 | Best = -0.6731102
+GA | iter = 22 | Mean = -12.7029799 | Best =  -0.6708298
+GA | iter = 23 | Mean = -12.7173332 | Best =  -0.6708298
+GA | iter = 24 | Mean = -8.7230202 | Best = -0.6708298
+GA | iter = 25 | Mean = -4.7184500 | Best = -0.6708298
+GA | iter = 26 | Mean = -0.7308024 | Best = -0.6708298
+GA | iter = 27 | Mean = -4.7122535 | Best = -0.6708298
+GA | iter = 28 | Mean = -8.7019606 | Best = -0.6708298
+GA | iter = 29 | Mean = -16.6587133 | Best =  -0.6708298
+GA | iter = 30 | Mean = -0.7108035 | Best = -0.6708298
+GA | iter = 31 | Mean = -4.6981196 | Best = -0.6708298
+GA | iter = 32 | Mean = -8.6898683 | Best = -0.6598168
+GA | iter = 33 | Mean = -4.7011415 | Best = -0.6598168
+GA | iter = 34 | Mean = -4.6961986 | Best = -0.6598168
+GA | iter = 35 | Mean = -8.6768119 | Best = -0.6598168
+GA | iter = 36 | Mean = -16.6498735 | Best =  -0.6598168
+GA | iter = 37 | Mean = -4.6876362 | Best = -0.6598168
+GA | iter = 38 | Mean = -8.6910933 | Best = -0.6598168
+GA | iter = 39 | Mean = -4.7201632 | Best = -0.6598168
+GA | iter = 40 | Mean = -8.6793205 | Best = -0.6598168
+GA | iter = 41 | Mean = -16.6541436 | Best =  -0.6417804
+GA | iter = 42 | Mean = -12.6866775 | Best =  -0.6417804
+GA | iter = 43 | Mean = -0.7080807 | Best = -0.6417804
+GA | iter = 44 | Mean = -4.7099585 | Best = -0.6241267
+GA | iter = 45 | Mean = -4.7046794 | Best = -0.6241267
+GA | iter = 46 | Mean = -8.651905 | Best = -0.617587
+GA | iter = 47 | Mean = -8.6521789 | Best = -0.6114633
+GA | iter = 48 | Mean = -8.6471676 | Best = -0.6114633
+GA | iter = 49 | Mean = -0.6631674 | Best = -0.6114633
+GA | iter = 50 | Mean = -8.6305468 | Best = -0.6114633
+GA | iter = 51 | Mean = -0.6692169 | Best = -0.6114633
+GA | iter = 52 | Mean = -8.6311933 | Best = -0.6114633
+GA | iter = 53 | Mean = -12.6136540 | Best =  -0.6114633
+GA | iter = 54 | Mean = -8.6290809 | Best = -0.6114633
+GA | iter = 55 | Mean = -0.6434962 | Best = -0.5984684
+GA | iter = 56 | Mean = -4.6185401 | Best = -0.5984684
+GA | iter = 57 | Mean = -0.6290935 | Best = -0.5921522
+GA | iter = 58 | Mean = -8.5965436 | Best = -0.5921522
+GA | iter = 59 | Mean = -12.6097248 | Best =  -0.5921522
+GA | iter = 60 | Mean = -0.6368777 | Best = -0.5921522
+GA | iter = 61 | Mean = -0.6165873 | Best = -0.5921522
+GA | iter = 62 | Mean = -4.6014110 | Best = -0.5921522
+GA | iter = 63 | Mean = -8.6172830 | Best = -0.5921522
+GA | iter = 64 | Mean = -4.6126010 | Best = -0.5921522
+GA | iter = 65 | Mean = -4.5961798 | Best = -0.5921522
+GA | iter = 66 | Mean = -4.6052696 | Best = -0.5921522
+GA | iter = 67 | Mean = -12.5703613 | Best =  -0.5853347
+GA | iter = 68 | Mean = -4.6030171 | Best = -0.5853347
+GA | iter = 69 | Mean = -8.5915792 | Best = -0.5853347
+GA | iter = 70 | Mean = -4.6019922 | Best = -0.5853347
+GA | iter = 71 | Mean = -12.5679552 | Best =  -0.5841901
+GA | iter = 72 | Mean = -12.6157760 | Best =  -0.5841901
+GA | iter = 73 | Mean = -0.6192933 | Best = -0.5729963
+GA | iter = 74 | Mean = -8.5747484 | Best = -0.5729963
+GA | iter = 75 | Mean = -0.6056340 | Best = -0.5729963
+GA | iter = 76 | Mean = -0.5946806 | Best = -0.5729963
+GA | iter = 77 | Mean = -4.5880173 | Best = -0.5729963
+GA | iter = 78 | Mean = -4.5954472 | Best = -0.5729963
+GA | iter = 79 | Mean = -0.6413705 | Best = -0.5729963
+GA | iter = 80 | Mean = -0.6142550 | Best = -0.5729963
+GA | iter = 81 | Mean = -4.5955097 | Best = -0.5729963
+GA | iter = 82 | Mean = -0.6033439 | Best = -0.5728571
+GA | iter = 83 | Mean = -0.6040300 | Best = -0.5728571
+GA | iter = 84 | Mean = -4.6387324 | Best = -0.5728571
+GA | iter = 85 | Mean = -0.5925485 | Best = -0.5728571
+GA | iter = 86 | Mean = -8.5674277 | Best = -0.5728571
+GA | iter = 87 | Mean = -0.5913753 | Best = -0.5728571
+GA | iter = 88 | Mean = -4.5735997 | Best = -0.5728571
+GA | iter = 89 | Mean = -4.5754572 | Best = -0.5728571
+GA | iter = 90 | Mean = -0.5891720 | Best = -0.5728571
+GA | iter = 91 | Mean = -0.5864419 | Best = -0.5712068
+GA | iter = 92 | Mean = -0.5939557 | Best = -0.5711969
+GA | iter = 93 | Mean = -0.6251028 | Best = -0.5711969
+GA | iter = 94 | Mean = -0.6236747 | Best = -0.5711969
+GA | iter = 95 | Mean = -0.5816426 | Best = -0.5688672
+GA | iter = 96 | Mean = -0.5848247 | Best = -0.5688672
+GA | iter = 97 | Mean = -0.5965068 | Best = -0.5663383
+GA | iter = 98 | Mean = -0.6021305 | Best = -0.5663383
+GA | iter = 99 | Mean = -4.5828655 | Best = -0.5605782
+GA | iter = 100 | Mean = -0.5877450 | Best = -0.5605782
+GA | iter = 101 | Mean = -0.5877050 | Best = -0.5605782
+GA | iter = 102 | Mean = -0.5838514 | Best = -0.5432927
+GA | iter = 103 | Mean = -0.5827013 | Best = -0.5432927
+GA | iter = 104 | Mean = -4.5602001 | Best = -0.5391177
+GA | iter = 105 | Mean = -0.5653340 | Best = -0.5372563
+GA | iter = 106 | Mean = -0.5588461 | Best = -0.5306526
+GA | iter = 107 | Mean = -0.6247963 | Best = -0.5306526
+GA | iter = 108 | Mean = -0.6333928 | Best = -0.5286895
+GA | iter = 109 | Mean = -8.5315430 | Best = -0.5286895
+GA | iter = 110 | Mean = -0.5540184 | Best = -0.5285871
+GA | iter = 111 | Mean = -4.5364125 | Best = -0.5182283
+GA | iter = 112 | Mean = -0.5620796 | Best = -0.5182283
+GA | iter = 113 | Mean = -4.5646446 | Best = -0.5182283
+GA | iter = 114 | Mean = -0.5572774 | Best = -0.5182283
+GA | iter = 115 | Mean = -0.5728175 | Best = -0.5182283
+GA | iter = 116 | Mean = -0.5556968 | Best = -0.5182283
+GA | iter = 117 | Mean = -8.5329933 | Best = -0.5182283
+GA | iter = 118 | Mean = -4.5383319 | Best = -0.5182283
+GA | iter = 119 | Mean = -0.5433563 | Best = -0.5182283
+GA | iter = 120 | Mean = -4.5340703 | Best = -0.5182283
+GA | iter = 121 | Mean = -0.5374617 | Best = -0.5182283
+GA | iter = 122 | Mean = -0.5365929 | Best = -0.5182283
+GA | iter = 123 | Mean = -0.5628652 | Best = -0.5182283
+GA | iter = 124 | Mean = -4.5211656 | Best = -0.4894134
+GA | iter = 125 | Mean = -4.5261050 | Best = -0.4894134
+GA | iter = 126 | Mean = -0.5322521 | Best = -0.4894134
+GA | iter = 127 | Mean = -8.5027846 | Best = -0.4894134
+GA | iter = 128 | Mean = -0.5459735 | Best = -0.4894134
+GA | iter = 129 | Mean = -0.5284998 | Best = -0.4894134
+GA | iter = 130 | Mean = -0.5307747 | Best = -0.4894134
+GA | iter = 131 | Mean = -0.5238013 | Best = -0.4894134
+GA | iter = 132 | Mean = -0.5293455 | Best = -0.4894134
+GA | iter = 133 | Mean = -0.5156821 | Best = -0.4894134
+GA | iter = 134 | Mean = -0.5160124 | Best = -0.4842779
+GA | iter = 135 | Mean = -0.5075455 | Best = -0.4842779
+GA | iter = 136 | Mean = -4.4940330 | Best = -0.4842779
+GA | iter = 137 | Mean = -4.5038182 | Best = -0.4842779
+GA | iter = 138 | Mean = -0.5026970 | Best = -0.4842779
+GA | iter = 139 | Mean = -4.5200917 | Best = -0.4842779
+GA | iter = 140 | Mean = -0.5425474 | Best = -0.4832899
+GA | iter = 141 | Mean = -4.5049695 | Best = -0.4832899
+GA | iter = 142 | Mean = -0.5073501 | Best = -0.4832899
+GA | iter = 143 | Mean = -0.5009947 | Best = -0.4832899
+GA | iter = 144 | Mean = -0.4948319 | Best = -0.4832899
+GA | iter = 145 | Mean = -0.4951164 | Best = -0.4816296
+GA | iter = 146 | Mean = -0.4973194 | Best = -0.4807540
+GA | iter = 147 | Mean = -0.4910585 | Best = -0.4807540
+GA | iter = 148 | Mean = -0.4904189 | Best = -0.4804995
+GA | iter = 149 | Mean = -0.4905516 | Best = -0.4804995
+GA | iter = 150 | Mean = -0.5073278 | Best = -0.4804995
+GA | iter = 151 | Mean = -0.5019486 | Best = -0.4804995
+GA | iter = 152 | Mean = -4.5082683 | Best = -0.4804995
+GA | iter = 153 | Mean = -0.4883741 | Best = -0.4804995
+GA | iter = 154 | Mean = -4.5450048 | Best = -0.4768609
+GA | iter = 155 | Mean = -0.4946349 | Best = -0.4768609
+GA | iter = 156 | Mean = -0.5102670 | Best = -0.4768609
+GA | iter = 157 | Mean = -0.5034000 | Best = -0.4768609
+GA | iter = 158 | Mean = -0.5117731 | Best = -0.4768609
+GA | iter = 159 | Mean = -0.4961604 | Best = -0.4768609
+GA | iter = 160 | Mean = -0.4905893 | Best = -0.4751880
+GA | iter = 161 | Mean = -0.484679 | Best = -0.475188
+GA | iter = 162 | Mean = -0.4819482 | Best = -0.4751880
+GA | iter = 163 | Mean = -0.4931600 | Best = -0.4502603
+GA | iter = 164 | Mean = -0.4903260 | Best = -0.4498382
+GA | iter = 165 | Mean = -0.4843494 | Best = -0.4483435
+GA | iter = 166 | Mean = -0.4772002 | Best = -0.4483435
+GA | iter = 167 | Mean = -0.4731041 | Best = -0.4483435
+GA | iter = 168 | Mean = -0.4927085 | Best = -0.4469650
+GA | iter = 169 | Mean = -0.4680338 | Best = -0.4439162
+GA | iter = 170 | Mean = -0.4613122 | Best = -0.4439162
+GA | iter = 171 | Mean = -0.4632206 | Best = -0.4439162
+GA | iter = 172 | Mean = -0.4622285 | Best = -0.4438604
+GA | iter = 173 | Mean = -0.4620584 | Best = -0.4438604
+GA | iter = 174 | Mean = -0.4558652 | Best = -0.4438604
+GA | iter = 175 | Mean = -0.4522751 | Best = -0.4425505
+GA | iter = 176 | Mean = -0.4681402 | Best = -0.4341253
+GA | iter = 177 | Mean = -0.4634921 | Best = -0.4341253
+GA | iter = 178 | Mean = -0.4582425 | Best = -0.4341253
+GA | iter = 179 | Mean = -0.4537209 | Best = -0.4341253
+GA | iter = 180 | Mean = -0.4442336 | Best = -0.4341253
+GA | iter = 181 | Mean = -0.4404467 | Best = -0.4281131
+GA | iter = 182 | Mean = -0.4618074 | Best = -0.4281131
+GA | iter = 183 | Mean = -0.4502590 | Best = -0.4259831
+GA | iter = 184 | Mean = -4.4370702 | Best = -0.4259831
+GA | iter = 185 | Mean = -0.4391615 | Best = -0.4259831
+GA | iter = 186 | Mean = -0.5185432 | Best = -0.4259831
+GA | iter = 187 | Mean = -0.4440777 | Best = -0.4259831
+GA | iter = 188 | Mean = -0.4401752 | Best = -0.4259831
+GA | iter = 189 | Mean = -0.4548533 | Best = -0.4259831
+GA | iter = 190 | Mean = -0.4409498 | Best = -0.4259831
+GA | iter = 191 | Mean = -0.4329909 | Best = -0.4259831
+GA | iter = 192 | Mean = -0.4305402 | Best = -0.4242154
+GA | iter = 193 | Mean = -0.4331885 | Best = -0.4242154
+GA | iter = 194 | Mean = -0.4372769 | Best = -0.4198540
+GA | iter = 195 | Mean = -0.450231 | Best = -0.419854
+GA | iter = 196 | Mean = -4.4383772 | Best = -0.4192902
+GA | iter = 197 | Mean = -0.4423906 | Best = -0.4192902
+GA | iter = 198 | Mean = -0.4379892 | Best = -0.4192902
+GA | iter = 199 | Mean = -0.4528407 | Best = -0.4192902
+GA | iter = 200 | Mean = -0.4415059 | Best = -0.4187102
+GA | iter = 201 | Mean = -0.4295117 | Best = -0.4187102
+GA | iter = 202 | Mean = -0.4959365 | Best = -0.4093311
+GA | iter = 203 | Mean = -0.4318569 | Best = -0.4093311
+GA | iter = 204 | Mean = -0.4412101 | Best = -0.4093311
+GA | iter = 205 | Mean = -0.4272886 | Best = -0.4074644
+GA | iter = 206 | Mean = -0.4278421 | Best = -0.4074644
+GA | iter = 207 | Mean = -0.4272227 | Best = -0.4070941
+GA | iter = 208 | Mean = -0.4273005 | Best = -0.4070941
+GA | iter = 209 | Mean = -0.4251581 | Best = -0.4062985
+GA | iter = 210 | Mean = -0.4237308 | Best = -0.4062985
+GA | iter = 211 | Mean = -0.4321766 | Best = -0.4062985
+GA | iter = 212 | Mean = -0.4191101 | Best = -0.4062985
+GA | iter = 213 | Mean = -0.4343172 | Best = -0.4062985
+GA | iter = 214 | Mean = -0.4393852 | Best = -0.4062985
+GA | iter = 215 | Mean = -0.4177542 | Best = -0.4062985
+GA | iter = 216 | Mean = -0.4145367 | Best = -0.4062985
+GA | iter = 217 | Mean = -0.4166819 | Best = -0.4061254
+GA | iter = 218 | Mean = -0.4209077 | Best = -0.4058889
+GA | iter = 219 | Mean = -0.4122193 | Best = -0.4058889
+GA | iter = 220 | Mean = -0.4155080 | Best = -0.4058889
+GA | iter = 221 | Mean = -0.4216015 | Best = -0.4058889
+GA | iter = 222 | Mean = -0.4166934 | Best = -0.4058889
+GA | iter = 223 | Mean = -0.4121070 | Best = -0.4058889
+GA | iter = 224 | Mean = -0.4112632 | Best = -0.4058889
+GA | iter = 225 | Mean = -0.4101193 | Best = -0.4055422
+GA | iter = 226 | Mean = -0.4110519 | Best = -0.4055422
+GA | iter = 227 | Mean = -0.4144421 | Best = -0.4055422
+GA | iter = 228 | Mean = -0.4401127 | Best = -0.4055422
+GA | iter = 229 | Mean = -0.4271145 | Best = -0.4055422
+GA | iter = 230 | Mean = -0.4137552 | Best = -0.4055422
+GA | iter = 231 | Mean = -0.4085949 | Best = -0.4055422
+GA | iter = 232 | Mean = -0.4101611 | Best = -0.4055422
+GA | iter = 233 | Mean = -0.4453563 | Best = -0.4055422
+GA | iter = 234 | Mean = -0.4107870 | Best = -0.4055422
+GA | iter = 235 | Mean = -0.4204193 | Best = -0.4045841
+GA | iter = 236 | Mean = -0.4224974 | Best = -0.4008066
+GA | iter = 237 | Mean = -0.4113086 | Best = -0.4008066
+GA | iter = 238 | Mean = -0.4143366 | Best = -0.3996627
+GA | iter = 239 | Mean = -0.4077830 | Best = -0.3996627
+GA | iter = 240 | Mean = -0.4081043 | Best = -0.3996627
+GA | iter = 241 | Mean = -0.4080758 | Best = -0.3996627
+GA | iter = 242 | Mean = -0.4185157 | Best = -0.3996627
+GA | iter = 243 | Mean = -0.4033405 | Best = -0.3992762
+GA | iter = 244 | Mean = -0.4025461 | Best = -0.3990889
+GA | iter = 245 | Mean = -0.4115008 | Best = -0.3989947
+GA | iter = 246 | Mean = -0.4048015 | Best = -0.3989947
+GA | iter = 247 | Mean = -0.4130972 | Best = -0.3989947
+GA | iter = 248 | Mean = -0.4298698 | Best = -0.3989947
+GA | iter = 249 | Mean = -0.4264570 | Best = -0.3989947
+GA | iter = 250 | Mean = -0.4405289 | Best = -0.3987465
+GA | iter = 251 | Mean = -0.4037577 | Best = -0.3984410
+GA | iter = 252 | Mean = -0.4026187 | Best = -0.3984410
+GA | iter = 253 | Mean = -0.413715 | Best = -0.398441
+GA | iter = 254 | Mean = -0.4145863 | Best = -0.3983239
+GA | iter = 255 | Mean = -0.4165969 | Best = -0.3978974
+GA | iter = 256 | Mean = -0.4033798 | Best = -0.3978267
+GA | iter = 257 | Mean = -0.4001974 | Best = -0.3978267
+GA | iter = 258 | Mean = -0.4005385 | Best = -0.3974320
+GA | iter = 259 | Mean = -0.4007323 | Best = -0.3974320
+GA | iter = 260 | Mean = -0.4048916 | Best = -0.3974320
+GA | iter = 261 | Mean = -0.4016057 | Best = -0.3972876
+GA | iter = 262 | Mean = -0.4103746 | Best = -0.3972876
+GA | iter = 263 | Mean = -0.4022145 | Best = -0.3970835
+GA | iter = 264 | Mean = -0.4016006 | Best = -0.3970290
+GA | iter = 265 | Mean = -0.405780 | Best = -0.397029
+GA | iter = 266 | Mean = -0.4149456 | Best = -0.3970290
+GA | iter = 267 | Mean = -0.4011257 | Best = -0.3970290
+GA | iter = 268 | Mean = -0.4051974 | Best = -0.3970290
+GA | iter = 269 | Mean = -0.4004734 | Best = -0.3970290
+GA | iter = 270 | Mean = -0.4026062 | Best = -0.3970290
+GA | iter = 271 | Mean = -0.4113284 | Best = -0.3931193
+GA | iter = 272 | Mean = -0.3996116 | Best = -0.3922861
+GA | iter = 273 | Mean = -0.3993724 | Best = -0.3915643
+GA | iter = 274 | Mean = -0.4059376 | Best = -0.3907201
+GA | iter = 275 | Mean = -0.4413654 | Best = -0.3750886
+GA | iter = 276 | Mean = -4.4196360 | Best = -0.3750886
+GA | iter = 277 | Mean = -0.4208547 | Best = -0.3750886
+GA | iter = 278 | Mean = -0.4101026 | Best = -0.3750886
+GA | iter = 279 | Mean = -0.4001758 | Best = -0.3750886
+GA | iter = 280 | Mean = -0.4115290 | Best = -0.3750886
+GA | iter = 281 | Mean = -0.3956213 | Best = -0.3750886
+GA | iter = 282 | Mean = -0.3986184 | Best = -0.3743130
+GA | iter = 283 | Mean = -0.3924016 | Best = -0.3743130
+GA | iter = 284 | Mean = -0.3977961 | Best = -0.3743130
+GA | iter = 285 | Mean = -0.3881513 | Best = -0.3743130
+GA | iter = 286 | Mean = -0.3865389 | Best = -0.3743130
+GA | iter = 287 | Mean = -4.394382 | Best = -0.374313
+GA | iter = 288 | Mean = -0.4043949 | Best = -0.3743130
+GA | iter = 289 | Mean = -0.421485 | Best = -0.374313
+GA | iter = 290 | Mean = -0.422578 | Best = -0.374313
+GA | iter = 291 | Mean = -0.3930709 | Best = -0.3743130
+GA | iter = 292 | Mean = -4.382147 | Best = -0.374313
+GA | iter = 293 | Mean = -8.383438 | Best = -0.374313
+GA | iter = 294 | Mean = -0.4174305 | Best = -0.3743130
+GA | iter = 295 | Mean = -0.3927399 | Best = -0.3743130
+GA | iter = 296 | Mean = -0.3942612 | Best = -0.3743130
+GA | iter = 297 | Mean = -0.3849779 | Best = -0.3701323
+GA | iter = 298 | Mean = -0.3901406 | Best = -0.3701323
+GA | iter = 299 | Mean = -0.3811101 | Best = -0.3701323
+GA | iter = 300 | Mean = -8.3744404 | Best = -0.3701323
+[住宅土地統計調査版] GA終了: 13:31:10 
+最良fitness（-Loss）: -0.3701323 
+            x1        x2        x3         x4       x5        x6        x7
+[1,] 0.2889916 0.4350217 0.6356839 0.09969353 2.457161 0.1624951 0.1413439
+            x8        x9       x10       x11       x12       x13       x14
+[1,] 0.1325185 0.1433858 0.1449583 0.1408314 0.1362586 0.2005357 0.1746376
+          x15       x16       x17       x18       x19       x20       x21
+[1,] 0.148385 0.1857014 0.1530405 0.1622737 0.1054153 0.1683533 0.1688509
+           x22      x23       x24       x25       x26       x27       x28
+[1,] 0.1645103 0.174707 0.1802428 0.2141759 0.1566332 0.1882423 0.1871546
+           x29       x30       x31       x32       x33       x34      x35
+[1,] 0.1904282 0.1995599 0.1846896 0.2066466 0.2364855 0.2004309 0.217848
+           x36       x37
+[1,] 0.1691905 0.1242007
+警告メッセージ:
+1: パッケージ ‘sp’ はバージョン 4.6.1 の R の下で造られました 
+2: There was 1 warning in `mutate()`.
+ℹ In argument: `across(...)`.
+Caused by warning:
+! 強制変換により NA が生成されました 
+3: st_centroid assumes attributes are constant over geometries 
+4: st_centroid assumes attributes are constant over geometries 
+5: There was 1 warning in `dplyr::mutate()`.
+ℹ In argument: `obs_hh = as.numeric(obs_hh)`.
+Caused by warning:
+! 強制変換により NA が生成されました 
+6: st_centroid assumes attributes are constant over geometries 

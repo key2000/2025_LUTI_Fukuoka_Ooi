@@ -1,0 +1,270 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+
+次のパッケージを付け加えます: ‘dplyr’
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    filter, lag
+
+以下のオブジェクトは ‘package:base’ からマスクされています:
+
+    intersect, setdiff, setequal, union
+
+要求されたパッケージ sp をロード中です
+
+次のパッケージを付け加えます: ‘raster’
+
+以下のオブジェクトは ‘package:dplyr’ からマスクされています:
+
+    select
+
+terra 1.9.27
+
+次のパッケージを付け加えます: ‘terra’
+
+以下のオブジェクトは ‘package:tidyr’ からマスクされています:
+
+    extract
+
+
+次のパッケージを付け加えます: ‘janitor’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    crosstab
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    crosstab
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    chisq.test, fisher.test
+
+Reading layer `MEAmap3' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/UEA' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 222 features and 30 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 123.4578 ymin: 24.32743 xmax: 146.4404 ymax: 45.52638
+Geodetic CRS:  JGD2000
+Reading layer `MESH05030' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/raw/1kmメッシュ福岡境界データ' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 5600 features and 5 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 130 ymin: 33.33333 xmax: 131 ymax: 34
+Geodetic CRS:  JGD2000
+Coordinate Reference System:
+  User input: EPSG:6670 
+  wkt:
+PROJCRS["JGD2011 / Japan Plane Rectangular CS II",
+    BASEGEOGCRS["JGD2011",
+        DATUM["Japanese Geodetic Datum 2011",
+            ELLIPSOID["GRS 1980",6378137,298.257222101,
+                LENGTHUNIT["metre",1]]],
+        PRIMEM["Greenwich",0,
+            ANGLEUNIT["degree",0.0174532925199433]],
+        ID["EPSG",6668]],
+    CONVERSION["Japan Plane Rectangular CS zone II",
+        METHOD["Transverse Mercator",
+            ID["EPSG",9807]],
+        PARAMETER["Latitude of natural origin",33,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8801]],
+        PARAMETER["Longitude of natural origin",131,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["Scale factor at natural origin",0.9999,
+            SCALEUNIT["unity",1],
+            ID["EPSG",8805]],
+        PARAMETER["False easting",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["northing (X)",north,
+            ORDER[1],
+            LENGTHUNIT["metre",1]],
+        AXIS["easting (Y)",east,
+            ORDER[2],
+            LENGTHUNIT["metre",1]],
+    USAGE[
+        SCOPE["Cadastre, engineering survey, topographic mapping (large and medium scale)."],
+        AREA["Japan - onshore - Kyushu east of approximately 130°E - Fukuoka-ken; Saga-ken; Kumamoto-ken; Oita-ken; Miyazaki-ken; Kagoshima-ken (except for area within Japan Plane Rectangular Coordinate System zone I)."],
+        BBOX[30.18,129.76,33.99,132.05]],
+    ID["EPSG",6670]]
+options:        ENCODING=CP932 
+Reading layer `L03-b-16_5030' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/raw/NLNI_Fukuoka' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 550000 features and 3 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 130 ymin: 33.33333 xmax: 131 ymax: 34
+Geodetic CRS:  JGD2000
+[1] "over10のメッシュ数: 895"
+[1] "総メッシュ数: 1356"
+Deleting layer `bnd_mesh_wL10' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10' to data source 
+  `data/processed/bnd_mesh_wL10' using driver `ESRI Shapefile'
+Writing 895 features with 1 fields and geometry type Polygon.
+Deleting layer `bnd_mesh_wL10_wE' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10_wE' to data source 
+  `data/processed/bnd_mesh_wL10_wE' using driver `ESRI Shapefile'
+Writing 895 features with 2 fields and geometry type Polygon.
+Reading layer `bnd_mesh_wL10_wE' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/processed/bnd_mesh_wL10_wE' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 895 features and 2 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -89473.49 ymin: 37055.84 xmax: -32407.09 ymax: 101815.2
+Projected CRS: JGD2011 / Japan Plane Rectangular CS II
+Deleting layer `bnd_mesh_wL10_filterd' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10_filterd' to data source 
+  `data/processed/bnd_mesh_wL10_filterd' using driver `ESRI Shapefile'
+Writing 883 features with 2 fields and geometry type Polygon.
+
+次のパッケージを付け加えます: ‘igraph’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    blocks, compare, union
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    union
+
+以下のオブジェクトは ‘package:dplyr’ からマスクされています:
+
+    as_data_frame, groups, union
+
+以下のオブジェクトは ‘package:tidyr’ からマスクされています:
+
+    crossing
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    decompose, spectrum
+
+以下のオブジェクトは ‘package:base’ からマスクされています:
+
+    union
+
+udunits database from /Library/Frameworks/R.framework/Versions/4.6/Resources/library/units/share/udunits/udunits2.xml
+[1] "削除された孤立居住地数: 37"
+[1] "削除された孤立従業地数: 1"
+要求されたパッケージ foreach をロード中です
+要求されたパッケージ iterators をロード中です
+Package 'GA' version 3.2.5
+Type 'citation("GA")' for citing this R package in publications.
+
+次のパッケージを付け加えます: ‘GA’
+
+以下のオブジェクトは ‘package:utils’ からマスクされています:
+
+    de
+
+[GA住宅土地統計調査版] 比較に使う市区町村数: 30 
+[住宅土地統計調査版] 単発テスト fitness値: -0.8298891 
+ [1] -4.12 -5.30 -4.85 -5.44 -5.79 -4.24 -4.81 -5.19 -5.67 -5.01
+
+使用するグローバルパラメータ（12_ga-base2021-ki-by-mun/seed1 の記録値）:
+   alpha_a    gamma_0    gamma_1    theta_H    theta_L 
+0.28899158 0.43502175 0.63568393 0.09969353 2.45716126 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.00238112329167034,822.720073574575 
+[debug2] gap= 0.0009924813  iteration= 90  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 1 , diff= 1699182 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.00106747508096176,880.574184263551 
+[debug2] gap= 0.0009564278  iteration= 50  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 2 , diff= 76920.54 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.000621904595145222,895.792348262776 
+[debug2] gap= 0.0009921609  iteration= 72  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 3 , diff= 7092.182 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.00056800809158272,898.191744203545 
+[debug2] gap= 0.0009391278  iteration= 71  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 4 , diff= 887.8733 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.000562203676093769,898.923510401886 
+[debug2] gap= 0.0009917929  iteration= 51  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 5 , diff= 120.4622 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.000561921528095673,900.961033849357 
+[debug2] gap= 0.0009648553  iteration= 67  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 6 , diff= 32.96776 
+
+次のパッケージを付け加えます: ‘patchwork’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    area
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    area
+
+wCorr v1.9.8
+
+# A tibble: 31 × 6
+   CITY_NAME    cover_rate hab_rate in_5030 used  keep 
+   <chr>             <dbl>    <dbl>   <dbl> <lgl> <lgl>
+ 1 飯塚市          0.00606  0.00172   1     TRUE  FALSE
+ 2 岡垣町          0.0215   0.00825   1     TRUE  FALSE
+ 3 鞍手町          0.0548   0.0118    1     TRUE  FALSE
+ 4 宮若市          0.0326   0.0306    1     TRUE  FALSE
+ 5 久留米市        0.0121   0.0550    0.234 TRUE  FALSE
+ 6 筑前町          0.159    0.191     1     TRUE  FALSE
+ 7 大刀洗町        0.204    0.207     1.00  TRUE  FALSE
+ 8 那珂川市        0.179    0.380     1.000 TRUE  FALSE
+ 9 須恵町          0.409    0.514     1     TRUE  TRUE 
+10 篠栗町          0.343    0.849     1.000 TRUE  TRUE 
+11 久山町          0.348    0.850     1.000 FALSE FALSE
+12 古賀市          0.677    0.860     1.00  TRUE  TRUE 
+13 筑紫野市        0.632    0.910     1.00  TRUE  TRUE 
+14 新宮町          0.754    0.912     1     TRUE  TRUE 
+15 小郡市          0.952    0.945     1     TRUE  TRUE 
+16 福岡市博多区    0.936    0.957     1.00  TRUE  TRUE 
+17 宗像市          0.800    0.959     0.992 TRUE  TRUE 
+18 福岡市西区      0.770    0.962     1     TRUE  TRUE 
+19 福岡市東区      0.839    0.967     1.000 TRUE  TRUE 
+20 大野城市        0.651    0.967     1.000 TRUE  TRUE 
+21 福岡市早良区    0.447    0.969     1.000 TRUE  TRUE 
+22 太宰府市        0.725    0.970     1     TRUE  TRUE 
+23 宇美町          0.508    0.974     1.000 TRUE  TRUE 
+24 粕屋町          0.956    0.985     1.000 TRUE  TRUE 
+25 糸島市          0.732    0.986     1.000 TRUE  TRUE 
+26 福津市          0.895    0.988     1.00  TRUE  TRUE 
+27 福岡市中央区    0.985    0.996     1.00  TRUE  TRUE 
+28 福岡市城南区    0.893    0.999     1.000 TRUE  TRUE 
+29 福岡市南区      0.940    1         1     TRUE  TRUE 
+30 春日市          1.000    1         1.000 TRUE  TRUE 
+31 志免町          1        1         1     TRUE  TRUE 
+# A tibble: 5 × 6
+  indicator  target      n    R2  R2_w log_err
+  <chr>      <chr>   <int> <dbl> <dbl>   <dbl>
+1 household  all       815 0.782 0.620  0.246 
+2 rent       all        30 0.780 0.667  0.0522
+3 rent       hab>=th    22 0.723 0.666  0.0515
+4 floor_area all        30 0.531 0.659  0.0135
+5 floor_area hab>=th    22 0.636 0.679  0.0130
+警告メッセージ:
+1: パッケージ ‘sp’ はバージョン 4.6.1 の R の下で造られました 
+2: There was 1 warning in `mutate()`.
+ℹ In argument: `across(...)`.
+Caused by warning:
+! 強制変換により NA が生成されました 
+3: st_centroid assumes attributes are constant over geometries 
+4: st_centroid assumes attributes are constant over geometries 
+5: There was 1 warning in `dplyr::mutate()`.
+ℹ In argument: `obs_hh = as.numeric(obs_hh)`.
+Caused by warning:
+! 強制変換により NA が生成されました 
+6: st_centroid assumes attributes are constant over geometries 
+7: st_point_on_surface assumes attributes are constant over geometries 
+8: st_cast.sf(., "POLYGON") で:
+  repeating attributes for all sub-geometries for which they may not be constant
+9: st_centroid assumes attributes are constant over geometries 
+10: st_point_on_surface assumes attributes are constant over geometries 
