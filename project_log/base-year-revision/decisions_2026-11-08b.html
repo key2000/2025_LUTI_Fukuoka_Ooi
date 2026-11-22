@@ -1,0 +1,402 @@
+<title>案Cの結果と次の判断</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Kaku+Gothic+New:wght@700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 縦1列の読み物。判断ごとに「背景→図→選択肢→推奨」の順。スマホ幅を基準に組む */
+:root{
+  --bg:#f5f7f5; --card:#ffffff; --fg:#1c2421; --muted:#5b6964; --line:#d3dbd7;
+  --accent:#0d6b66; --accent-soft:#dcefed; --warn:#a85a17; --warn-soft:#f7e8d9;
+  --band:#e6ebe8; --good:#2f7a3d;
+  --f-display:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-body:"BIZ UDPGothic","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --card:#19201d; --fg:#e3eae7; --muted:#9aa8a2; --line:#2d3733;
+  --accent:#4fc0b6; --accent-soft:#163532; --warn:#e3a066; --warn-soft:#3a2a1c;
+  --band:#222a27; --good:#6cc27c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111614; --card:#19201d; --fg:#e3eae7; --muted:#9aa8a2; --line:#2d3733;
+  --accent:#4fc0b6; --accent-soft:#163532; --warn:#e3a066; --warn-soft:#3a2a1c;
+  --band:#222a27; --good:#6cc27c; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.75}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.4;margin:0}
+h1{font-size:1.55rem}
+h2{font-size:1.25rem}
+h3{font-size:1.02rem;margin-top:6px}
+p{margin:0}
+.lead{color:var(--muted);font-size:.93rem}
+section{display:flex;flex-direction:column;gap:14px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.rec{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.rec b{color:var(--accent)}
+.caution{border-left:4px solid var(--warn);background:var(--warn-soft);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.term{font-size:.88rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+.term b{color:var(--fg)}
+ul,ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:4px}
+.toc{display:flex;flex-direction:column;gap:8px}
+.toc a{display:grid;grid-template-columns:2.2em 1fr;gap:8px;text-decoration:none;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.toc a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toc .n{font-family:var(--f-mono);color:var(--accent);font-weight:500}
+.toc .q{font-weight:700}
+.toc .r{display:block;font-size:.85rem;color:var(--muted);font-weight:400}
+.fig{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 10px 8px;display:flex;flex-direction:column;gap:6px}
+.fig .cap{font-size:.84rem;color:var(--muted)}
+.fig .ttl{font-weight:700;font-size:.92rem}
+.svgbox{overflow-x:auto}
+svg{display:block;width:100%;height:auto;min-width:320px}
+svg text{fill:var(--fg);font-family:var(--f-body)}
+svg .mut{fill:var(--muted)}
+svg .acc{fill:var(--accent)} svg .wrn{fill:var(--warn)}
+svg .ax{stroke:var(--line);stroke-width:1}
+svg .grid{stroke:var(--line);stroke-width:.6;stroke-dasharray:2 3}
+svg .bandf{fill:var(--band)}
+svg .accs{stroke:var(--accent)} svg .wrns{stroke:var(--warn)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:420px}
+th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+th{font-weight:700;color:var(--muted);font-size:.8rem}
+.ok{color:var(--good);font-weight:700}.mid{color:var(--warn);font-weight:700}.ng{color:var(--warn);font-weight:700}
+.opts{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:640px){.opts.two{grid-template-columns:1fr 1fr}}
+.opt{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.opt.pick{border:2px solid var(--accent)}
+.opt .tag{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.opt.pick .tag{color:var(--accent);font-weight:500}
+.pm{display:grid;grid-template-columns:1.6em 1fr;gap:2px 4px;font-size:.9rem}
+.pm .p{color:var(--good);font-weight:700}.pm .m{color:var(--warn);font-weight:700}
+.formula{font-family:var(--f-mono);font-size:.85rem;background:var(--band);border-radius:6px;padding:10px;overflow-x:auto;white-space:pre}
+.reply{display:flex;flex-direction:column;gap:8px}
+textarea{width:100%;box-sizing:border-box;font-family:var(--f-mono);font-size:.88rem;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:9.5em}
+button{align-self:flex-start;font-family:var(--f-body);font-size:.92rem;background:var(--accent);color:var(--card);border:0;border-radius:6px;padding:8px 14px;font-weight:700}
+.small{font-size:.84rem;color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+</style>
+
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:8px">
+  <div class="eyebrow">福岡LUTI ・ 基準年の見直し ・ 2026-11-08（その2）</div>
+  <h1>案Cの試験結果と、次に決めていただきたい5つのこと</h1>
+  <p class="lead">案C（LUTIループで混ぜる割合を回数とともに減らす）を試したところ、計算の揺れは約50分の1になりました。メインスクリプトにはまだ入れていません。入れ方を含め、次の作業（中心地を増やして2021年で較正し直す）に進む前に決めていただきたいことが5つあります。</p>
+</header>
+
+<nav class="toc" aria-label="判断事項の一覧">
+  <a href="#e1"><span class="n">1</span><span><span class="q">案Cをメインスクリプトに入れるか、どう入れるか</span><span class="r">推奨：入れる。40回固定。元の0.5固定にも戻せる形で</span></span></a>
+  <a href="#e2"><span class="n">2</span><span><span class="q">較正（GA）の中のループにも案Cを入れるか</span><span class="r">推奨：GAはそのまま。較正後に1回だけ確認</span></span></a>
+  <a href="#e3"><span class="n">3</span><span><span class="q">厚生（EV）をどちらの家賃で測るのを主にするか</span><span class="r">推奨：基準年（2021）の家賃で測るEVを主、もう一方を参考に</span></span></a>
+  <a href="#e4"><span class="n">4</span><span><span class="q">中心地をどう増やすか</span><span class="r">推奨：今の17拠点＋単独で1万人以上のメッシュ（約32か所）</span></span></a>
+  <a href="#e5"><span class="n">5</span><span><span class="q">賃金データにない産業（農林漁業・公務）の賃金をどう扱うか</span><span class="r">推奨：県の全産業平均の賃金で補う</span></span></a>
+</nav>
+
+<!-- ===== 結果 ===== -->
+<section id="res">
+  <div class="eyebrow">試験の結果</div>
+  <h2>案Cで、揺れはほぼ消えた</h2>
+  <div class="card">
+    <p><b>やったこと</b>：先生のメインスクリプトには手を入れず、シナリオ計算の関数（<span class="num">run_scenario</span>）を写した試験用の関数を別ファイルに作りました。変えたのは1行だけです。</p>
+    <div class="formula">元：  dists_road ← 0.5 × 新しい結果 + 0.5 × 前回まで
+案C：dists_road ← 1/(n+1) × 新しい結果 + (1 − 1/(n+1)) × 前回まで
+       （n = 回数。1回目は1/2で元と同じ、2回目1/3、3回目1/4 …）</div>
+    <p>こうすると、所要時間は「それまでの全回の配分結果の平均」になります。道路配分の打ち切り誤差は毎回ばらばらなので、平均すると打ち消し合って小さくなります。現状・2009年・2021年の3つを50回ずつ回しました（約47分）。</p>
+    <div class="term"><b>MSA（逐次平均法）</b>：繰り返し計算で、結果を「それまでの平均」に少しずつ混ぜていく方法。混ぜる割合を 1/n にするのが本来の形で、交通分野で標準的に使われる。元のコードにも「MSA averaging」とコメントがあるが、割合が0.5で固定なので揺れが消えなかった。</div>
+  </div>
+
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図1　ループの回数と変化量（現状scn0、縦軸は対数）</div>
+    <div class="svgbox">
+    <svg id="fig1" viewBox="0 0 400 215" role="img" aria-label="新しい配分結果と平均の差は10〜100のまま上下するが、平均そのものの動きは11から0.01未満まで下がる">
+      <g class="grid">
+        <line x1="50" y1="20" x2="390" y2="20"/><line x1="50" y1="45" x2="390" y2="45"/><line x1="50" y1="70" x2="390" y2="70"/>
+        <line x1="50" y1="95" x2="390" y2="95"/><line x1="50" y1="120" x2="390" y2="120"/><line x1="50" y1="145" x2="390" y2="145"/>
+      </g>
+      <line class="ax" x1="50" y1="170" x2="390" y2="170"/><line class="ax" x1="50" y1="20" x2="50" y2="170"/>
+      <g font-size="10" text-anchor="end">
+        <text x="45" y="24" class="mut">1000</text><text x="45" y="74" class="mut">10</text><text x="45" y="124" class="mut">0.1</text><text x="45" y="174" class="mut">0.001</text>
+      </g>
+      <g font-size="10" text-anchor="middle">
+        <text x="50" y="186" class="mut">1</text><text x="154" y="186" class="mut">16</text><text x="258" y="186" class="mut">31</text><text x="390" y="186" class="mut">50回目</text>
+      </g>
+      <polyline id="f1raw" fill="none" class="wrns" stroke-width="1.5" stroke-linejoin="round"/>
+      <polyline id="f1avg" fill="none" class="accs" stroke-width="1.8" stroke-linejoin="round"/>
+      <g font-size="10">
+        <line x1="60" y1="204" x2="78" y2="204" class="wrns" stroke-width="2"/><text x="82" y="208">新しい配分結果と平均の差（元のdiff）</text>
+        <line x1="270" y1="204" x2="288" y2="204" class="accs" stroke-width="2"/><text x="292" y="208">平均そのものの動き</text>
+      </g>
+    </svg>
+    </div>
+    <div class="cap">橙の線（元の止める基準に使っていた量）は、案Cでも10〜100を上下したままです。毎回の配分結果そのものの誤差なので、これは変わりません。緑の線（実際にモデルに入る平均の所要時間がどれだけ動いたか）は、11 から 0.01 未満まで、1000分の1 以下に下がりました。</div>
+  </figure>
+
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図2　揺れによる EV のぶれ（万円/月）</div>
+    <div class="svgbox">
+    <svg viewBox="0 0 400 175" role="img" aria-label="元のやり方では2,578と893のぶれ、案Cでは40回目から50回目の動きが46、25、18">
+      <line class="ax" x1="150" y1="14" x2="150" y2="150"/><line class="ax" x1="150" y1="150" x2="380" y2="150"/>
+      <g class="grid"><line x1="226.7" y1="14" x2="226.7" y2="150"/><line x1="303.3" y1="14" x2="303.3" y2="150"/><line x1="380" y1="14" x2="380" y2="150"/></g>
+      <g font-size="10" text-anchor="middle"><text x="150" y="164" class="mut">0</text><text x="226.7" y="164" class="mut">1,000</text><text x="303.3" y="164" class="mut">2,000</text><text x="380" y="164" class="mut">3,000</text></g>
+      <g font-size="10.5">
+        <text x="2" y="18" class="mut" font-size="10">元のやり方（止める回の違い）</text>
+        <text x="2" y="38">現状</text><text x="2" y="60">2009</text>
+        <text x="2" y="86" class="mut" font-size="10">案C（40→50回目の動き）</text>
+        <text x="2" y="106">現状</text><text x="2" y="126">2009</text><text x="2" y="146">2021</text>
+      </g>
+      <rect x="150" y="27" width="197.6" height="14" style="fill:var(--warn)"/>
+      <rect x="150" y="49" width="68.5" height="14" style="fill:var(--warn)"/>
+      <rect x="150" y="95" width="3.5" height="14" style="fill:var(--accent)"/>
+      <rect x="150" y="115" width="1.9" height="14" style="fill:var(--accent)"/>
+      <rect x="150" y="135" width="1.4" height="14" style="fill:var(--accent)"/>
+      <g font-size="10" class="num">
+        <text x="352" y="38">2,578</text><text x="223" y="60">893</text>
+        <text x="158" y="106">46</text><text x="156" y="126">25</text><text x="156" y="146">18</text>
+      </g>
+    </svg>
+    </div>
+    <div class="cap">元のやり方は、3〜5回目で止まるかどうかで EV が 900〜2,600万円/月 ぶれていました。案Cでは、40回目から50回目にかけての動きが 18〜46万円/月 です。</div>
+  </figure>
+
+  <h3>これで分かったこと</h3>
+  <div class="card">
+    <div class="tbl">
+    <table>
+      <thead><tr><th>比較</th><th>元のやり方</th><th>案C（50回）</th><th>読み取り</th></tr></thead>
+      <tbody>
+        <tr><td>現状(2014)→2009 の EV</td><td class="num">37,382</td><td class="num">40,568</td><td>元のやり方は止めるのが早く、約3千万円/月 小さく出ていた</td></tr>
+        <tr><td>現状(2014)→2021 の EV</td><td class="num">32,121</td><td class="num">35,584</td><td>同上</td></tr>
+        <tr><td>2009→2021 の EV</td><td class="num">−2,006</td><td class="num">−1,674</td><td>40回以降 −1,700 前後で安定。揺れ（数十）よりずっと大きいので、<b>本当の差</b>と言える</td></tr>
+        <tr><td>2021−2009 の CO₂</td><td class="num">+0.4%</td><td class="num">+26.4 t/日（+0.43%）</td><td>回ごとの動きは0.1〜0.5 t/日。<b>本当の差</b>と言える</td></tr>
+        <tr><td>2021→2009 の EV（逆向き）</td><td class="num">+13,710</td><td class="num">+13,424</td><td>向きで大きさが違う問題は残る。揺れではなく、測り方の違い（判断3）</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="small">単位はEVが万円/月（都市圏の全世帯の合計）。詳しい表と変更の記録は <span class="num">base-year-revision/05_msa-step/notes.md</span>。</p>
+  </div>
+</section>
+
+<hr>
+
+<!-- ===== 判断1 ===== -->
+<section id="e1">
+  <div class="eyebrow">判断 1 / 5</div>
+  <h2>案Cをメインスクリプトに入れるか、どう入れるか</h2>
+  <div class="card">
+    <p>入れるのは <span class="num">run_scenario</span>（メインスクリプト L.1990〜2071）の混ぜる行と、止める条件です。問題は<b>止め方</b>です。図1の橙の線は案Cでも下がらないので、今の「diff が100を下回ったら止める」は使えなくなります。</p>
+    <p><b>計算時間</b>：ループ1回は約15秒です。今は1シナリオ3〜5回（約1分）で止まっていますが、40回だと<b>約10分</b>になります。シナリオを多く回す作業（3時点比較・総量の変化・H5の拠点を1つずつ差し替える計算）では、合計で数時間になります。</p>
+  </div>
+  <div class="opts">
+    <div class="opt pick">
+      <div class="tag">推奨　(a) 40回固定で回す</div>
+      <p>40回目以降の動きは数十万円/月で、結論に影響しない大きさです。止める基準の数値を新しく決める必要がありません。</p>
+      <div class="pm"><span class="p">＋</span><span>単純で説明しやすい。どのシナリオも同じ回数なので比べやすい</span><span class="m">－</span><span>1シナリオ約10分</span></div>
+    </div>
+    <div class="opt">
+      <div class="tag">(b) 平均の動きが小さくなったら止める</div>
+      <p>例えば図1の緑の線が 0.02 を3回続けて下回ったら止める。</p>
+      <div class="pm"><span class="p">＋</span><span>早く落ち着くシナリオは早く終わる</span><span class="m">－</span><span>「0.02」「3回」という新しい決めごとが増え、根拠を説明する必要がある。試験では30回前後まで下回らなかったので、時間はあまり変わらない</span></div>
+    </div>
+    <div class="opt">
+      <div class="tag">(c) 入れない</div>
+      <div class="pm"><span class="m">－</span><span>3時点の差が揺れと区別できないまま</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <b>入れ方（推奨）</b>
+    <ul>
+      <li>関数の引数 <span class="num">msa</span> はそのまま残し、「<span class="num">msa = NULL</span> のときは 1/(n+1)、数値を渡せば元どおりその値で固定」にします。<span class="num">msa = 0.5, tol = 100</span> を渡せば、先生の元のやり方をそのまま再現できます。</li>
+      <li>コード内のコメントは短くし（1行）、何をなぜ変えたか・変える前後の結果は <span class="num">05_msa-step/notes.md</span> に書きます。先生に見せるときは、このノートを渡せば分かるようにします。</li>
+      <li>変更前の状態はGitの記録に残るので、いつでも戻せます。</li>
+    </ul>
+  </div>
+  <div class="rec"><b>推奨：(a) 40回固定で入れる</b><p>元のやり方にも引数1つで戻せる形にします。</p></div>
+</section>
+
+<hr>
+
+<!-- ===== 判断2 ===== -->
+<section id="e2">
+  <div class="eyebrow">判断 2 / 5</div>
+  <h2>較正（GA）の中のループにも案Cを入れるか</h2>
+  <div class="card">
+    <p>較正では、GAが候補のパラメータを1つ試すたびに、LUTIループを回して「実際の世帯数・家賃にどれだけ合うか」を計算しています（道路配分の精度は 0.01 と、シナリオより粗い）。GAは候補を数千回試すので、そのたびに40回のループを回すと、較正が数日〜数週間かかってしまいます。</p>
+  </div>
+  <div class="opts two">
+    <div class="opt pick">
+      <div class="tag">推奨　(a) GAは今のまま。較正後に1回確認</div>
+      <p>GAで決めたパラメータで、現状（scn0）を案Cで計算し直し、世帯数・家賃の合い方（fitness）が較正時とどれだけ違うかを1回だけ確かめて記録します。</p>
+      <div class="pm"><span class="p">＋</span><span>較正の時間は今と同じ</span><span class="m">－</span><span>較正のときの都市と、シナリオの基準の都市が少しだけ違う（その差を数字で示す）</span></div>
+    </div>
+    <div class="opt">
+      <div class="tag">(b) GAにも入れる</div>
+      <div class="pm"><span class="p">＋</span><span>完全に同じ計算で較正できる</span><span class="m">－</span><span>時間がかかりすぎ、12月の投稿に間に合わない恐れ</span></div>
+    </div>
+  </div>
+  <div class="rec"><b>推奨：(a)</b><p>パラメータは「現状にだいたい合う値」を探す作業で、揺れの影響はシナリオ間の小さな差ほど大きくありません。確認の結果、合い方が大きく変わるようなら改めてご相談します。</p></div>
+</section>
+
+<hr>
+
+<!-- ===== 判断3 ===== -->
+<section id="e3">
+  <div class="eyebrow">判断 3 / 5</div>
+  <h2>厚生（EV）を、どちらの家賃で測るのを主にするか</h2>
+  <div class="card">
+    <p>前回「EVの式は向きで値が変わる」とお伝えしましたが、調べた結果、<b>式の誤りではなく、経済学で標準の2つの測り方の違い</b>でした。</p>
+    <ul>
+      <li><b>等価変分（EV）</b>：変化の<b>前</b>の家賃で測る。「変化が起きたのと同じだけ満足するには、変化前の状態でいくらもらえばよいか」。</li>
+      <li><b>補償変分（CV）</b>：変化の<b>後</b>の家賃で測る。「変化の後で、元の満足度に戻すにはいくら渡せばよいか」。</li>
+    </ul>
+    <p>家賃が変わると、この2つは一致しません。今の計算で「A→B」はAの家賃で測るEV、「B→A」の符号を反転したものはBの家賃で測るCVにあたります。</p>
+    <p>2009年と2021年の比較で7倍近く違うのは、ゾーンごとの得と損（それぞれ数億円/月）がほとんど打ち消し合って、合計が小さいためです。家賃の重みが少し違うだけで、合計が大きく変わります。</p>
+  </div>
+  <figure class="fig" style="margin:0">
+    <div class="ttl">2009年の分布→2021年の分布 の厚生の変化（案C・50回、万円/月）</div>
+    <div class="tbl"><table>
+      <thead><tr><th>測り方</th><th>家賃の基準</th><th>値</th></tr></thead>
+      <tbody>
+        <tr><td>EV（2009→2021）</td><td>2009年分布のときの家賃</td><td class="num">−1,674</td></tr>
+        <tr><td>CV（2021→2009 の符号を反転）</td><td>2021年分布のときの家賃</td><td class="num">−13,424</td></tr>
+      </tbody>
+    </table></div>
+    <div class="cap">どちらも「2021年の分布のほうが厚生が低い」という向きは同じです。大きさは 0.17〜1.34億円/月 の幅があります。</div>
+  </figure>
+  <div class="opts">
+    <div class="opt pick">
+      <div class="tag">推奨　(a) 基準年（2021）の都市の家賃で測るEVを主にする</div>
+      <p>基準年を2021年にしたあとは、どのシナリオも「基準の都市（scn0）→ そのシナリオ」のEVで測ります。2009年と2014年の差は、その2つのEVの差で出します。もう一方の測り方（CV）は参考として付けます。</p>
+      <div class="pm"><span class="p">＋</span><span>全シナリオを同じ家賃（基準年）で測るので、シナリオどうしを足し引きして比べても矛盾しない</span><span class="p">＋</span><span>「基準年の都市で考えたとき」という比較静学の設計と合う</span><span class="m">－</span><span>測り方を変えると大きさが変わることを、論文で必ず書く必要がある</span></div>
+    </div>
+    <div class="opt">
+      <div class="tag">(b) EVとCVの平均を主にする</div>
+      <div class="pm"><span class="p">＋</span><span>どちらか一方に偏らない</span><span class="m">－</span><span>平均には経済学的な意味づけが弱い。シナリオどうしの足し引きが合わなくなる</span></div>
+    </div>
+    <div class="opt">
+      <div class="tag">(c) 2つを並べるだけで、主を決めない</div>
+      <div class="pm"><span class="m">－</span><span>符号が同じなら問題ないが、大きさの議論（何億円か）がしにくい</span></div>
+    </div>
+  </div>
+  <div class="rec"><b>推奨：(a)</b><p>判定のルール（仮説の確定版）にある「符号が変わらないものだけを結論にする」は、EVとCVの両方で確かめます。</p></div>
+</section>
+
+<hr>
+
+<!-- ===== 判断4 ===== -->
+<section id="e4">
+  <div class="eyebrow">判断 4 / 5</div>
+  <h2>中心地をどう増やすか</h2>
+  <div class="card">
+    <p>今の17拠点は、福岡県の区域マスタープラン（平成28年）の「広域拠点」から対象範囲内のものを選んだものです（<span class="num">planning-history</span> で確認済み）。一方、どの中心地にも入らないメッシュの雇用は、一番近い中心地にまとめられます。そのため、たとえば博多駅のメッシュ（2009→2021 で +27,111人、市内最大）は天神の中心地にまとめられ、都心の中での移動がモデルに入りません。</p>
+    <p>事前チェック（02）では、「今の17拠点に、単独で E 人以上のメッシュを中心地として加える」ことで、モデルに入る雇用の移動がどれだけ増えるかを見ました。</p>
+  </div>
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図3　中心地の数と、モデルに入る 2009→2021 の雇用の移動（2021年基準）</div>
+    <div class="svgbox">
+    <svg viewBox="0 0 400 205" role="img" aria-label="中心地17で2.15%、24で4.07%、32で4.77%、46で5.05%、109で6.05%。メッシュ単位では8.78%">
+      <g class="grid"><line x1="60" y1="20" x2="380" y2="20"/><line x1="60" y1="95" x2="380" y2="95"/></g>
+      <line x1="60" y1="38.3" x2="380" y2="38.3" class="wrns" stroke-dasharray="5 3" stroke-width="1.2"/>
+      <text x="378" y="33" font-size="10" text-anchor="end" class="wrn">メッシュ単位（上限）8.78%</text>
+      <line class="ax" x1="60" y1="170" x2="380" y2="170"/><line class="ax" x1="60" y1="20" x2="60" y2="170"/>
+      <g font-size="10" text-anchor="end"><text x="55" y="24" class="mut">10%</text><text x="55" y="99" class="mut">5%</text><text x="55" y="174" class="mut">0%</text></g>
+      <g font-size="10" text-anchor="middle"><text x="60" y="185" class="mut">0</text><text x="118.2" y="185" class="mut">20</text><text x="176.4" y="185" class="mut">40</text><text x="292.7" y="185" class="mut">80</text><text x="380" y="185" class="mut">110</text></g>
+      <text x="220" y="200" font-size="10" text-anchor="middle" class="mut">中心地の数 K</text>
+      <polyline points="109.5,137.8 126.9,108.8 129.8,109.0 153.1,98.5 193.8,94.3 377.1,79.3" fill="none" class="accs" stroke-width="1.6"/>
+      <g style="fill:var(--accent)"><circle cx="109.5" cy="137.8" r="3.5"/><circle cx="126.9" cy="108.8" r="3"/><circle cx="129.8" cy="109.0" r="3"/><circle cx="153.1" cy="98.5" r="5.5"/><circle cx="193.8" cy="94.3" r="3.5"/><circle cx="377.1" cy="79.3" r="3.5"/></g>
+      <g font-size="9.5" class="num">
+        <text x="104" y="152" text-anchor="middle">今17: 2.15%</text>
+        <text x="122" y="100" text-anchor="end">24: 4.07%</text>
+        <text x="156" y="88">32: 4.77%</text>
+        <text x="200" y="110">46: 5.05%</text>
+        <text x="372" y="96" text-anchor="end">109: 6.05%</text>
+      </g>
+    </svg>
+    </div>
+    <div class="cap">縦軸は「モデルの中で別の中心地へ移った従業者の割合」です。24か所（2万人以上を追加）でほぼ倍になり、その先は伸びが鈍くなります。メッシュ1つ1つを全部中心地にしても8.78%が上限です。</div>
+  </figure>
+  <div class="opts">
+    <div class="opt pick">
+      <div class="tag">推奨　(a) 今の17拠点 ＋ 単独で1万人以上のメッシュ（約32か所）</div>
+      <p>政策上の広域拠点はそのまま残し、都心などの大きな雇用メッシュだけを追加の中心地にします。感度分析として、2万人以上（24か所）と5千人以上（46か所）でも回し、結論の符号が変わらないか確かめます（仮説の判定ルールの K≈17/24/32）。</p>
+      <div class="pm"><span class="p">＋</span><span>17拠点が残るので、H5（政策どおりの拠点の成長）や「計画と実際のずれ」の分析ができる</span><span class="p">＋</span><span>決めごとは閾値 E の1つだけで、感度分析で頑健さを示せる</span><span class="p">＋</span><span>事前チェック済みで、すぐ作れる</span><span class="m">－</span><span>郊外の中心地は政策で決めたもののまま（データから選び直していない）</span></div>
+    </div>
+    <div class="opt">
+      <div class="tag">(b) すべてデータから選び直す（2段構え）</div>
+      <p>都心は「単独でE人以上のメッシュ」、郊外は「雇用のまとまりごとに最大のメッシュ」を中心地にする。</p>
+      <div class="pm"><span class="p">＋</span><span>中心地の選び方がすべてデータに基づく</span><span class="m">－</span><span>郊外のまとまりの決め方（つながりの判定・合計の閾値）が新たに必要で、1〜2週間かかる見込み。政策上の拠点と1対1に対応しなくなり、H5がやりにくい</span></div>
+    </div>
+  </div>
+  <div class="caution"><b style="color:var(--warn)">注意</b><p>中心地を32か所にしても、モデルの中で移る従業者は約5%です。CO₂やEVの変化は今の2倍程度にはなりえますが、大きな値にはならない見込みです。「実際に起きた雇用の再配置の効果は小さかった」が答えになる可能性も、論文の筋として考えておく必要があります。</p></div>
+  <div class="rec"><b>推奨：(a) E＝1万人（32か所）を主、2万人・5千人を感度分析</b></div>
+</section>
+
+<hr>
+
+<!-- ===== 判断5 ===== -->
+<section id="e5">
+  <div class="eyebrow">判断 5 / 5</div>
+  <h2>賃金データにない産業の賃金をどう扱うか</h2>
+  <div class="card">
+    <p>賃金構造基本統計調査には、農業・林業（A）、漁業（B）、公務（S）がありません。今のコード（先生作、メイン L.242〜277）は次のように計算しています。</p>
+    <div class="formula">ω_j = Σ_{k=C..R} (産業kの従業者数 × 産業kの賃金) ÷ (A〜Rの従業者数)</div>
+    <ul>
+      <li>分母にはAとBの人が入っているのに、分子には入っていない → <b>A・Bの人は賃金0として平均されている</b>。農業の多い郊外ほど、賃金が少し低く出る。</li>
+      <li>公務（S）は分母にも分子にも入っていない → 公務員の多いところ（県庁・市役所のある都心など）の賃金は、民間の構成だけで決まる。</li>
+      <li>一方、従業者数 L̂<sub>j</sub> は A〜S（公務を含む）で数えているので、賃金と人数で範囲がずれている。</li>
+    </ul>
+  </div>
+  <div class="opts">
+    <div class="opt pick">
+      <div class="tag">推奨　(a) A・B・S に県の全産業平均（産業計）の賃金を当てる</div>
+      <p>分母も分子も A〜S にそろえ、データのない3産業には同じ年の福岡県「産業計」の賃金（2021年なら 312.6千円/月）を当てます。</p>
+      <div class="pm"><span class="p">＋</span><span>人数と賃金の範囲がそろう。A・Bを0にする歪みがなくなる</span><span class="m">－</span><span>先生の元の作り方から変わる（変更として記録する）。公務の実際の賃金とは違う</span></div>
+    </div>
+    <div class="opt">
+      <div class="tag">(b) 今のまま（A・Bは0扱い、Sは除外）</div>
+      <div class="pm"><span class="p">＋</span><span>修論と同じ作り方</span><span class="m">－</span><span>上の歪みが残る。論文で説明しにくい</span></div>
+    </div>
+    <div class="opt">
+      <div class="tag">(c) A・B・S を分母からも除く（C〜Rの平均にする）</div>
+      <div class="pm"><span class="p">＋</span><span>単純</span><span class="m">－</span><span>Sの人数が多いゾーンでも、賃金は民間だけで決まる（今と同じ）</span></div>
+    </div>
+  </div>
+  <div class="rec"><b>推奨：(a)</b><p>どの案でも、総給与は基準年にそろえるので、変わるのは「ゾーン間の賃金の相対的な差」だけです。変更前後で ω<sub>j</sub> がどれだけ変わるかを表にして記録します。</p></div>
+</section>
+
+<hr>
+
+<section id="reply">
+  <div class="eyebrow">返信用</div>
+  <h2>推奨どおりでよければ、これをそのまま送ってください</h2>
+  <div class="reply">
+    <label for="replytxt" class="small">直したいところだけ書き換えて、コピーしてチャットに貼ってください。</label>
+    <textarea id="replytxt">1. 案Cの導入：(a) 40回固定で入れてOK（元に戻せる形で）
+2. GA：(a) 今のまま、較正後に1回確認でOK
+3. EVの主：(a) 基準年の家賃で測るEVを主でOK
+4. 中心地：(a) 17拠点＋1万人以上（感度 2万・5千）でOK
+5. A・B・Sの賃金：(a) 産業計の賃金で補うでOK</textarea>
+    <button id="copybtn" type="button">コピー</button>
+    <span id="copymsg" class="small" aria-live="polite"></span>
+  </div>
+  <p class="small">決まれば、次は「中心地を作る → 自転車・道路・鉄道の所要時間行列を作り直す → 年ごとの賃金を作る → 2021年で較正し直す」に進みます。このページは <span class="num">base-year-revision/decisions_2026-11-08b.html</span> に保存しています。</p>
+</section>
+
+</div>
+
+<script>
+(function(){
+  var raw=[44.6,59.2,49.1,74.9,87.3,46.4,37.7,23.5,20.0,23.2,23.5,12.2,18.6,17.7,116,85.9,67.0,41.9,51.5,32.1,30.8,28.7,29.2,28.2,63.3,40.7,19.8,11.0,15.1,69.8,101,11.6,17.1,27.5,14.8,31.2,16.5,14.3,22.2,13.1,46.0,43.9,34.9,44.7,21.0,18.4,15.2,19.3,8.77,23.2];
+  var avg=[11.2,6.57,3.07,3.00,2.42,0.946,0.589,0.290,0.200,0.192,0.163,0.0721,0.0949,0.0788,0.453,0.297,0.207,0.116,0.129,0.0728,0.0637,0.0543,0.0507,0.0451,0.0936,0.0558,0.0253,0.0131,0.0167,0.0727,0.0988,0.0106,0.0148,0.0225,0.0115,0.0228,0.0114,0.00939,0.0139,0.00778,0.0261,0.0237,0.0180,0.0221,0.00993,0.00831,0.00659,0.00802,0.00351,0.00891];
+  function pts(a){return a.map(function(v,i){return (50+i*340/49).toFixed(1)+','+(20+(3-Math.log10(v))*25).toFixed(1);}).join(' ');}
+  var r=document.getElementById('f1raw'), a=document.getElementById('f1avg');
+  if(r) r.setAttribute('points',pts(raw)); if(a) a.setAttribute('points',pts(avg));
+  var b=document.getElementById('copybtn'),t=document.getElementById('replytxt'),m=document.getElementById('copymsg');
+  if(b) b.addEventListener('click',function(){
+    var done=function(){m.textContent='コピーしました';};
+    var fb=function(){t.focus();t.select();m.textContent='選択しました。長押しでコピーしてください';};
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(done,fb);} else fb(); }catch(e){fb();}
+  });
+})();
+</script>

@@ -1,0 +1,752 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+
+次のパッケージを付け加えます: ‘dplyr’
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    filter, lag
+
+以下のオブジェクトは ‘package:base’ からマスクされています:
+
+    intersect, setdiff, setequal, union
+
+要求されたパッケージ sp をロード中です
+
+次のパッケージを付け加えます: ‘raster’
+
+以下のオブジェクトは ‘package:dplyr’ からマスクされています:
+
+    select
+
+terra 1.9.27
+
+次のパッケージを付け加えます: ‘terra’
+
+以下のオブジェクトは ‘package:tidyr’ からマスクされています:
+
+    extract
+
+
+次のパッケージを付け加えます: ‘janitor’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    crosstab
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    crosstab
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    chisq.test, fisher.test
+
+Reading layer `MEAmap3' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/UEA' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 222 features and 30 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 123.4578 ymin: 24.32743 xmax: 146.4404 ymax: 45.52638
+Geodetic CRS:  JGD2000
+Reading layer `MESH05030' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/raw/1kmメッシュ福岡境界データ' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 5600 features and 5 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 130 ymin: 33.33333 xmax: 131 ymax: 34
+Geodetic CRS:  JGD2000
+Coordinate Reference System:
+  User input: EPSG:6670 
+  wkt:
+PROJCRS["JGD2011 / Japan Plane Rectangular CS II",
+    BASEGEOGCRS["JGD2011",
+        DATUM["Japanese Geodetic Datum 2011",
+            ELLIPSOID["GRS 1980",6378137,298.257222101,
+                LENGTHUNIT["metre",1]]],
+        PRIMEM["Greenwich",0,
+            ANGLEUNIT["degree",0.0174532925199433]],
+        ID["EPSG",6668]],
+    CONVERSION["Japan Plane Rectangular CS zone II",
+        METHOD["Transverse Mercator",
+            ID["EPSG",9807]],
+        PARAMETER["Latitude of natural origin",33,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8801]],
+        PARAMETER["Longitude of natural origin",131,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["Scale factor at natural origin",0.9999,
+            SCALEUNIT["unity",1],
+            ID["EPSG",8805]],
+        PARAMETER["False easting",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["northing (X)",north,
+            ORDER[1],
+            LENGTHUNIT["metre",1]],
+        AXIS["easting (Y)",east,
+            ORDER[2],
+            LENGTHUNIT["metre",1]],
+    USAGE[
+        SCOPE["Cadastre, engineering survey, topographic mapping (large and medium scale)."],
+        AREA["Japan - onshore - Kyushu east of approximately 130°E - Fukuoka-ken; Saga-ken; Kumamoto-ken; Oita-ken; Miyazaki-ken; Kagoshima-ken (except for area within Japan Plane Rectangular Coordinate System zone I)."],
+        BBOX[30.18,129.76,33.99,132.05]],
+    ID["EPSG",6670]]
+options:        ENCODING=CP932 
+Reading layer `L03-b-16_5030' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/raw/NLNI_Fukuoka' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 550000 features and 3 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 130 ymin: 33.33333 xmax: 131 ymax: 34
+Geodetic CRS:  JGD2000
+[1] "over10のメッシュ数: 895"
+[1] "総メッシュ数: 1356"
+Deleting layer `bnd_mesh_wL10' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10' to data source 
+  `data/processed/bnd_mesh_wL10' using driver `ESRI Shapefile'
+Writing 895 features with 1 fields and geometry type Polygon.
+Deleting layer `bnd_mesh_wL10_wE' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10_wE' to data source 
+  `data/processed/bnd_mesh_wL10_wE' using driver `ESRI Shapefile'
+Writing 895 features with 2 fields and geometry type Polygon.
+Reading layer `bnd_mesh_wL10_wE' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/processed/bnd_mesh_wL10_wE' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 895 features and 2 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -89473.49 ymin: 37055.84 xmax: -32407.09 ymax: 101815.2
+Projected CRS: JGD2011 / Japan Plane Rectangular CS II
+Deleting layer `bnd_mesh_wL10_filterd' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10_filterd' to data source 
+  `data/processed/bnd_mesh_wL10_filterd' using driver `ESRI Shapefile'
+Writing 883 features with 2 fields and geometry type Polygon.
+
+次のパッケージを付け加えます: ‘igraph’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    blocks, compare, union
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    union
+
+以下のオブジェクトは ‘package:dplyr’ からマスクされています:
+
+    as_data_frame, groups, union
+
+以下のオブジェクトは ‘package:tidyr’ からマスクされています:
+
+    crossing
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    decompose, spectrum
+
+以下のオブジェクトは ‘package:base’ からマスクされています:
+
+    union
+
+udunits database from /Library/Frameworks/R.framework/Versions/4.6/Resources/library/units/share/udunits/udunits2.xml
+[1] "削除された孤立居住地数: 37"
+[1] "削除された孤立従業地数: 1"
+要求されたパッケージ foreach をロード中です
+要求されたパッケージ iterators をロード中です
+Package 'GA' version 3.2.5
+Type 'citation("GA")' for citing this R package in publications.
+
+次のパッケージを付け加えます: ‘GA’
+
+以下のオブジェクトは ‘package:utils’ からマスクされています:
+
+    de
+
+[GA住宅土地統計調査版] 比較に使う市区町村数: 30 
+[住宅土地統計調査版] 単発テスト fitness値: -20.22685 
+ [1]  -40.26  -38.86  -43.40  -42.35  -44.17  -41.52  -37.54 -200.00  -43.12
+[10]  -39.13
+[住宅土地統計調査版] GA開始: 21:38:26 
+GA | iter = 1 | Mean = -92.72549 | Best = -34.11146
+GA | iter = 2 | Mean = -53.22694 | Best = -30.73423
+GA | iter = 3 | Mean = -35.57603 | Best = -27.52212
+GA | iter = 4 | Mean = -28.92331 | Best = -25.22653
+GA | iter = 5 | Mean = -32.92239 | Best = -23.74317
+GA | iter = 6 | Mean = -28.21286 | Best = -22.75190
+GA | iter = 7 | Mean = -30.96060 | Best = -22.37454
+GA | iter = 8 | Mean = -26.90447 | Best = -22.37454
+GA | iter = 9 | Mean = -37.01270 | Best = -22.25378
+GA | iter = 10 | Mean = -22.60475 | Best = -21.92786
+GA | iter = 11 | Mean = -22.33925 | Best = -21.73055
+GA | iter = 12 | Mean = -22.09995 | Best = -21.73055
+GA | iter = 13 | Mean = -21.92405 | Best = -21.63462
+GA | iter = 14 | Mean = -21.79792 | Best = -21.53323
+GA | iter = 15 | Mean = -21.74006 | Best = -21.53323
+GA | iter = 16 | Mean = -25.24877 | Best = -21.52496
+GA | iter = 17 | Mean = -25.23445 | Best = -21.51715
+GA | iter = 18 | Mean = -21.65203 | Best = -21.51715
+GA | iter = 19 | Mean = -21.61803 | Best = -21.48351
+GA | iter = 20 | Mean = -21.58160 | Best = -21.44921
+GA | iter = 21 | Mean = -25.12104 | Best = -21.42897
+GA | iter = 22 | Mean = -21.53760 | Best = -21.42897
+GA | iter = 23 | Mean = -21.51882 | Best = -21.42570
+GA | iter = 24 | Mean = -21.48298 | Best = -21.39830
+GA | iter = 25 | Mean = -21.45041 | Best = -21.37370
+GA | iter = 26 | Mean = -21.42489 | Best = -21.35375
+GA | iter = 27 | Mean = -24.97592 | Best = -21.33024
+GA | iter = 28 | Mean = -24.9706 | Best = -21.3120
+GA | iter = 29 | Mean = -21.38529 | Best = -21.31200
+GA | iter = 30 | Mean = -21.36877 | Best = -21.31200
+GA | iter = 31 | Mean = -21.35282 | Best = -21.29809
+GA | iter = 32 | Mean = -21.33395 | Best = -21.25338
+GA | iter = 33 | Mean = -24.90348 | Best = -21.25338
+GA | iter = 34 | Mean = -24.90658 | Best = -21.25338
+GA | iter = 35 | Mean = -21.32656 | Best = -21.25338
+GA | iter = 36 | Mean = -24.88100 | Best = -21.22543
+GA | iter = 37 | Mean = -28.45484 | Best = -21.22543
+GA | iter = 38 | Mean = -21.29210 | Best = -21.22543
+GA | iter = 39 | Mean = -21.27690 | Best = -21.22543
+GA | iter = 40 | Mean = -21.25709 | Best = -21.21453
+GA | iter = 41 | Mean = -21.24896 | Best = -21.21453
+GA | iter = 42 | Mean = -21.24472 | Best = -21.21453
+GA | iter = 43 | Mean = -21.24196 | Best = -21.21453
+GA | iter = 44 | Mean = -21.23398 | Best = -21.21453
+GA | iter = 45 | Mean = -21.23507 | Best = -21.21453
+GA | iter = 46 | Mean = -21.22996 | Best = -21.21347
+GA | iter = 47 | Mean = -21.22286 | Best = -21.19536
+GA | iter = 48 | Mean = -24.79761 | Best = -21.18703
+GA | iter = 49 | Mean = -21.21246 | Best = -21.14933
+GA | iter = 50 | Mean = -21.20515 | Best = -21.14688
+GA | iter = 51 | Mean = -21.20028 | Best = -21.14688
+GA | iter = 52 | Mean = -21.19284 | Best = -21.13490
+GA | iter = 53 | Mean = -21.17802 | Best = -21.13466
+GA | iter = 54 | Mean = -21.16575 | Best = -21.13379
+GA | iter = 55 | Mean = -21.15744 | Best = -21.13115
+GA | iter = 56 | Mean = -24.73002 | Best = -21.13094
+GA | iter = 57 | Mean = -21.15011 | Best = -21.06006
+GA | iter = 58 | Mean = -21.13515 | Best = -21.05352
+GA | iter = 59 | Mean = -21.11104 | Best = -21.04967
+GA | iter = 60 | Mean = -24.67101 | Best = -21.03165
+GA | iter = 61 | Mean = -21.08090 | Best = -21.02687
+GA | iter = 62 | Mean = -21.07037 | Best = -21.01844
+GA | iter = 63 | Mean = -21.04812 | Best = -20.99580
+GA | iter = 64 | Mean = -28.18645 | Best = -20.99580
+GA | iter = 65 | Mean = -24.60126 | Best = -20.99580
+GA | iter = 66 | Mean = -21.02090 | Best = -20.98995
+GA | iter = 67 | Mean = -28.17047 | Best = -20.98995
+GA | iter = 68 | Mean = -21.00859 | Best = -20.98995
+GA | iter = 69 | Mean = -21.00247 | Best = -20.95709
+GA | iter = 70 | Mean = -21.00133 | Best = -20.95053
+GA | iter = 71 | Mean = -20.99232 | Best = -20.94765
+GA | iter = 72 | Mean = -20.97563 | Best = -20.88557
+GA | iter = 73 | Mean = -20.95878 | Best = -20.88557
+GA | iter = 74 | Mean = -24.53363 | Best = -20.88557
+GA | iter = 75 | Mean = -20.9426 | Best = -20.8796
+GA | iter = 76 | Mean = -24.51003 | Best = -20.87960
+GA | iter = 77 | Mean = -28.10148 | Best = -20.87960
+GA | iter = 78 | Mean = -20.93608 | Best = -20.87960
+GA | iter = 79 | Mean = -20.91965 | Best = -20.87238
+GA | iter = 80 | Mean = -24.49438 | Best = -20.87238
+GA | iter = 81 | Mean = -31.65508 | Best = -20.86414
+GA | iter = 82 | Mean = -20.90035 | Best = -20.86414
+GA | iter = 83 | Mean = -20.89182 | Best = -20.86414
+GA | iter = 84 | Mean = -20.88343 | Best = -20.84713
+GA | iter = 85 | Mean = -20.87725 | Best = -20.84450
+GA | iter = 86 | Mean = -20.86753 | Best = -20.84200
+GA | iter = 87 | Mean = -20.85706 | Best = -20.83540
+GA | iter = 88 | Mean = -20.84974 | Best = -20.82982
+GA | iter = 89 | Mean = -24.43182 | Best = -20.81532
+GA | iter = 90 | Mean = -24.42872 | Best = -20.74527
+GA | iter = 91 | Mean = -24.42164 | Best = -20.74527
+GA | iter = 92 | Mean = -20.82928 | Best = -20.74527
+GA | iter = 93 | Mean = -20.82400 | Best = -20.74527
+GA | iter = 94 | Mean = -20.80916 | Best = -20.73958
+GA | iter = 95 | Mean = -20.78658 | Best = -20.73917
+GA | iter = 96 | Mean = -20.77542 | Best = -20.73917
+GA | iter = 97 | Mean = -24.34348 | Best = -20.71535
+GA | iter = 98 | Mean = -27.92819 | Best = -20.71535
+GA | iter = 99 | Mean = -20.75258 | Best = -20.71535
+GA | iter = 100 | Mean = -24.33007 | Best = -20.71535
+[住宅土地統計調査版] GA終了: 05:51:20 
+最良fitness（-Loss）: -20.71535 
+          x1        x2       x3        x4       x5        x6        x7
+[1,] 0.29553 0.4748416 0.568747 0.2309498 2.886412 0.1789124 0.2225977
+            x8        x9       x10       x11       x12       x13       x14
+[1,] 0.1816435 0.1974056 0.1979857 0.2113917 0.1773782 0.2595765 0.1832984
+           x15       x16       x17       x18      x19       x20       x21
+[1,] 0.1907664 0.2041126 0.2219594 0.2081029 0.225001 0.1739373 0.2602018
+           x22      x23       x24       x25       x26       x27       x28
+[1,] 0.1866773 0.201632 0.1591138 0.2289592 0.2091369 0.2129896 0.2287215
+           x29       x30       x31       x32       x33       x34       x35
+[1,] 0.1865831 0.2599803 0.2047513 0.1786939 0.2208357 0.1984514 0.2518133
+           x36       x37       x38       x39       x40       x41       x42
+[1,] 0.2041158 0.2095421 0.2471736 0.1961694 0.2572903 0.1683452 0.2757519
+          x43       x44       x45       x46       x47       x48       x49
+[1,] 0.229962 0.1634139 0.2053145 0.1874021 0.2069934 0.1671358 0.2295981
+           x50       x51       x52       x53       x54       x55      x56
+[1,] 0.2058183 0.1578769 0.1686764 0.1809081 0.1661505 0.1794388 0.219815
+           x57       x58       x59       x60       x61       x62       x63
+[1,] 0.2440047 0.1832753 0.2411471 0.2415592 0.2184652 0.2338181 0.2357191
+           x64       x65       x66       x67       x68       x69       x70
+[1,] 0.1198435 0.2212007 0.1744375 0.2548608 0.2800554 0.2616335 0.2481291
+           x71       x72       x73       x74       x75       x76       x77
+[1,] 0.2017023 0.2044764 0.2409103 0.1767785 0.1472822 0.1581506 0.2018378
+           x78       x79       x80       x81       x82       x83       x84
+[1,] 0.1908411 0.1653956 0.2117892 0.2361301 0.1809232 0.2751285 0.1800281
+           x85       x86       x87       x88       x89      x90       x91
+[1,] 0.2060376 0.1691914 0.2118559 0.2342732 0.1775944 0.255166 0.2215004
+           x92       x93       x94      x95       x96      x97       x98
+[1,] 0.1321281 0.1739829 0.1586802 0.241679 0.1988018 0.211273 0.2236852
+           x99      x100      x101      x102      x103      x104      x105
+[1,] 0.1840387 0.2303923 0.1890404 0.2507548 0.2273999 0.1784958 0.1673188
+          x106     x107      x108      x109      x110      x111      x112
+[1,] 0.2299062 0.143563 0.2221432 0.1979028 0.2898208 0.2295086 0.1988659
+          x113      x114      x115      x116      x117      x118      x119
+[1,] 0.1919313 0.1947821 0.1918091 0.1652632 0.2018917 0.2256483 0.1981396
+          x120     x121      x122      x123      x124      x125      x126
+[1,] 0.2137846 0.225229 0.1917581 0.1957539 0.2611565 0.1811879 0.1938114
+          x127      x128      x129      x130      x131     x132      x133
+[1,] 0.2382116 0.2303434 0.2435055 0.2589596 0.2445091 0.166769 0.2221283
+          x134      x135      x136    x137      x138      x139      x140
+[1,] 0.1702342 0.1860175 0.2364901 0.20311 0.1488427 0.1547874 0.1450728
+          x141      x142      x143      x144      x145      x146      x147
+[1,] 0.2265376 0.2156445 0.2210255 0.1995834 0.1565018 0.2305081 0.2227747
+          x148      x149      x150      x151   x152      x153      x154
+[1,] 0.2144633 0.2087168 0.1768254 0.2183795 0.2091 0.2034322 0.2346584
+          x155      x156      x157      x158      x159      x160      x161
+[1,] 0.2169981 0.1800955 0.2756149 0.2262504 0.1433101 0.2090712 0.2262857
+          x162      x163     x164      x165      x166     x167     x168
+[1,] 0.2219665 0.2429148 0.182205 0.1329774 0.1521783 0.192798 0.217122
+          x169      x170      x171      x172      x173      x174      x175
+[1,] 0.1536775 0.2001511 0.1481975 0.1821072 0.2361017 0.2000175 0.2333515
+          x176      x177      x178      x179      x180      x181      x182
+[1,] 0.2351335 0.2006182 0.2194001 0.1604522 0.2349426 0.1960946 0.2314151
+          x183      x184     x185      x186      x187      x188      x189
+[1,] 0.2503645 0.2356822 0.166828 0.2317636 0.2184686 0.2219667 0.1761893
+          x190      x191     x192      x193      x194      x195      x196
+[1,] 0.1876298 0.2183195 0.155279 0.1573268 0.1543993 0.1855569 0.2274161
+          x197      x198      x199      x200      x201     x202      x203
+[1,] 0.1770269 0.2252782 0.1842087 0.1735743 0.2200421 0.225047 0.1348811
+          x204      x205      x206      x207      x208      x209     x210
+[1,] 0.1542728 0.1902613 0.2725785 0.2406515 0.1615576 0.2008186 0.179905
+          x211      x212      x213      x214      x215      x216      x217
+[1,] 0.2283111 0.2089127 0.1826794 0.2009478 0.2268308 0.2222213 0.1925691
+          x218      x219      x220      x221      x222      x223      x224
+[1,] 0.1882865 0.1999765 0.2499752 0.2319679 0.1767415 0.1779793 0.2068381
+          x225      x226      x227     x228      x229      x230      x231
+[1,] 0.2171702 0.2503543 0.1919617 0.250144 0.1369977 0.1984976 0.2221334
+          x232      x233      x234      x235      x236      x237      x238
+[1,] 0.1610329 0.1908896 0.1965635 0.2149791 0.1409569 0.1970952 0.2399683
+          x239      x240      x241      x242      x243      x244     x245
+[1,] 0.1667137 0.2022872 0.1925119 0.1895974 0.2301146 0.2148362 0.213237
+          x246      x247      x248      x249      x250      x251     x252
+[1,] 0.2077753 0.1994646 0.1759488 0.1913331 0.1679606 0.1251249 0.165561
+          x253      x254    x255      x256      x257      x258      x259
+[1,] 0.1852665 0.2593625 0.23279 0.2474978 0.2115725 0.1661314 0.1946821
+          x260      x261      x262      x263     x264      x265      x266
+[1,] 0.2562387 0.1667414 0.1587943 0.2282773 0.136364 0.1966303 0.1824452
+          x267      x268      x269      x270      x271      x272      x273
+[1,] 0.2550726 0.2019532 0.2396676 0.1525051 0.1652871 0.1892629 0.2697669
+          x274      x275      x276      x277      x278      x279      x280
+[1,] 0.2226745 0.2444231 0.2294211 0.2353088 0.1776013 0.2067001 0.2067264
+          x281      x282      x283      x284      x285      x286      x287
+[1,] 0.2127779 0.1519108 0.2435506 0.1942134 0.1830601 0.1508117 0.1993795
+          x288      x289      x290      x291      x292      x293     x294
+[1,] 0.1974552 0.2206492 0.2427832 0.1867193 0.2554982 0.1909816 0.244519
+          x295      x296      x297      x298      x299      x300      x301
+[1,] 0.2558927 0.1188501 0.1947759 0.2177482 0.2478239 0.1404283 0.1787781
+          x302      x303      x304      x305      x306      x307      x308
+[1,] 0.1593346 0.1533857 0.2439925 0.1380016 0.1553192 0.2524246 0.2331055
+         x309      x310     x311      x312      x313      x314      x315
+[1,] 0.134758 0.2112301 0.205774 0.1870195 0.2265605 0.1374474 0.1932182
+          x316      x317      x318      x319      x320      x321      x322
+[1,] 0.1594556 0.2188655 0.1552965 0.1657047 0.2173723 0.1821083 0.2239028
+          x323      x324      x325      x326      x327      x328      x329
+[1,] 0.1693621 0.2409731 0.2720496 0.1910709 0.1806107 0.2332203 0.2127065
+          x330      x331      x332      x333      x334      x335      x336
+[1,] 0.1741285 0.2282097 0.1326783 0.2505649 0.1488898 0.2263362 0.2310612
+          x337     x338      x339      x340      x341      x342      x343
+[1,] 0.2270081 0.226144 0.1965205 0.2392631 0.2097112 0.1528531 0.1357315
+          x344      x345      x346      x347      x348      x349      x350
+[1,] 0.1810298 0.1958434 0.1773462 0.1872738 0.1174376 0.1720001 0.1387252
+          x351      x352      x353     x354      x355      x356      x357
+[1,] 0.1714875 0.1657562 0.2268503 0.174188 0.2369372 0.2505283 0.2214708
+         x358      x359      x360      x361      x362      x363      x364
+[1,] 0.205703 0.2189716 0.1711834 0.1456802 0.1700778 0.2182676 0.1959329
+          x365      x366      x367      x368      x369      x370      x371
+[1,] 0.2510058 0.2363192 0.2399927 0.2318547 0.2302818 0.1624473 0.1837445
+          x372      x373     x374      x375      x376      x377      x378
+[1,] 0.2139846 0.2462213 0.232676 0.2614765 0.2134567 0.1574819 0.2383211
+          x379      x380      x381      x382     x383      x384      x385
+[1,] 0.1525903 0.1804688 0.2024121 0.1645134 0.225158 0.1454272 0.2235769
+          x386      x387      x388     x389      x390     x391      x392
+[1,] 0.2701325 0.1950255 0.1754499 0.143675 0.2305081 0.217577 0.1910162
+          x393      x394     x395      x396      x397      x398      x399
+[1,] 0.2235896 0.1601936 0.192271 0.1702585 0.1754638 0.2224369 0.1897865
+          x400      x401      x402      x403      x404      x405      x406
+[1,] 0.1911742 0.2229059 0.2187711 0.1571819 0.1860235 0.2125533 0.1895809
+          x407      x408     x409      x410      x411      x412      x413
+[1,] 0.2044364 0.1706763 0.201886 0.2344745 0.1972396 0.1870338 0.1616229
+          x414      x415      x416     x417      x418      x419     x420
+[1,] 0.1861437 0.1950949 0.1969096 0.118545 0.2239786 0.1877983 0.213252
+          x421      x422      x423     x424      x425      x426      x427
+[1,] 0.2367139 0.1490353 0.1736403 0.193395 0.2096618 0.1966972 0.1543847
+          x428      x429      x430      x431      x432      x433      x434
+[1,] 0.2068386 0.1689441 0.1943804 0.2297329 0.1926166 0.2870574 0.2192769
+          x435      x436      x437      x438     x439      x440      x441
+[1,] 0.1983268 0.2385465 0.2124214 0.2029452 0.208528 0.2063363 0.2186641
+         x442      x443      x444      x445      x446      x447      x448
+[1,] 0.183775 0.1771732 0.2146575 0.2420592 0.1587789 0.2050451 0.1423436
+          x449      x450      x451      x452      x453      x454      x455
+[1,] 0.1994211 0.2418899 0.2318435 0.2271295 0.2417859 0.2678902 0.1788864
+         x456      x457      x458      x459      x460      x461      x462
+[1,] 0.227646 0.2043566 0.2155084 0.2548334 0.2320101 0.1812143 0.1413237
+          x463      x464      x465      x466      x467      x468      x469
+[1,] 0.1755091 0.2038491 0.1791986 0.2688586 0.1306405 0.1836058 0.1821825
+          x470      x471     x472      x473      x474      x475     x476
+[1,] 0.1890803 0.1703639 0.206648 0.1671773 0.1783923 0.1375549 0.260221
+          x477      x478      x479      x480      x481      x482      x483
+[1,] 0.1775228 0.2275299 0.1952423 0.1037313 0.2188408 0.2118001 0.2057221
+          x484      x485      x486      x487      x488     x489    x490
+[1,] 0.1375838 0.1702621 0.2161942 0.1557852 0.1996343 0.232344 0.23665
+          x491     x492      x493      x494      x495      x496      x497
+[1,] 0.2127117 0.186312 0.2330524 0.2068824 0.2254404 0.2171371 0.1761916
+          x498      x499      x500      x501      x502      x503      x504
+[1,] 0.1961699 0.2193545 0.2106501 0.2333146 0.2306872 0.1822199 0.2547416
+          x505      x506      x507      x508      x509      x510      x511
+[1,] 0.1266841 0.2095629 0.2106421 0.2130392 0.1793953 0.1964504 0.2468126
+          x512      x513     x514      x515      x516      x517      x518
+[1,] 0.1614323 0.1857755 0.199732 0.2525959 0.1733351 0.2237693 0.2030702
+          x519      x520      x521     x522      x523      x524      x525
+[1,] 0.1868527 0.2221194 0.2445737 0.187134 0.2680609 0.2034692 0.2240363
+         x526      x527      x528      x529      x530      x531      x532
+[1,] 0.181339 0.2386168 0.2058945 0.1693803 0.2477188 0.2535518 0.2392391
+          x533      x534      x535      x536      x537      x538      x539
+[1,] 0.2272469 0.2382621 0.1921891 0.2059638 0.1929048 0.1741661 0.2102105
+          x540      x541      x542      x543    x544      x545      x546
+[1,] 0.2330031 0.2211897 0.1421073 0.2340534 0.22278 0.1808026 0.2233368
+          x547      x548      x549     x550      x551      x552      x553
+[1,] 0.2061956 0.2203582 0.1506047 0.152853 0.1373752 0.1505461 0.2588654
+          x554      x555     x556      x557     x558      x559      x560
+[1,] 0.2389856 0.2460282 0.250742 0.2494057 0.164704 0.1981714 0.2075809
+          x561      x562      x563      x564      x565     x566      x567
+[1,] 0.2266706 0.1858042 0.1658968 0.1588104 0.1961867 0.205982 0.2642344
+          x568      x569      x570      x571     x572      x573      x574
+[1,] 0.2242688 0.1607561 0.2193707 0.1866574 0.216749 0.2365244 0.1476318
+          x575      x576      x577      x578      x579      x580      x581
+[1,] 0.2139289 0.2227888 0.2225917 0.1936748 0.1804597 0.2408306 0.1771468
+          x582      x583      x584      x585      x586      x587      x588
+[1,] 0.2487839 0.2191731 0.2016771 0.2246575 0.2096791 0.2526155 0.2334614
+          x589      x590      x591      x592      x593      x594      x595
+[1,] 0.2586718 0.1902245 0.2224899 0.1790297 0.1538731 0.1877642 0.2270725
+          x596      x597      x598      x599      x600      x601      x602
+[1,] 0.1838782 0.1666178 0.1478357 0.2203128 0.1554769 0.2183158 0.1960685
+          x603     x604      x605      x606      x607      x608      x609
+[1,] 0.2098664 0.142905 0.2127126 0.2626687 0.2362162 0.2653957 0.1625323
+          x610      x611     x612      x613      x614     x615      x616
+[1,] 0.1833436 0.2250077 0.228853 0.1855536 0.2421974 0.176751 0.2339904
+          x617      x618      x619      x620      x621      x622      x623
+[1,] 0.2093271 0.2195138 0.2129405 0.2421566 0.2228619 0.1734944 0.2176403
+          x624      x625      x626      x627      x628      x629      x630
+[1,] 0.2267208 0.1497536 0.2407006 0.1378371 0.2360053 0.2024044 0.1813014
+          x631      x632      x633      x634      x635     x636     x637
+[1,] 0.2092697 0.2321524 0.2212291 0.1460633 0.2383224 0.194176 0.231923
+          x638      x639      x640      x641     x642     x643      x644
+[1,] 0.2382072 0.2003747 0.1945618 0.2229856 0.226565 0.204867 0.1240326
+          x645      x646      x647      x648     x649      x650      x651
+[1,] 0.2654277 0.1825255 0.2460562 0.2255476 0.222475 0.2274226 0.2593958
+          x652     x653      x654      x655      x656      x657      x658
+[1,] 0.1658741 0.198851 0.2418714 0.2562109 0.2189799 0.1635978 0.1864189
+          x659      x660      x661      x662      x663      x664      x665
+[1,] 0.2124211 0.2065836 0.1768901 0.1887931 0.2494853 0.2200081 0.1755123
+         x666     x667      x668     x669      x670      x671     x672
+[1,] 0.238753 0.259127 0.2366222 0.268883 0.2161465 0.1171276 0.156308
+          x673      x674      x675      x676      x677      x678    x679
+[1,] 0.1901131 0.1704065 0.2510009 0.1921557 0.1848699 0.2285806 0.18127
+          x680      x681      x682      x683      x684      x685      x686
+[1,] 0.1975722 0.2111893 0.1965106 0.2664775 0.1839137 0.2062691 0.2460724
+          x687      x688      x689      x690      x691      x692      x693
+[1,] 0.1797934 0.2279902 0.1896941 0.1658358 0.1912769 0.1174582 0.2133261
+          x694      x695     x696      x697      x698      x699      x700
+[1,] 0.1735822 0.2397044 0.234654 0.2296698 0.2455813 0.2350224 0.1965284
+          x701      x702      x703      x704      x705      x706      x707
+[1,] 0.2034537 0.1542906 0.2941838 0.2446683 0.1743115 0.1869058 0.2187571
+          x708      x709      x710      x711      x712      x713      x714
+[1,] 0.2551961 0.1676423 0.2201066 0.1930703 0.2293709 0.1506267 0.1551862
+          x715     x716      x717      x718      x719      x720      x721
+[1,] 0.2354381 0.220487 0.1792973 0.1580892 0.2179975 0.2250459 0.2071574
+          x722      x723      x724      x725      x726      x727      x728
+[1,] 0.1543125 0.1288017 0.1777512 0.1644305 0.1752313 0.1665804 0.1948328
+          x729      x730      x731      x732      x733      x734      x735
+[1,] 0.1791101 0.2149948 0.2456468 0.1766168 0.1935553 0.2072268 0.2006033
+          x736      x737      x738      x739      x740      x741      x742
+[1,] 0.1955129 0.2267971 0.1430525 0.1947712 0.1797388 0.2747235 0.2064517
+          x743      x744     x745      x746      x747      x748      x749
+[1,] 0.2084029 0.2107148 0.257989 0.1885594 0.2025402 0.1942447 0.2410803
+          x750      x751      x752      x753      x754      x755      x756
+[1,] 0.1657839 0.2020085 0.1819737 0.2323903 0.1721157 0.1807473 0.1723829
+          x757      x758      x759      x760      x761      x762      x763
+[1,] 0.2393993 0.1981145 0.1583812 0.1641537 0.1870792 0.1822208 0.1662027
+          x764     x765      x766      x767      x768      x769      x770
+[1,] 0.2167084 0.226701 0.1951178 0.2002317 0.2053787 0.2267897 0.2621283
+          x771      x772      x773      x774      x775      x776     x777
+[1,] 0.2329433 0.1676306 0.2481185 0.2188884 0.2253549 0.1761194 0.193684
+          x778      x779      x780      x781      x782      x783      x784
+[1,] 0.2516826 0.1635981 0.2173694 0.2279045 0.1440619 0.1814352 0.1592712
+         x785      x786      x787      x788      x789      x790      x791
+[1,] 0.201832 0.1753955 0.2490836 0.2207596 0.1507914 0.1365971 0.2648442
+          x792     x793      x794      x795      x796      x797      x798
+[1,] 0.2111186 0.239555 0.2496433 0.1496316 0.2347205 0.1934814 0.2651676
+          x799      x800      x801     x802     x803      x804      x805
+[1,] 0.2018342 0.2260412 0.2035264 0.207041 0.208316 0.1618786 0.1974942
+          x806      x807      x808      x809      x810      x811      x812
+[1,] 0.1762007 0.1845068 0.2256362 0.2095986 0.2127903 0.2277333 0.1765475
+         x813      x814      x815      x816     x817     x818      x819
+[1,] 0.134089 0.1423145 0.2007005 0.2048646 0.223733 0.220476 0.1909262
+          x820      x821      x822    x823      x824      x825      x826
+[1,] 0.2308545 0.2363687 0.2237803 0.15689 0.1637458 0.2417632 0.2008548
+          x827      x828      x829      x830      x831      x832      x833
+[1,] 0.1980403 0.2510094 0.1643143 0.2397656 0.2176416 0.2514472 0.2610135
+          x834      x835      x836      x837      x838      x839     x840
+[1,] 0.2248048 0.2085173 0.2039673 0.1734945 0.2449039 0.1616517 0.209054
+          x841      x842      x843      x844      x845      x846      x847
+[1,] 0.1656526 0.1419847 0.2039051 0.2066527 0.1667217 0.2069961 0.1604888
+          x848      x849      x850      x851      x852
+[1,] 0.1942752 0.1799347 0.1930574 0.1393922 0.1831046
+
+使用するグローバルパラメータ（08_ga-base2021-E10000-time の記録値）:
+  alpha_a   gamma_0   gamma_1   theta_H   theta_L 
+0.2955300 0.4748416 0.5687470 0.2309498 2.8864117 
+[debug] termcd= 1  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.00723774283292458,1041.32778083518 
+[debug2] gap= 0.0009940896  iteration= 122  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 1 , diff= 1928451 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.000838441009665184,1056.55704946091 
+[debug2] gap= 0.000951408  iteration= 69  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 2 , diff= 70101.11 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.000488593203686639,1078.69338716436 
+[debug2] gap= 0.0009953307  iteration= 73  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 3 , diff= 6131.497 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.000447130104070035,1086.46671352062 
+[debug2] gap= 0.0008879175  iteration= 74  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 4 , diff= 798.5009 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.000440813473435846,1089.14367470296 
+[debug2] gap= 0.0009521491  iteration= 68  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 5 , diff= 112.2747 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.000442503305607887,1089.40053091477 
+[debug2] gap= 0.0009952908  iteration= 67  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 6 , diff= 30.68422 
+
+次のパッケージを付け加えます: ‘patchwork’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    area
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    area
+
+wCorr v1.9.8
+
+# A tibble: 31 × 6
+   CITY_NAME    cover_rate hab_rate in_5030 used  keep 
+   <chr>             <dbl>    <dbl>   <dbl> <lgl> <lgl>
+ 1 飯塚市          0.00606  0.00172   1     TRUE  FALSE
+ 2 岡垣町          0.0215   0.00825   1     TRUE  FALSE
+ 3 鞍手町          0.0548   0.0118    1     TRUE  FALSE
+ 4 宮若市          0.0326   0.0306    1     TRUE  FALSE
+ 5 久留米市        0.0121   0.0550    0.234 TRUE  FALSE
+ 6 筑前町          0.159    0.191     1     TRUE  FALSE
+ 7 大刀洗町        0.204    0.207     1.00  TRUE  FALSE
+ 8 那珂川市        0.179    0.380     1.000 TRUE  FALSE
+ 9 須恵町          0.409    0.514     1     TRUE  TRUE 
+10 篠栗町          0.343    0.849     1.000 TRUE  TRUE 
+11 久山町          0.348    0.850     1.000 FALSE FALSE
+12 古賀市          0.677    0.860     1.00  TRUE  TRUE 
+13 筑紫野市        0.632    0.910     1.00  TRUE  TRUE 
+14 新宮町          0.754    0.912     1     TRUE  TRUE 
+15 小郡市          0.952    0.945     1     TRUE  TRUE 
+16 福岡市博多区    0.936    0.957     1.00  TRUE  TRUE 
+17 宗像市          0.800    0.959     0.992 TRUE  TRUE 
+18 福岡市西区      0.770    0.962     1     TRUE  TRUE 
+19 福岡市東区      0.839    0.967     1.000 TRUE  TRUE 
+20 大野城市        0.651    0.967     1.000 TRUE  TRUE 
+21 福岡市早良区    0.447    0.969     1.000 TRUE  TRUE 
+22 太宰府市        0.725    0.970     1     TRUE  TRUE 
+23 宇美町          0.508    0.974     1.000 TRUE  TRUE 
+24 粕屋町          0.956    0.985     1.000 TRUE  TRUE 
+25 糸島市          0.732    0.986     1.000 TRUE  TRUE 
+26 福津市          0.895    0.988     1.00  TRUE  TRUE 
+27 福岡市中央区    0.985    0.996     1.00  TRUE  TRUE 
+28 福岡市城南区    0.893    0.999     1.000 TRUE  TRUE 
+29 福岡市南区      0.940    1         1     TRUE  TRUE 
+30 春日市          1.000    1         1.000 TRUE  TRUE 
+31 志免町          1        1         1     TRUE  TRUE 
+# A tibble: 5 × 6
+  indicator  target      n    R2  R2_w log_err
+  <chr>      <chr>   <int> <dbl> <dbl>   <dbl>
+1 household  all       815 0.595 0.342  0.433 
+2 rent       all        30 0.785 0.692  0.178 
+3 rent       hab>=th    22 0.742 0.691  0.177 
+4 floor_area all        30 0.538 0.688  0.0696
+5 floor_area hab>=th    22 0.670 0.709  0.0696
+床面積（市区町村・住宅土地統計調査） R²: 0.5378429 
+=== Scenario Definitions ===
+scn0 : Base Scenario (Current Conditions) 
+  Total employment: 1330482 
+scn1 : Scenario 1: Uniform Distribution 
+  Total employment: 1330482 
+scn2 : Scenario 2: CBD-Distance Weighted 
+  Total employment: 1330483 
+
+=== Running: Base Scenario (Current Conditions) ===
+Scenario: scn0  | Iter: 1  | diff: 2.53e+01  | diff_avg: 6.34e+00 
+Scenario: scn0  | Iter: 2  | diff: 2.07e+01  | diff_avg: 2.30e+00 
+Scenario: scn0  | Iter: 3  | diff: 2.84e+01  | diff_avg: 1.77e+00 
+Scenario: scn0  | Iter: 4  | diff: 3.19e+01  | diff_avg: 1.28e+00 
+Scenario: scn0  | Iter: 5  | diff: 3.16e+01  | diff_avg: 8.77e-01 
+Scenario: scn0  | Iter: 6  | diff: 4.14e+01  | diff_avg: 8.44e-01 
+Scenario: scn0  | Iter: 7  | diff: 2.57e+01  | diff_avg: 4.02e-01 
+Scenario: scn0  | Iter: 8  | diff: 2.60e+01  | diff_avg: 3.21e-01 
+Scenario: scn0  | Iter: 9  | diff: 1.88e+01  | diff_avg: 1.88e-01 
+Scenario: scn0  | Iter: 10  | diff: 2.35e+01  | diff_avg: 1.94e-01 
+Scenario: scn0  | Iter: 11  | diff: 1.08e+02  | diff_avg: 7.50e-01 
+Scenario: scn0  | Iter: 12  | diff: 1.68e+01  | diff_avg: 9.92e-02 
+Scenario: scn0  | Iter: 13  | diff: 9.94e+01  | diff_avg: 5.07e-01 
+Scenario: scn0  | Iter: 14  | diff: 1.92e+01  | diff_avg: 8.54e-02 
+Scenario: scn0  | Iter: 15  | diff: 1.03e+01  | diff_avg: 4.02e-02 
+Scenario: scn0  | Iter: 16  | diff: 2.18e+01  | diff_avg: 7.54e-02 
+Scenario: scn0  | Iter: 17  | diff: 1.28e+01  | diff_avg: 3.96e-02 
+Scenario: scn0  | Iter: 18  | diff: 1.19e+01  | diff_avg: 3.28e-02 
+Scenario: scn0  | Iter: 19  | diff: 3.90e+01  | diff_avg: 9.76e-02 
+Scenario: scn0  | Iter: 20  | diff: 1.12e+02  | diff_avg: 2.54e-01 
+Scenario: scn0  | Iter: 21  | diff: 1.83e+01  | diff_avg: 3.78e-02 
+Scenario: scn0  | Iter: 22  | diff: 1.49e+01  | diff_avg: 2.82e-02 
+Scenario: scn0  | Iter: 23  | diff: 2.66e+01  | diff_avg: 4.61e-02 
+Scenario: scn0  | Iter: 24  | diff: 1.44e+02  | diff_avg: 2.30e-01 
+Scenario: scn0  | Iter: 25  | diff: 1.75e+01  | diff_avg: 2.59e-02 
+Scenario: scn0  | Iter: 26  | diff: 9.87e+01  | diff_avg: 1.35e-01 
+Scenario: scn0  | Iter: 27  | diff: 2.93e+01  | diff_avg: 3.73e-02 
+Scenario: scn0  | Iter: 28  | diff: 2.17e+01  | diff_avg: 2.58e-02 
+Scenario: scn0  | Iter: 29  | diff: 3.62e+01  | diff_avg: 4.02e-02 
+Scenario: scn0  | Iter: 30  | diff: 2.80e+01  | diff_avg: 2.92e-02 
+Scenario: scn0  | Iter: 31  | diff: 1.98e+01  | diff_avg: 1.94e-02 
+Scenario: scn0  | Iter: 32  | diff: 1.53e+02  | diff_avg: 1.40e-01 
+Scenario: scn0  | Iter: 33  | diff: 1.39e+01  | diff_avg: 1.20e-02 
+Scenario: scn0  | Iter: 34  | diff: 2.23e+01  | diff_avg: 1.82e-02 
+Scenario: scn0  | Iter: 35  | diff: 2.32e+01  | diff_avg: 1.79e-02 
+Scenario: scn0  | Iter: 36  | diff: 1.96e+01  | diff_avg: 1.43e-02 
+Scenario: scn0  | Iter: 37  | diff: 1.73e+01  | diff_avg: 1.20e-02 
+Scenario: scn0  | Iter: 38  | diff: 1.50e+01  | diff_avg: 9.87e-03 
+Scenario: scn0  | Iter: 39  | diff: 3.15e+01  | diff_avg: 1.97e-02 
+Scenario: scn0  | Iter: 40  | diff: 1.96e+01  | diff_avg: 1.17e-02 
+Converged: NA  in  40  iterations
+
+
+=== Running: Scenario 1: Uniform Distribution ===
+Scenario: scn1  | Iter: 1  | diff: 1.85e+03  | diff_avg: 4.63e+02 
+Scenario: scn1  | Iter: 2  | diff: 2.16e+02  | diff_avg: 2.40e+01 
+Scenario: scn1  | Iter: 3  | diff: 5.74e+01  | diff_avg: 3.59e+00 
+Scenario: scn1  | Iter: 4  | diff: 3.30e+01  | diff_avg: 1.32e+00 
+Scenario: scn1  | Iter: 5  | diff: 4.70e+01  | diff_avg: 1.30e+00 
+Scenario: scn1  | Iter: 6  | diff: 3.32e+01  | diff_avg: 6.77e-01 
+Scenario: scn1  | Iter: 7  | diff: 3.27e+01  | diff_avg: 5.11e-01 
+Scenario: scn1  | Iter: 8  | diff: 1.36e+01  | diff_avg: 1.68e-01 
+Scenario: scn1  | Iter: 9  | diff: 2.97e+01  | diff_avg: 2.97e-01 
+Scenario: scn1  | Iter: 10  | diff: 1.98e+01  | diff_avg: 1.64e-01 
+Scenario: scn1  | Iter: 11  | diff: 2.07e+01  | diff_avg: 1.44e-01 
+Scenario: scn1  | Iter: 12  | diff: 1.57e+01  | diff_avg: 9.27e-02 
+Scenario: scn1  | Iter: 13  | diff: 1.67e+01  | diff_avg: 8.51e-02 
+Scenario: scn1  | Iter: 14  | diff: 1.29e+02  | diff_avg: 5.74e-01 
+Scenario: scn1  | Iter: 15  | diff: 2.61e+01  | diff_avg: 1.02e-01 
+Scenario: scn1  | Iter: 16  | diff: 2.50e+01  | diff_avg: 8.64e-02 
+Scenario: scn1  | Iter: 17  | diff: 4.38e+01  | diff_avg: 1.35e-01 
+Scenario: scn1  | Iter: 18  | diff: 1.96e+01  | diff_avg: 5.42e-02 
+Scenario: scn1  | Iter: 19  | diff: 2.49e+01  | diff_avg: 6.22e-02 
+Scenario: scn1  | Iter: 20  | diff: 2.03e+01  | diff_avg: 4.59e-02 
+Scenario: scn1  | Iter: 21  | diff: 2.21e+01  | diff_avg: 4.56e-02 
+Scenario: scn1  | Iter: 22  | diff: 2.81e+01  | diff_avg: 5.30e-02 
+Scenario: scn1  | Iter: 23  | diff: 3.78e+01  | diff_avg: 6.56e-02 
+Scenario: scn1  | Iter: 24  | diff: 2.56e+01  | diff_avg: 4.09e-02 
+Scenario: scn1  | Iter: 25  | diff: 1.75e+01  | diff_avg: 2.59e-02 
+Scenario: scn1  | Iter: 26  | diff: 9.11e+01  | diff_avg: 1.25e-01 
+Scenario: scn1  | Iter: 27  | diff: 1.88e+01  | diff_avg: 2.39e-02 
+Scenario: scn1  | Iter: 28  | diff: 1.11e+02  | diff_avg: 1.32e-01 
+Scenario: scn1  | Iter: 29  | diff: 1.30e+01  | diff_avg: 1.44e-02 
+Scenario: scn1  | Iter: 30  | diff: 3.55e+01  | diff_avg: 3.70e-02 
+Scenario: scn1  | Iter: 31  | diff: 1.33e+01  | diff_avg: 1.30e-02 
+Scenario: scn1  | Iter: 32  | diff: 2.22e+01  | diff_avg: 2.04e-02 
+Scenario: scn1  | Iter: 33  | diff: 7.81e+01  | diff_avg: 6.76e-02 
+Scenario: scn1  | Iter: 34  | diff: 2.67e+01  | diff_avg: 2.18e-02 
+Scenario: scn1  | Iter: 35  | diff: 1.15e+01  | diff_avg: 8.90e-03 
+Scenario: scn1  | Iter: 36  | diff: 1.45e+01  | diff_avg: 1.06e-02 
+Scenario: scn1  | Iter: 37  | diff: 2.97e+01  | diff_avg: 2.06e-02 
+Scenario: scn1  | Iter: 38  | diff: 1.08e+02  | diff_avg: 7.11e-02 
+Scenario: scn1  | Iter: 39  | diff: 3.34e+01  | diff_avg: 2.09e-02 
+Scenario: scn1  | Iter: 40  | diff: 2.80e+01  | diff_avg: 1.66e-02 
+Converged: NA  in  40  iterations
+
+
+=== Running: Scenario 2: CBD-Distance Weighted ===
+Scenario: scn2  | Iter: 1  | diff: 4.63e+03  | diff_avg: 1.16e+03 
+Scenario: scn2  | Iter: 2  | diff: 3.60e+02  | diff_avg: 4.00e+01 
+Scenario: scn2  | Iter: 3  | diff: 9.05e+01  | diff_avg: 5.65e+00 
+Scenario: scn2  | Iter: 4  | diff: 6.45e+01  | diff_avg: 2.58e+00 
+Scenario: scn2  | Iter: 5  | diff: 4.10e+01  | diff_avg: 1.14e+00 
+Scenario: scn2  | Iter: 6  | diff: 2.69e+01  | diff_avg: 5.49e-01 
+Scenario: scn2  | Iter: 7  | diff: 5.26e+01  | diff_avg: 8.22e-01 
+Scenario: scn2  | Iter: 8  | diff: 2.61e+01  | diff_avg: 3.22e-01 
+Scenario: scn2  | Iter: 9  | diff: 1.30e+01  | diff_avg: 1.30e-01 
+Scenario: scn2  | Iter: 10  | diff: 2.03e+01  | diff_avg: 1.68e-01 
+Scenario: scn2  | Iter: 11  | diff: 1.93e+01  | diff_avg: 1.34e-01 
+Scenario: scn2  | Iter: 12  | diff: 2.13e+01  | diff_avg: 1.26e-01 
+Scenario: scn2  | Iter: 13  | diff: 2.31e+01  | diff_avg: 1.18e-01 
+Scenario: scn2  | Iter: 14  | diff: 1.76e+01  | diff_avg: 7.84e-02 
+Scenario: scn2  | Iter: 15  | diff: 2.46e+01  | diff_avg: 9.60e-02 
+Scenario: scn2  | Iter: 16  | diff: 5.40e+01  | diff_avg: 1.87e-01 
+Scenario: scn2  | Iter: 17  | diff: 1.80e+01  | diff_avg: 5.57e-02 
+Scenario: scn2  | Iter: 18  | diff: 1.80e+01  | diff_avg: 4.99e-02 
+Scenario: scn2  | Iter: 19  | diff: 5.40e+01  | diff_avg: 1.35e-01 
+Scenario: scn2  | Iter: 20  | diff: 1.33e+01  | diff_avg: 3.02e-02 
+Scenario: scn2  | Iter: 21  | diff: 1.98e+01  | diff_avg: 4.08e-02 
+Scenario: scn2  | Iter: 22  | diff: 1.24e+01  | diff_avg: 2.34e-02 
+Scenario: scn2  | Iter: 23  | diff: 2.13e+01  | diff_avg: 3.69e-02 
+Scenario: scn2  | Iter: 24  | diff: 1.78e+01  | diff_avg: 2.85e-02 
+Scenario: scn2  | Iter: 25  | diff: 1.42e+01  | diff_avg: 2.10e-02 
+Scenario: scn2  | Iter: 26  | diff: 2.59e+01  | diff_avg: 3.56e-02 
+Scenario: scn2  | Iter: 27  | diff: 1.24e+02  | diff_avg: 1.58e-01 
+Scenario: scn2  | Iter: 28  | diff: 2.63e+01  | diff_avg: 3.13e-02 
+Scenario: scn2  | Iter: 29  | diff: 1.95e+01  | diff_avg: 2.16e-02 
+Scenario: scn2  | Iter: 30  | diff: 2.16e+01  | diff_avg: 2.25e-02 
+Scenario: scn2  | Iter: 31  | diff: 3.49e+01  | diff_avg: 3.40e-02 
+Scenario: scn2  | Iter: 32  | diff: 1.20e+02  | diff_avg: 1.10e-01 
+Scenario: scn2  | Iter: 33  | diff: 2.66e+01  | diff_avg: 2.30e-02 
+Scenario: scn2  | Iter: 34  | diff: 1.02e+02  | diff_avg: 8.34e-02 
+Scenario: scn2  | Iter: 35  | diff: 1.39e+01  | diff_avg: 1.07e-02 
+Scenario: scn2  | Iter: 36  | diff: 1.81e+01  | diff_avg: 1.32e-02 
+Scenario: scn2  | Iter: 37  | diff: 4.71e+01  | diff_avg: 3.26e-02 
+Scenario: scn2  | Iter: 38  | diff: 2.53e+01  | diff_avg: 1.66e-02 
+Scenario: scn2  | Iter: 39  | diff: 2.53e+01  | diff_avg: 1.58e-02 
+Scenario: scn2  | Iter: 40  | diff: 1.56e+01  | diff_avg: 9.25e-03 
+Converged: NA  in  40  iterations
+
+[1] "scn1平均厚生の変化率: 1.0028"
+[1] "scn2平均厚生の変化率: 1.0057"
+[1] "scn0 自動車CO2: 3799.2 tCO2/日"
+[1] "scn1 自動車CO2: 3802.3 tCO2/日"
+[1] "scn2 自動車CO2: 3779.7 tCO2/日"
+[1] "scn0 鉄道CO2: 536.7 tCO2/日"
+[1] "scn1 鉄道CO2: 533.8 tCO2/日"
+[1] "scn2 鉄道CO2: 532.2 tCO2/日"
+eval(ei, envir) でエラー: オブジェクト 'lij_plot_M' がありません
+呼び出し: source -> withVisible -> eval -> eval
+追加情報: 50 件以上の警告がありました (最初の 50 個の警告を見るには warnings() を使って下さい)
+実行が停止されました 

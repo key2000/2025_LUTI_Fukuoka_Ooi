@@ -66,7 +66,7 @@ for (y in names(emp_years)) {
 }
 
 #実行####
-emp_msa <- 0.5  # 既存シナリオB/Cと同じ
+emp_msa <- NULL  # 混合比 1/(n+1)・40回固定（メインの run_scenario と同じ）
 emp_results <- list()
 for (y in names(emp_years)) {
   cat("\n=== Running:", y, "===\n")
@@ -75,7 +75,7 @@ for (y in names(emp_years)) {
     L_j_hat_scn = emp_years[[y]]$L_j_hat,
     omega_j_matrix_scn = emp_years[[y]]$omega_j_matrix,
     v_init = results$scn0$v,
-    max_iter = 50, msa = emp_msa, tol = 100
+    max_iter = 40, msa = emp_msa
   )
 }
 all_res <- c(list(scn0 = results$scn0), emp_results)
@@ -192,9 +192,13 @@ ind_rows <- sapply(seq_len(nrow(ind)), function(k) {
   sprintf("| %s | %s | %s | %s | %s | %s |", ind_lab[k], ind_unit[k],
           fn(v["scn0"], d), fn(v["emp2009"], d), fn(v["emp2021"], d), fd(v["emp2021"], v["emp2009"], d))
 })
+# EV は基準（scn0）の家賃で測る。CV（シナリオ側の家賃）は参考
 ben <- c(b09 = ev_benefit(all_res$scn0, all_res$emp2009),
-         b21 = ev_benefit(all_res$scn0, all_res$emp2021),
-         b21_09 = ev_benefit(all_res$emp2009, all_res$emp2021))
+         b21 = ev_benefit(all_res$scn0, all_res$emp2021))
+ben["b21_09"] <- ben["b21"] - ben["b09"]
+cv <- c(b09 = -ev_benefit(all_res$emp2009, all_res$scn0),
+        b21 = -ev_benefit(all_res$emp2021, all_res$scn0))
+cv["b21_09"] <- cv["b21"] - cv["b09"]
 
 writeLines(c(
   "# 2009/2021 雇用分布シナリオ 総合指標（自動生成）",
@@ -208,9 +212,11 @@ writeLines(c(
   "",
   "## 便益（EV、万円/月）",
   "",
-  sprintf("- 2009年雇用分布 − 現状: %s", fn(ben["b09"], 0)),
-  sprintf("- 2021年雇用分布 − 現状: %s", fn(ben["b21"], 0)),
-  sprintf("- 2021年 − 2009年（2009を基準としたEV）: %s", fn(ben["b21_09"], 0))
+  "基準（現状）の家賃で測るEVが主。CV（各シナリオの家賃で測る）は参考。",
+  "",
+  sprintf("- 2009年雇用分布 − 現状: EV %s（CV %s）", fn(ben["b09"], 0), fn(cv["b09"], 0)),
+  sprintf("- 2021年雇用分布 − 現状: EV %s（CV %s）", fn(ben["b21"], 0), fn(cv["b21"], 0)),
+  sprintf("- 2021年 − 2009年: EV %s（CV %s）", fn(ben["b21_09"], 0), fn(cv["b21_09"], 0))
 ), file.path(emp_run_dir, "summary_indicators.md"))
 
 #実行記録####
@@ -225,7 +231,7 @@ writeLines(c(
   paste0("- git commit: ", git_commit, ifelse(isTRUE(git_dirty), "（scripts/ に未コミットの変更あり）", "")),
   paste0("- 揃えた総従業者数（scn0）: ", fn(total_L0, 0)),
   paste0("- 揃えた総給与 Σω·L（scn0）: ", fn(payroll0, 0)),
-  paste0("- LUTIループ: msa = ", emp_msa, ", max_iter = 50, tol = 100"),
+  "- LUTIループ: 混合比 1/(n+1)・40回固定",
   "",
   "| シナリオ | ボロノイ集計の総数（スケール前） | 従業者数倍率 | 賃金倍率 | Σω·L（調整後） | converged | iterations | final_diff |",
   "|---|--:|--:|--:|--:|---|--:|--:|",

@@ -1,0 +1,674 @@
+<title>九大跡地シナリオの新規性</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Kaku+Gothic+New:wght@700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 縦1列の読み物。判断ごとに「背景→図→選択肢→推奨」の順。スマホ幅を基準に組む */
+:root{
+  --bg:#f5f7f5; --card:#ffffff; --fg:#1c2421; --muted:#5b6964; --line:#d3dbd7;
+  --accent:#0d6b66; --accent-soft:#dcefed; --warn:#a85a17; --warn-soft:#f7e8d9;
+  --band:#e6ebe8; --good:#2f7a3d;
+  --f-display:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-body:"BIZ UDPGothic","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --card:#19201d; --fg:#e3eae7; --muted:#9aa8a2; --line:#2d3733;
+  --accent:#4fc0b6; --accent-soft:#163532; --warn:#e3a066; --warn-soft:#3a2a1c;
+  --band:#222a27; --good:#6cc27c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111614; --card:#19201d; --fg:#e3eae7; --muted:#9aa8a2; --line:#2d3733;
+  --accent:#4fc0b6; --accent-soft:#163532; --warn:#e3a066; --warn-soft:#3a2a1c;
+  --band:#222a27; --good:#6cc27c; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.75}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.4;margin:0}
+h1{font-size:1.55rem}
+h2{font-size:1.25rem}
+h3{font-size:1.02rem;margin-top:6px}
+p{margin:0}
+.lead{color:var(--muted);font-size:.93rem}
+section{display:flex;flex-direction:column;gap:14px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.rec{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.rec b{color:var(--accent)}
+.caution{border-left:4px solid var(--warn);background:var(--warn-soft);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.term{font-size:.88rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+.term b{color:var(--fg)}
+ul,ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:4px}
+.toc{display:flex;flex-direction:column;gap:8px}
+.toc a{display:grid;grid-template-columns:2.2em 1fr;gap:8px;text-decoration:none;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.toc a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toc .n{font-family:var(--f-mono);color:var(--accent);font-weight:500}
+.toc .q{font-weight:700}
+.toc .r{display:block;font-size:.85rem;color:var(--muted);font-weight:400}
+.fig{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 10px 8px;display:flex;flex-direction:column;gap:6px}
+.fig .cap{font-size:.84rem;color:var(--muted)}
+.fig .ttl{font-weight:700;font-size:.92rem}
+.svgbox{overflow-x:auto}
+svg{display:block;width:100%;height:auto;min-width:320px}
+svg text{fill:var(--fg);font-family:var(--f-body)}
+svg .mut{fill:var(--muted)}
+svg .acc{fill:var(--accent)} svg .wrn{fill:var(--warn)}
+svg .ax{stroke:var(--line);stroke-width:1}
+svg .grid{stroke:var(--line);stroke-width:.6;stroke-dasharray:2 3}
+svg .bandf{fill:var(--band)}
+svg .accs{stroke:var(--accent)} svg .wrns{stroke:var(--warn)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:420px}
+th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+th{font-weight:700;color:var(--muted);font-size:.8rem}
+.ok{color:var(--good);font-weight:700}.mid{color:var(--warn);font-weight:700}.ng{color:var(--warn);font-weight:700}
+.opts{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:640px){.opts.two{grid-template-columns:1fr 1fr}}
+.opt{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.opt.pick{border:2px solid var(--accent)}
+.opt .tag{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.opt.pick .tag{color:var(--accent);font-weight:500}
+.pm{display:grid;grid-template-columns:1.6em 1fr;gap:2px 4px;font-size:.9rem}
+.pm .p{color:var(--good);font-weight:700}.pm .m{color:var(--warn);font-weight:700}
+.formula{font-family:var(--f-mono);font-size:.85rem;background:var(--band);border-radius:6px;padding:10px;overflow-x:auto;white-space:pre}
+.reply{display:flex;flex-direction:column;gap:8px}
+textarea{width:100%;box-sizing:border-box;font-family:var(--f-mono);font-size:.88rem;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:9.5em}
+button{align-self:flex-start;font-family:var(--f-body);font-size:.92rem;background:var(--accent);color:var(--card);border:0;border-radius:6px;padding:8px 14px;font-weight:700}
+.small{font-size:.84rem;color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+svg .box{fill:var(--card);stroke:var(--line);stroke-width:1.2}
+svg .boxa{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.4}
+svg .boxw{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1.2}
+.lv{display:inline-block;font-size:.74rem;font-weight:700;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.lv.h{background:var(--accent);color:var(--card)} .lv.m{background:var(--accent-soft);color:var(--accent)} .lv.l{background:var(--band);color:var(--muted)}
+.flow{display:flex;flex-direction:column;gap:0}
+.step{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.step.a{border-left:5px solid var(--accent)} .step.w{border-left:5px solid var(--warn)} .step.g{border-left:5px solid var(--muted)}
+.step .hd{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.step .no{font-family:var(--f-mono);font-size:.78rem;color:#fff;background:var(--accent);border-radius:4px;padding:1px 6px}
+.step.w .no{background:var(--warn)} .step.g .no{background:var(--muted)}
+.step .t{font-weight:700;font-family:var(--f-display)}
+.step .st{font-size:.78rem;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--muted)}
+.io{display:grid;grid-template-columns:5.4em 1fr;gap:4px 8px;font-size:.9rem}
+.io .k{color:var(--muted);font-size:.82rem;padding-top:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:3px 8px;font-size:.85rem}
+.chip b{color:var(--accent)}
+.down{align-self:center;display:flex;flex-direction:column;align-items:center;color:var(--muted);font-size:.8rem;padding:4px 0}
+.down::before{content:"";width:2px;height:14px;background:var(--muted)}
+.down::after{content:"";border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid var(--muted)}
+.mat{width:100%;border-collapse:collapse;font-size:.85rem}
+.mat th,.mat td{border:1px solid var(--line);padding:4px 6px;text-align:center}
+.mat th{background:var(--band)}
+</style>
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:8px">
+  <div class="eyebrow">福岡LUTI ・ 論文の方針 ・ 2026-11-08</div>
+  <h1>観測されたトレンドを基準に九大跡地の再開発を評価するとき、何が新規性になるか</h1>
+  <p class="lead">先生の提案（トレンドが続く場合と続かない場合という形で、今のシナリオB・Cに意味を持たせる）について、先行研究を調べて新規性を検討しました。結論・根拠・弱点・具体的な作り方の順に書いています。最後に判断していただきたいことがあります。</p>
+</header>
+
+<div class="rec">
+  <b>結論</b>
+  <p><b>一番言えそうな新規性は「再開発の評価は、その雇用がどこから来るかの仮定で大きく変わる。その仮定を、観測された都市圏内の雇用の動き（2009→2014→2021）で根拠づけて評価した」こと</b>です。事業評価の実務では、雇用がよそから移ってくる分は「何%」という1つの数字で済まされていて、どこから来るかという空間的な仮定は扱われていません。LUTIのシナリオ分析でも、雇用の出どころは分析者が決めた仮の配分がほとんどでした。今の手元の結果でも、B（一律に減らす）とC（郊外の小さな中心地から集める）でCO₂の符号が逆になっています（B +0.13%、C −0.57%）。この差を「観測されたトレンドに沿うか逆らうか」と読めるようにすれば、論文の前半（2009→2021の事後評価）と後半（九大跡地の事前評価）が1本の筋でつながります。</p>
+  <p class="small">ただし「トレンドを基準にする」こと自体（いわゆる BAU の基準シナリオ）は、計画の実務でごく普通に行われていて、新しくありません。新しさは、トレンドを<b>雇用の出どころの根拠</b>に使う点に置く必要があります。</p>
+</div>
+
+<nav class="toc" aria-label="目次">
+  <a href="#s0"><span class="n">0</span><span><span class="q">研究の全体フロー</span><span class="r">この方針で進めた場合の流れ（前半→後半→感度→示唆）</span></span></a>
+  <a href="#s1"><span class="n">1</span><span><span class="q">先生の提案を整理する</span><span class="r">2つの層（基準の都市・雇用の出どころ）</span></span></a>
+  <a href="#s2"><span class="n">2</span><span><span class="q">先行研究で分かったこと</span><span class="r">何がすでにあり、何が見つからないか</span></span></a>
+  <a href="#s3"><span class="n">3</span><span><span class="q">新規性の候補と、その強さ</span><span class="r">N1〜N4</span></span></a>
+  <a href="#s3b"><span class="n">3+</span><span><span class="q">社会的にどう役立つか</span><span class="r">「誰もやっていない」＋「社会に必要」の両方</span></span></a>
+  <a href="#s4"><span class="n">4</span><span><span class="q">観測されたトレンドと、B・Cの読み方</span><span class="r">17拠点の 2009→2021</span></span></a>
+  <a href="#s5"><span class="n">5</span><span><span class="q">シナリオの具体的な作り方（案）</span><span class="r"></span></span></a>
+  <a href="#s5b"><span class="n">5+</span><span><span class="q">8本のシナリオで、何を比べて何が分かるか</span><span class="r">比較①〜⑥と、仮説との対応</span></span></a>
+  <a href="#s6"><span class="n">6</span><span><span class="q">弱点と、査読で突かれそうな点</span><span class="r"></span></span></a>
+  <a href="#s7"><span class="n">7</span><span><span class="q">判断していただきたいこと</span><span class="r"></span></span></a>
+</nav>
+
+<!-- 0 -->
+<section id="s0">
+  <div class="eyebrow">0</div>
+  <h2>研究の全体フロー（この方針で進めた場合）</h2>
+  <p>論文は「前半：実際に起きた雇用の動きを評価する」→「後半：その動きを手がかりに、九大跡地の再開発を評価する」の2部構成になります。前半の結果（トレンド）が、後半のシナリオの<b>根拠</b>として渡されるのがこの方針の要です。</p>
+  <div class="flow">
+    <div class="step g">
+      <div class="hd"><span class="no">準備</span><span class="t">基準年2021年のモデルをつくる</span><span class="st">ほぼ完了・較正中</span></div>
+      <div class="io">
+        <span class="k">やること</span><span>中心地を32か所にし、道路の所要時間で各メッシュの雇用を割り当てる。賃金は年別・産業構成別。パラメータと k_i をGAで較正し直す（試行08）</span>
+        <span class="k">できるもの</span><span>2021年の福岡都市圏を再現するLUTIモデル（土地利用＋交通）</span>
+      </div>
+    </div>
+    <div class="down"></div>
+    <div class="step a">
+      <div class="hd"><span class="no">前半</span><span class="t">実際に起きた雇用の再配置を評価する</span><span class="st">RQ1〜RQ4</span></div>
+      <div class="io">
+        <span class="k">入力</span><span>2009・2014・2021年の雇用の分布だけを入れ替える（都市の器＝住宅地・道路・鉄道・総数・賃金水準は2021年に固定）</span>
+        <span class="k">計算</span><span>それぞれの分布で、住む場所・家賃・通勤手段・道路の混雑が釣り合う状態を求め、比べる（比較静学）</span>
+        <span class="k">出力</span><span>雇用の動きで、CO₂（交通＋住宅）・通勤時間・家賃・厚生（EV）がどう変わったか。交通と住宅のCO₂が逆向きに動くか（H4）</span>
+      </div>
+      <div class="rec" style="margin-top:4px"><b>後半に渡すもの＝観測されたトレンド</b><span>周辺の拠点（アイランドシティ・学研都市・福間・前原）が伸び、内側の古い拠点（雑餉隈・大橋・西新）が減った。どの動きがCO₂を増やし、どれが減らしたか。</span></div>
+    </div>
+    <div class="down">トレンドを根拠として使う</div>
+    <div class="step w">
+      <div class="hd"><span class="no">後半</span><span class="t">九大跡地の再開発を、雇用の出どころ別に評価する</span><span class="st">RQ5（新規性N1）</span></div>
+      <div class="io">
+        <span class="k">①基準</span><span>再開発が<b>なかったら</b>の都市を2通り用意する</span>
+      </div>
+      <div class="chips"><span class="chip"><b>今</b>：2021年のまま</span><span class="chip"><b>将来</b>：トレンド（と雇用の伸び）を2028年まで延ばした都市</span></div>
+      <div class="io">
+        <span class="k">②出どころ</span><span>跡地に1.5万人を置き、その分を<b>どこから持ってくるか</b>を4通り変える</span>
+      </div>
+      <div class="chips"><span class="chip"><b>B</b> 一律（都心から多く）</span><span class="chip"><b>C</b> 郊外の小さな拠点から</span><span class="chip"><b>T+</b> 周辺の伸びる拠点の分を（トレンドに沿う）</span><span class="chip"><b>T−</b> 内側の拠点どうしで取り合う</span></div>
+      <table class="mat"><thead><tr><th></th><th>B</th><th>C</th><th>T+</th><th>T−</th></tr></thead>
+        <tbody><tr><th>今</th><td>済</td><td>済</td><td>新</td><td>新</td></tr><tr><th>将来</th><td>新</td><td>新</td><td><b>主</b></td><td>新</td></tr></tbody></table>
+      <div class="io">
+        <span class="k">③効果</span><span>再開発あり − なし（8本）で、CO₂・通勤・家賃・厚生（地域別）を比べる</span>
+        <span class="k">出力</span><span>（a）出どころで評価がどれだけ変わるか（今の結果ではCO₂の増減の向きまで逆）（b）観測と整合する「将来×T+」を主な見通しとし、ほかを幅として示す</span>
+      </div>
+    </div>
+    <div class="down"></div>
+    <div class="step g">
+      <div class="hd"><span class="no">感度</span><span class="t">結論が設定に左右されないか確かめる</span></div>
+      <div class="chips"><span class="chip">中心地の数（24・46）</span><span class="chip">割り当て方（ボロノイ）</span><span class="chip">都市圏の外から来る雇用（総数を増やす）</span><span class="chip">跡地の雇用の規模</span></div>
+    </div>
+    <div class="down"></div>
+    <div class="step a">
+      <div class="hd"><span class="no">示唆</span><span class="t">社会への示唆（3+章）</span></div>
+      <div class="chips"><span class="chip">S1 どこから雇用を呼ぶか（誘致方針）</span><span class="chip">S2 移転率1つの%では評価を誤る</span><span class="chip">S3 拠点どうしの取り合い</span><span class="chip">S4 脱炭素2040との整合</span></div>
+    </div>
+  </div>
+  <p class="small">「今×B」「今×C」は修論の設定で計算済み（17拠点）。新しい設定（32中心地・較正08）で計算し直します。「将来」の都市の作り方（トレンドの延ばし方、雇用の伸びの入れ方）は5章の案で、まだ決まっていません。</p>
+</section>
+
+<hr>
+
+<!-- 1 -->
+<section id="s1">
+  <div class="eyebrow">1</div>
+  <h2>先生の提案を整理する</h2>
+  <div class="card">
+    <p>今のシナリオB・Cは、九大跡地（箱崎、ゾーン 50303344）に従業者を1万5千人増やし、総数を変えないように<b>ほかのゾーンから減らす</b>ものです。減らし方だけが違います。</p>
+    <ul>
+      <li><b>B（一律）</b>：ほかの全ゾーンを同じ割合で減らす。大きいゾーン（都心）ほど多く減る。</li>
+      <li><b>C（都心からの距離で重みづけ）</b>：「都心から遠く、従業者が少ないゾーン」ほど多く減らす。郊外の小さな中心地から集めてくる形。</li>
+    </ul>
+    <p>どちらも分析者が決めた仮の減らし方で、「なぜこの2つか」を説明できません。先生の提案は、<b>実際に観測された雇用の動き</b>を物差しにして、「トレンドどおりなら雇用はどこから来るか」「トレンドに逆らうならどうか」という形で、B・C（と新しいシナリオ）に意味を持たせることだと理解しました。</p>
+  </div>
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図1　再開発の評価を決める2つの層（模式図）</div>
+    <div class="svgbox">
+    <svg viewBox="0 0 400 436" role="img" aria-label="跡地の1.5万人の出どころ4通りの模式図。Bは都心から、Cは郊外の小拠点から、T+は周辺の伸びる拠点から、T−は都心と内側の古い拠点から多く来る。上段は基準の都市が今のままか将来かの2通り">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="acc"/></marker>
+<marker id="ahm" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mut"/></marker></defs>
+<rect class="boxa" x="6" y="4" width="388" height="58" rx="8"/>
+<text x="16" y="22" font-size="11.5" font-weight="700">層1　再開発がなかったらの都市（基準）</text>
+<rect class="box" x="16" y="30" width="180" height="24" rx="5"/><text x="106" y="46" font-size="10" text-anchor="middle">今：2021年のまま</text>
+<rect class="box" x="204" y="30" width="180" height="24" rx="5"/><text x="294" y="46" font-size="10" text-anchor="middle">将来：トレンドを2028年まで延ばす</text>
+<text x="200" y="80" font-size="11" text-anchor="middle">×　層2　跡地の1.5万人はどこから来るか（矢印の太さ＝来る量）</text>
+<g transform="translate(6,90)">
+<rect class="box" x="0" y="0" width="190" height="168" rx="8"/>
+<text x="10" y="17" font-size="11" font-weight="700">B 一律</text>
+<text x="10" y="30" font-size="9" class="mut">大きい都心から多く来る</text>
+<g transform="translate(0,10)">
+<line x1="64.3" y1="95.4" x2="84.0" y2="81.7" class="accs" stroke-width="5" stroke-linecap="round" marker-end="url(#ah)"/>
+<line x1="133.6" y1="114.3" x2="106.9" y2="82.6" style="stroke:var(--muted)" stroke-width="2.4" stroke-linecap="round" marker-end="url(#ahm)"/>
+<line x1="150.3" y1="58.5" x2="110.5" y2="68.8" style="stroke:var(--muted)" stroke-width="1.6" stroke-linecap="round" marker-end="url(#ahm)"/>
+<line x1="36.8" y1="55.8" x2="86.4" y2="68.9" style="stroke:var(--muted)" stroke-width="0.8" stroke-linecap="round" marker-end="url(#ahm)"/>
+<circle cx="52" cy="104" r="13" class="box"/>
+<text x="52" y="130" font-size="8.5" text-anchor="middle" class="mut">都心</text>
+<circle cx="140" cy="122" r="8" class="box"/>
+<text x="182" y="142" font-size="8.5" text-anchor="end" class="mut">内側の古い拠点</text>
+<circle cx="160" cy="56" r="8" class="box"/>
+<text x="182" y="42" font-size="8.5" text-anchor="end" class="mut">周辺の伸びる拠点</text>
+<circle cx="30" cy="54" r="5" class="box"/>
+<text x="10" y="42" font-size="8.5" text-anchor="start" class="mut">郊外の小拠点</text>
+<circle cx="98" cy="72" r="9" class="acc"/><text x="98" y="58" font-size="9.5" font-weight="700" text-anchor="middle">箱崎＋1.5万</text></g></g>
+<g transform="translate(204,90)">
+<rect class="box" x="0" y="0" width="190" height="168" rx="8"/>
+<text x="10" y="17" font-size="11" font-weight="700">C 郊外から</text>
+<text x="10" y="30" font-size="9" class="mut">遠く小さい拠点から集める</text>
+<g transform="translate(0,10)">
+<line x1="64.3" y1="95.4" x2="88.4" y2="78.7" style="stroke:var(--muted)" stroke-width="0.6" stroke-linecap="round" marker-end="url(#ahm)"/>
+<line x1="133.6" y1="114.3" x2="105.8" y2="81.3" style="stroke:var(--muted)" stroke-width="1" stroke-linecap="round" marker-end="url(#ahm)"/>
+<line x1="150.3" y1="58.5" x2="110.5" y2="68.8" style="stroke:var(--muted)" stroke-width="1.6" stroke-linecap="round" marker-end="url(#ahm)"/>
+<line x1="36.8" y1="55.8" x2="81.6" y2="67.6" class="accs" stroke-width="5" stroke-linecap="round" marker-end="url(#ah)"/>
+<circle cx="52" cy="104" r="13" class="box"/>
+<text x="52" y="130" font-size="8.5" text-anchor="middle" class="mut">都心</text>
+<circle cx="140" cy="122" r="8" class="box"/>
+<text x="182" y="142" font-size="8.5" text-anchor="end" class="mut">内側の古い拠点</text>
+<circle cx="160" cy="56" r="8" class="box"/>
+<text x="182" y="42" font-size="8.5" text-anchor="end" class="mut">周辺の伸びる拠点</text>
+<circle cx="30" cy="54" r="5" class="box"/>
+<text x="10" y="42" font-size="8.5" text-anchor="start" class="mut">郊外の小拠点</text>
+<circle cx="98" cy="72" r="9" class="acc"/><text x="98" y="58" font-size="9.5" font-weight="700" text-anchor="middle">箱崎＋1.5万</text></g></g>
+<g transform="translate(6,264)">
+<rect class="box" x="0" y="0" width="190" height="168" rx="8"/>
+<text x="10" y="17" font-size="11" font-weight="700">T+ トレンドに沿う（新）</text>
+<text x="10" y="30" font-size="9" class="mut">伸びるはずだった周辺の分</text>
+<g transform="translate(0,10)">
+<line x1="64.3" y1="95.4" x2="88.4" y2="78.7" style="stroke:var(--muted)" stroke-width="0.6" stroke-linecap="round" marker-end="url(#ahm)"/>
+<line x1="133.6" y1="114.3" x2="105.5" y2="81.0" style="stroke:var(--muted)" stroke-width="0.6" stroke-linecap="round" marker-end="url(#ahm)"/>
+<line x1="150.3" y1="58.5" x2="114.5" y2="67.8" class="accs" stroke-width="5" stroke-linecap="round" marker-end="url(#ah)"/>
+<line x1="36.8" y1="55.8" x2="86.4" y2="68.9" style="stroke:var(--muted)" stroke-width="0.8" stroke-linecap="round" marker-end="url(#ahm)"/>
+<circle cx="52" cy="104" r="13" class="box"/>
+<text x="52" y="130" font-size="8.5" text-anchor="middle" class="mut">都心</text>
+<circle cx="140" cy="122" r="8" class="box"/>
+<text x="182" y="142" font-size="8.5" text-anchor="end" class="mut">内側の古い拠点</text>
+<circle cx="160" cy="56" r="8" class="box"/>
+<text x="182" y="42" font-size="8.5" text-anchor="end" class="mut">周辺の伸びる拠点</text>
+<circle cx="30" cy="54" r="5" class="box"/>
+<text x="10" y="42" font-size="8.5" text-anchor="start" class="mut">郊外の小拠点</text>
+<circle cx="98" cy="72" r="9" class="acc"/><text x="98" y="58" font-size="9.5" font-weight="700" text-anchor="middle">箱崎＋1.5万</text></g></g>
+<g transform="translate(204,264)">
+<rect class="box" x="0" y="0" width="190" height="168" rx="8"/>
+<text x="10" y="17" font-size="11" font-weight="700">T− 内側で取り合う（新）</text>
+<text x="10" y="30" font-size="9" class="mut">都心・内側の古い拠点から</text>
+<g transform="translate(0,10)">
+<line x1="64.3" y1="95.4" x2="85.4" y2="80.7" class="accs" stroke-width="3.6" stroke-linecap="round" marker-end="url(#ah)"/>
+<line x1="133.6" y1="114.3" x2="107.9" y2="83.7" class="accs" stroke-width="3.6" stroke-linecap="round" marker-end="url(#ah)"/>
+<line x1="150.3" y1="58.5" x2="109.3" y2="69.1" style="stroke:var(--muted)" stroke-width="0.6" stroke-linecap="round" marker-end="url(#ahm)"/>
+<line x1="36.8" y1="55.8" x2="86.7" y2="69.0" style="stroke:var(--muted)" stroke-width="0.6" stroke-linecap="round" marker-end="url(#ahm)"/>
+<circle cx="52" cy="104" r="13" class="box"/>
+<text x="52" y="130" font-size="8.5" text-anchor="middle" class="mut">都心</text>
+<circle cx="140" cy="122" r="8" class="box"/>
+<text x="182" y="142" font-size="8.5" text-anchor="end" class="mut">内側の古い拠点</text>
+<circle cx="160" cy="56" r="8" class="box"/>
+<text x="182" y="42" font-size="8.5" text-anchor="end" class="mut">周辺の伸びる拠点</text>
+<circle cx="30" cy="54" r="5" class="box"/>
+<text x="10" y="42" font-size="8.5" text-anchor="start" class="mut">郊外の小拠点</text>
+<circle cx="98" cy="72" r="9" class="acc"/><text x="98" y="58" font-size="9.5" font-weight="700" text-anchor="middle">箱崎＋1.5万</text></g></g>
+</svg>
+    </div>
+    <div class="cap">層1（2通り）× 層2（4通り）＝ 8本のシナリオ。それぞれ「再開発あり − なし」を九大跡地の効果とする。今のB・Cは「層1＝今」だけで計算済み。位置関係は模式で、実際の地図ではない（実際のトレンドの地図は4章・planning-history の地図を参照）。</div>
+  </figure>
+  <div class="card">
+    <b>図1の読み方（2026-11-09 追加）</b>
+    <p><b>効果は必ず「何かと比べた差」</b>で測ります。「再開発あり」の都市と、「再開発がなかったら」の都市を両方計算して、差をとります。<b>層1は、この「比べる相手（再開発がなかったらの都市）」をどう作るか</b>です。</p>
+    <table class="mat"><thead><tr><th>層1</th><th>どんな都市か</th><th>都市圏の雇用の総数</th><th>問いの意味</th></tr></thead>
+    <tbody>
+      <tr><td><b>今</b></td><td>2021年の福岡そのまま（雇用の分布も総数も2021年）</td><td>約133万人のまま</td><td>「今の福岡に、跡地の開発をぽんと置いたら？」</td></tr>
+      <tr><td><b>将来</b></td><td>2009→2021の動きが2028年まで続いたと仮定した福岡。周辺の拠点（アイランドシティ等）はさらに伸び、内側の古い拠点はさらにシェアを落とす</td><td>（案）2009→2021の伸び（12年で+6.7%）が続くなら、7年で約+3.8%＝<b>約+5万人</b>（約138万人）</td><td>「まちびらきの2028年の、トレンドどおりに変わった福岡に、跡地の開発を置いたら？」</td></tr>
+    </tbody></table>
+    <p><b>層2は、跡地に置く1.5万人を、比べる相手の都市のどこから持ってくるか</b>です（B・C・T+・T−）。</p>
+    <p><b>「掛け合わせる」</b>とは、層1の2通りそれぞれについて、層2の4通りを全部計算するという意味です（2×4＝8本）。たとえば「将来×C」は、「2028年のトレンドどおりの福岡」を基準にして、跡地に1.5万人を置き、その分を郊外の小さな拠点から減らした都市を計算し、基準との差をとります。</p>
+    <p><b>なぜ層1を2通り用意するか：</b>同じ「一律に減らす（B）」でも、将来の都市では周辺の拠点が大きくなっているので、そこから来る量が増えます。基準が違うと、出どころの中身も評価も変わりうるからです。また、<b>T+（伸びるはずだった周辺の分を箱崎が受け取る）は、成長が入った「将来」の都市でこそ自然に定義できる</b>シナリオです。どちらの基準でも「出どころで評価が変わる」が成り立てば、結論が強くなります。</p>
+    <div class="caution"><b>都市圏全体の雇用の伸びは、含めるかどうかまだ決めていません</b><span>今のモデルは雇用の総数を固定して計算しています。「将来」の都市に総数の伸び（約+5万人）を入れる案と、分布の変化だけを延ばして総数は2021年のままにする案があります。伸びを入れる場合は、働く人の増加に合わせて世帯数（住む人）も増やす必要があり、作業が増えます。成長する都市圏という福岡の実情（福岡市の人口は2040年頃に約170万人でピーク見込み）を論文に反映するなら、伸びを入れるほうが筋が通ります。8本が多すぎる場合は、「今×4本」と「将来×T+（主な見通し）」だけに絞る手もあります。</span></div>
+  </div>
+</section>
+
+<hr>
+
+<!-- 2 -->
+<section id="s2">
+  <div class="eyebrow">2</div>
+  <h2>先行研究で分かったこと</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>分野</th><th>分かっていること</th><th>この研究への意味</th></tr></thead>
+    <tbody>
+      <tr><td>計画の実務のシナリオ</td><td>「趨勢（BAU）シナリオ」を基準にして、政策シナリオと比べるのは都市圏の計画で一般的（米国の大都市圏の計画、Regional Studies の論文など）</td><td><b>トレンドを基準にすること自体は新規性にならない</b></td></tr>
+      <tr><td>事業評価の「追加性」</td><td>英国の手引き（HCA 2014、MHCLG 2025）では、事業の雇用などの成果から、対象地域の別の場所で減る分（移転）を差し引き、事業がなかった場合の状態（基準ケース、デッドウェイト）との差を正味の効果とする。移転の値は、過去の事業評価の平均（例：都市圏程度の範囲で約22%）か、0・25・50・75・100%の目安から選ぶ。CO₂は「新しい拠点への移動の変化」として別に評価するよう求めている</td><td>移転は成果の<b>割合</b>として差し引くだけで、<b>どこから移ったか</b>によって通勤・CO₂がどう変わるかを求める手順はない（下の補足で原文に沿って整理）</td></tr>
+      <tr><td>日本の事業評価・CUE</td><td>再開発の費用便益分析マニュアル（国交省、H30改訂版第2版）は「事業あり・なし」の差で便益を測る。<b>「なし」は、施行地区の従前の建物が現状のまま続く状態</b>と定義（Ⅰ-9）。便益は再開発ビルの収益の向上分と、周辺〜約10km圏の地価の上昇分（ヘドニック法）で測り、約50年を4%で割り引く。CUEモデル（Ueda 他 2013）は均衡のあり・なしを比べ、便益の帰着を地域別に出せる</td><td>マニュアルの「なし」は、都市全体がどう変わっていくか（成長・トレンド）を作るものではない。入居する雇用がどこから来るか、移転元で地価や利便性が下がる分を差し引く手順も、マニュアルには書かれていない（本文を検索して確認）。CUEでの扱いは未確認</td></tr>
+      <tr><td>LUTIで雇用をどう与えるか</td><td>モデルによって違い、「普通はこうする」とまとめられる根拠はない（下の補足の表）。ブリュッセルのLUTI（UrbanSim）は、ゾーンの大きさで結果が大きく変わるが、シナリオの<b>順位</b>はほぼ変わらない、と示した</td><td>雇用の出どころ（どこから移るか）を変えて評価がどれだけ変わるかを正面から調べた研究は、<b>Webの要旨の範囲では</b>見つからなかった（未確認。Google Scholarで要確認）</td></tr>
+      <tr><td>多核化と住宅（リヨンのLUTI）</td><td>中心地を減らすと通勤の汚染は減るが、住宅の床面積が増えて温室効果ガスの減少が打ち消されうる、と示されている</td><td><b>交通と住宅のCO₂の相殺（H4・柱C）は、仮想の設定ではすでに指摘がある</b>。観測データで示すことが差になる</td></tr>
+      <tr><td>空間経済（QSM）</td><td>交通整備の事前評価で、事業の前後の均衡を比べる枠組みが英国運輸省で検討されている（Graham・Hörcherの報告書など）。ただし運輸の評価の実務ではまだ広く使われていない</td><td>九大跡地のような雇用拠点の開発で、出どころの仮定を観測トレンドで縛る例は見つからなかった（同じく要旨の範囲）</td></tr>
+    </tbody>
+  </table></div>
+  <h3>補足：LUTIで雇用をどう与えるか（既往研究の整理）</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>雇用の与え方</th><th>代表例</th><th>各文献が実際に示したこと</th><th>本研究との差</th><th>確認の度合い</th></tr></thead>
+    <tbody>
+      <tr><td>① シナリオで外から与える</td><td>多くの事前評価、本研究のB・C、Lyon（SIMBAD）の多核化シナリオ</td><td>Lyon：雇用中心を分けていくと、通勤距離はいったん短くなり、その後また長くなる。住宅の床面積の増加で温室効果ガスの減少が打ち消されうる</td><td>中心地の数・配置を変える比較で、<b>同じ開発の雇用の出どころ</b>を変える比較ではない</td><td>要旨で確認</td></tr>
+      <tr><td>② 立地選択モデルで配分する</td><td>UrbanSim（事業所の立地選択）、ブリュッセルのUrbanSim＋MATSim</td><td>ブリュッセル：4段階のゾーンの大きさ×5シナリオで、ゾーンの大きさによる違いのほうがシナリオ間の違いより大きい。ただしシナリオの順位・向きは保たれる。関連研究（2015）で、新しい雇用の配置（単核・多核）がゾーンの大きさで変わることも示されている</td><td>出どころはモデルが決めるので、出どころの仮定を<b>観測で縛る</b>発想はない</td><td>要旨で確認。「多核ほど敏感」という以前の書き方は確認できず、削除</td></tr>
+      <tr><td>③ Lowry型・空間相互作用で配分する</td><td>MEPLAN、TRANUS系、Lowry型のモデル</td><td>雇用は効用・アクセスに応じて毎期の一部が移る。移る割合はパラメータ</td><td>移る割合や配分の式は仮定。観測トレンドでの検証は主題になっていない</td><td>一般的な説明のレベル（個別の文献での確認は不十分）</td></tr>
+      <tr><td>④ 空間一般均衡（QSM）で決める</td><td>Graham・Hörcher（英国運輸省の報告書、エリザベス線の事例）</td><td>交通の事業の便益を、直接の便益と広い経済効果に分けて出す</td><td>交通事業の評価が中心で、雇用拠点の開発の出どころは扱っていない</td><td>要旨で確認</td></tr>
+    </tbody>
+  </table></div>
+  <p class="small">以前この欄に書いていた「新しい雇用は総数に上乗せするか、効用に比例して配分するのが普通」は、特定の文献に基づかない私の一般化で、言い過ぎでした。上の表に置き換えました。「見つからなかった」はWebの要旨での検索の範囲の話で、論文として主張するには Google Scholar 等で確かめる必要があります。</p>
+  <h3>補足：「追加性」「移転」「デッドウェイト」とは</h3>
+  <p>英国の事業評価では、再開発でできた雇用をそのまま効果とは数えず、<b>その事業のおかげで本当に増えた分（追加性）</b>だけを数えます。そのために2つを差し引きます。</p>
+  <ul>
+    <li><b>デッドウェイト</b>：事業がなくても、どのみち生まれていた雇用。<br>
+      例：ある企業が、もともと福岡で事業を広げて100人雇う計画を持っていたとする。再開発のビルができたのでそこに入居したが、ビルがなくても市内の別のビルで100人を雇っていた。この100人は「再開発のおかげで生まれた雇用」とは言えないので、効果から差し引く。<br>
+      <span class="small">人口推計から機械的に出す数ではなく、「事業がなかったら、その企業・人はどうしていたか」という反実仮想（もしもの話）の推定。実務では、入居企業へのアンケート（「この事業がなくても進出・拡大しましたか？」）や、似た地域との比較で割合を決めることが多い。ただし、人口や経済が伸びている都市圏では「どのみち増えていた雇用」が多くなるので、背景の成長とは関係が深い。</span></li>
+    <li><b>移転（displacement）</b>：都市圏の別の場所から移ってきただけの雇用。圏域全体では増えていない。</li>
+  </ul>
+  <p><b>移転</b>の例：市内の天神のオフィスから企業が引っ越してきた場合、天神の雇用が減って跡地が増えるだけで、都市圏全体の雇用は増えていない。</p>
+  <p>例：跡地の雇用1.5万人、デッドウェイト20%、移転30%と仮定すると、1.5万 ×（1−0.2）×（1−0.3）＝ <b>8,400人</b> が正味の効果、という計算になります。</p>
+  <p class="small">上の数値例は説明のための仮の値です。手引きの実際の手順は、下の「原文に沿った整理」を見てください。</p>
+  <h3>補足：英国の手引きの原文に沿った整理（2026-11-10）</h3>
+  <p>3つの手引きを読み、関係する箇所を確かめました（PDFは <code>project_log/paper-direction/references_uk_appraisal/</code>）。頁は文書に印刷された頁です。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>論点</th><th>手引きに書いてあること</th><th>本研究との関係</th></tr></thead>
+    <tbody>
+      <tr><td>正味の効果の計算</td><td>HCA（2014）図2.3・Box 2.1（p.5–6）：総効果 →（対象地域の外に漏れる分＝漏出）→（対象地域の別の場所で減る分＝移転、代替）→（波及＝乗数効果）→ 事業がなかった場合（基準ケース）との差 ＝ 正味の追加効果。成果は雇用・研修・住宅戸数など</td><td>あなたの理解「開発でできた雇用から移転とデッドウェイトを引いた正味の効果」はほぼ正しい。漏出・代替・乗数も入る点だけ補足</td></tr>
+      <tr><td>デッドウェイトの決め方</td><td>HCA Box 2.1（p.5）：割合で決めることもできるが、<b>基準ケースのシナリオを具体的に作って数量化するのが望ましい</b>。割合の目安（0・25・50・75・100%）は、より良いデータがないときだけ使う（p.18）</td><td>「将来（トレンドを延ばした都市）」の基準は、まさにこの「具体的に作った基準ケース」に当たる</td></tr>
+      <tr><td>対象地域（移転を数える範囲）</td><td>HCA 2.4節（p.11）：雇用を生む事業では、地元の範囲は<b>通勤圏（travel to work area）</b>か、敷地から10〜15マイル程度が多い</td><td>福岡都市圏はほぼ通勤圏なので、<b>都市圏内の移転は手引きでは「移転」として差し引かれる</b>（市内に限らない）</td></tr>
+      <tr><td>移転の値</td><td>HCA 4.3節（p.28–30）：移転＝「対象地域の別の場所で成果が減る分の割合」。過去の評価の平均は都市圏程度（sub-regional）で21.5%、地域で29.6%、物理的な再開発では38.7%（BIS/CEA）。地元の情報がなければ 0・25・50・75・100% から選ぶ</td><td>以前この頁に書いた「実測に基づく例は少ない」は不正確でした。<b>過去の事業評価から集めた平均値はある</b>。ただし、どれも割合の数字で、場所の情報は持たない</td></tr>
+      <tr><td>CO₂の扱い</td><td>MHCLG（2025）Box 3（p.26）：CO₂は可能な限り数量化する。発生源の例として「新しい住宅・業務の敷地による<b>移動のパターンの変化</b>」を挙げる。3.21段落（p.29）：開発による道路混雑も外部への影響として挙げる</td><td>「英国ではCO₂を扱っていない」は誤り。<b>開発そのものの移動の変化</b>は評価の対象</td></tr>
+      <tr><td>移転した分の「波及の影響」</td><td>MHCLG 5.49段落（p.75–76）：住宅の周辺地域への影響（周りの住宅価値の上昇）について、移転した活動も<b>同じ大きさの影響を持っていたと仮定するのが既定</b></td><td>移転元の場所で影響が変わることを考えない既定の一例。ただし住宅価値の話で、CO₂についての記述ではない</td></tr>
+      <tr><td>大規模な事業</td><td>MHCLG 4.33段落（p.56–57）：地域に大きく影響する事業では、構造的な経済モデルで<b>経済活動の空間的な分布</b>を調べてもよい</td><td>LUTIで出どころ別に計算するのは、この方向を具体化したもの、と位置づけられる</td></tr>
+      <tr><td>交通事業での移転</td><td>DfT TAG A2.1（2026年5月版）p.9：雇用の効果は既定で<b>100%移転</b>（全国で見れば増えない）。p.13：移転であっても、雇用の場所が変われば<b>生産性は変わりうる</b>。2.3.5段落（p.15–16）：大きな土地利用の変化があるときは、交通の外部費用（環境など）を「事業あり・なし」の土地利用でそれぞれ評価する（A2.2へ）</td><td>「移転でも場所が変われば効果がある」は、生産性については英国の交通評価ですでに認められている。<b>本研究はそれを通勤・CO₂・厚生に広げ、出どころ別に数値で示す</b>、という位置づけが正確</td></tr>
+    </tbody>
+  </table></div>
+  <div class="rec"><b>リサーチギャップの言い方（厳密化した版）</b>
+    <span>× 「英国の手引きは雇用の移転のCO₂への影響を扱っていない」（言い過ぎ。CO₂も、移転による生産性の変化も、手引きは認識している）<br>
+    ○ 「追加性の評価では、移転は成果の<b>割合</b>として差し引かれ、移転がどこから起きたかは計算に入らない。CO₂は開発の移動の変化として別に評価されるが、移転元で減る移動を含めて、<b>出どころの違いで開発のCO₂・通勤・厚生がどれだけ変わるか</b>を示した手順も研究も見当たらない。都市圏の雇用総数を固定したLUTIの計算は、追加性の計算では正味ゼロとされる<b>都市圏内の移転だけ</b>の効果を取り出すもので、それが出どころによって符号まで変わることを示す」<br>
+    <span class="small">「研究も見当たらない」は、まだGoogle Scholar等で確かめていません。「CO₂への影響が大きい」は、開発そのものの効果（5+章の①）と比べた相対的な話です。絶対量では都市圏の運輸CO₂の0.5%程度（今の計算）なので、「大きい」とは書かず「出どころで符号が変わる」と書くほうが安全です。</span></span></div>
+  <p class="small">検索はWebの要旨ベースで、「見つからない」はその範囲での話です。Google Scholar での確認は今後の作業に入れます。九大跡地の就業者数の目標値は、市・UR・事業者の公表資料では見つかりませんでした（今の1.5万人の根拠は要確認）。</p>
+</section>
+
+<hr>
+
+<!-- 3 -->
+<section id="s3">
+  <div class="eyebrow">3</div>
+  <h2>新規性の候補と、その強さ</h2>
+  <div class="opts">
+    <div class="opt pick">
+      <div class="tag"><span class="lv h">強い</span>　N1　雇用の出どころの仮定が、再開発の評価をどれだけ変えるか</div>
+      <p>2つのことを示します。</p>
+      <ol>
+        <li><b>出どころで結論が変わる：</b>跡地に増える雇用は同じ1.5万人でも、都市圏のどこから移ってくるかで評価が変わる。今の結果では、B（全ゾーンから一律に減らす＝実際には都心から多く来る）でCO₂ +0.13%（増える）、C（郊外の遠く小さい中心地から集める）で −0.57%（減る）と、<b>増減の向きまで逆</b>。厚生（EV）も B +1.1億円/月、C +2.6億円/月と倍以上違う。実務の「移転30%」のような割合だけでは、この違いが見えない。</li>
+        <li><b>もっともらしい出どころを、観測から絞る：</b>「出どころ次第で何とでもなる」で終わるとただの感度分析なので、2009→2021に実際に起きた雇用の動き（周辺の新しい拠点が伸び、内側の古い拠点が減った）を使い、どの仮定が現実と整合するかを示す。トレンドに沿う割り振り（T+）を主な予想とし、B・C・T−（内側で取り合う）をその幅として示す（5章の手順5）。</li>
+      </ol>
+      <div class="pm">
+        <span class="p">＋</span><span>実務の「移転率○%」を、空間的な仮定に置き換える意味がはっきりしている</span>
+        <span class="p">＋</span><span>手元の結果がすでに裏づける（CO₂：B +0.13%、C −0.57%。EV：B +1.1億、C +2.6億円/月）</span>
+        <span class="p">＋</span><span>実際に事業者が決まった計画（2028年度まちびらき）なので、政策への意味が大きい</span>
+        <span class="m">－</span><span>「出どころで結果が変わる」こと自体は直感的なので、どれだけ変わるか・どの出どころが観測と整合するかまで言う必要がある</span>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="tag"><span class="lv m">中</span>　N2　事後評価から事前評価へ、同じモデルでつなぐ</div>
+      <p>前半で2009→2021の観測された再配置を評価し、そこで分かったトレンドと「どの動きがCO₂を増やしたか」を、後半の九大跡地の事前評価の基準とシナリオに使う。</p>
+      <div class="pm">
+        <span class="p">＋</span><span>論文の前半と後半が1本の筋になる。Urban Transitions の「実際に起きた転換」と「これからの転換」の両方に答えられる</span>
+        <span class="m">－</span><span>モデル自体の予測力を、観測された変化で確かめてはいない（前半も比較静学）。「事後評価」と書くときに注意が要る</span>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="tag"><span class="lv m">中</span>　N3　トレンドに沿う開発と逆らう開発で、CO₂と厚生の両立が変わるか（win-win の条件）</div>
+      <p>H3（win-win）を、跡地の開発がトレンドに沿う場合・逆らう場合で確かめる。</p>
+      <div class="pm"><span class="p">＋</span><span>仮説と直接つながる</span><span class="m">－</span><span>N1の一部として書くほうが強い</span></div>
+    </div>
+    <div class="opt">
+      <div class="tag"><span class="lv l">弱い</span>　N4　トレンドを基準にした（BAU）シナリオそのもの</div>
+      <div class="pm"><span class="m">－</span><span>計画の実務で普通に行われている。新規性としては主張しない</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <b>まとめると、論文の新規性はこう書ける（案）</b>
+    <p>観測された都市圏内の雇用の再配置を、交通・住宅・CO₂・厚生にまたがって評価し（前半）、その観測されたトレンドを使って、大規模な再開発の雇用がどこから来るかという仮定を根拠づけ、その仮定が事前評価の結論をどれだけ左右するかを示す（後半）。</p>
+    <p class="small"><b>言葉の意味：</b>「事後評価」＝2009→2021に実際に起きた雇用の再配置を、モデル上で評価すること（前半）。「事前評価」＝まだ起きていない九大跡地の再開発（2028年度まちびらき予定）の効果を、「再開発あり」と「なし（基準の都市）」の差としてモデルで見積もること（後半、シナリオB・C・T+・T−）。英語の ex-post / ex-ante に当たる。国交省の新規事業採択時評価などの行政の「事前評価」とは別物なので、論文では「将来シナリオの評価」などと言い換えるほうが安全。また前半・後半とも比較静学で、モデルの予測力を実績で確かめてはいない点に注意。</p>
+    <p class="small">Draft: We evaluate an observed intra-metropolitan redistribution of employment across transport, housing, emissions and welfare, and use the observed trend to discipline the displacement assumption in the ex-ante appraisal of a major redevelopment, showing how much the appraisal depends on where its jobs come from.</p>
+  </div>
+</section>
+
+<hr>
+
+<section id="s3b">
+  <div class="eyebrow">3+</div>
+  <h2>社会的にどう役立つか</h2>
+  <p>新規性を主張するには、<b>①まだ誰もやっていない</b>ことと、<b>②社会に必要な研究である</b>ことの両方が要ります。①だけだと「やられていないのは、やる意味がないからでは？」と言われます。ここでは②を整理します。</p>
+
+  <div class="rec">
+    <b>一言でいうと</b>
+    <span>大規模な再開発で「雇用がどこから来るか」は、自治体が誘致の仕方で<b>ある程度選べる</b>ものなのに、今の事業評価ではその違いが見えない。出どころでCO₂の符号まで変わるなら、<b>どこから雇用を呼ぶかが、脱炭素と暮らしやすさを左右する政策の選択肢</b>になる。この研究は、その選択肢を評価する方法と、福岡での具体的な答えを示す。</span>
+  </div>
+
+  <h3>社会への貢献の筋（4つ）</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>#</th><th>社会の側の問題</th><th>この研究が出せるもの</th><th>根拠の状況</th></tr></thead>
+    <tbody>
+      <tr><td>S1</td><td><b>誘致の仕方を決める根拠がない。</b>九大跡地は2026年3月に事業者が決まり、2028年度にまちびらきの予定。入る企業・機関が「市内の別の拠点から移ってくる」のか「市外・海外から新しく来る」のか「郊外から来る」のかは、誘致の対象や優遇の条件で、市や事業者がある程度左右できる</td><td>出どころ別に、CO₂・通勤時間・家賃・厚生がどう変わるかを示す。「どこから呼ぶとよいか（よくないか）」を、誘致の方針の判断材料にできる</td><td>跡地の計画は事業者の発表で確認済み。<b>市の誘致方針の中身は未確認</b>（要確認）</td></tr>
+      <tr><td>S2</td><td><b>今の事業評価では、移転の「場所」が見えない。</b>日本の費用便益分析は「事業あり・なし」の差、英国の手引きは「移転○%」を1つの数で差し引く。英国の What Works Centre のレビューでは、過去の地域振興策の多くで雇用の移転が観測されている一方、都市圏全体で見た正味の効果はよく分かっていない</td><td>移転率が同じでも、移転元の場所で評価の符号が変わりうることを示す → 「移転率だけで評価すると判断を誤る場面がある」と言える</td><td>英国の状況は What Works Centre の資料で確認（要旨レベル）。日本の手引きは前に確認済み</td></tr>
+      <tr><td>S3</td><td><b>拠点どうしの取り合い（ゼロサム）。</b>福岡都市圏は複数の拠点を同時に育てる計画（天神ビッグバン、博多コネクティッド、アイランドシティ、箱崎）。都市圏の雇用は伸びているが、新しい拠点ができると、その伸びや既存の雇用を他の拠点と分け合うことになる。どこが空くかは計画全体の整合性の問題</td><td>トレンド（周辺の拠点が伸び、内側の古い拠点が減る）と合わせて、「箱崎が、どの拠点の伸びを食うか」を示す。拠点を多く抱える日本の都市（大学跡地・工場跡地の再開発）にも共通の問い</td><td>2009→2021の拠点別の動きは手元のデータで確認済み（地図あり）</td></tr>
+      <tr><td>S4</td><td><b>脱炭素の目標との整合。</b>福岡市は2040年度に温室効果ガス実質ゼロを目指す（チャレンジ目標、「脱炭素戦略2040」を策定中）。大規模な開発のCO₂の評価が、交通だけ・出どころを無視したものだと、符号を取り違えるおそれ</td><td>交通と住宅の両方のCO₂で、出どころ別の符号と大きさを示す</td><td>2040年度目標は市の資料で確認。<b>市の排出に占める運輸の割合は未確認</b></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>新規性の候補ごとに、2つの条件を満たすか</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>候補</th><th>① 誰もやっていない</th><th>② 社会に必要</th><th>判定</th></tr></thead>
+    <tbody>
+      <tr><td>N1 出どころで評価が変わる</td><td>Webの要旨の範囲では見つからない（Scholarで要確認）</td><td>S1〜S4 すべてにつながる。特に S1（誘致方針）と S2（評価の盲点）</td><td><b>両方を満たしうる。中心に据える</b></td></tr>
+      <tr><td>N2 事後から事前へつなぐ</td><td>同じモデルで両方をやる例は少なそう（未確認）</td><td>「過去の動きから学んで次の開発に活かす」という形で S3 につながる</td><td>N1を支える役。単独では弱い</td></tr>
+      <tr><td>N3 win-win の条件</td><td>交通と住宅の相殺はリヨンですでに指摘あり</td><td>S4 につながる</td><td>N1の中の結果として書く</td></tr>
+      <tr><td>N4 トレンド基準のシナリオ</td><td>実務で普通に行われている</td><td>—</td><td>新規性にはしない</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>成長する都市圏での読み替え（2026-11-09 追加）</h3>
+  <p>福岡都市圏は人口・雇用とも伸びている（福岡市は2040年頃に約170万人でピークの見込み、従業者は2009→2021で +6.7%）。そのため跡地の1.5万人は、次の3つが混ざったものと考えるのが自然です。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>跡地の雇用の中身</th><th>再開発がなかったら</th><th>今のモデルでの扱い</th></tr></thead>
+    <tbody>
+      <tr><td>ア　都市圏の成長の分（デッドウェイトに近い）</td><td>都市圏の<b>どこか別の場所</b>で増えていた（トレンドどおりなら、アイランドシティや学研都市などの周辺の拠点）</td><td>「トレンドが続いた将来」を基準にし、その伸びの一部を跡地に付け替える ＝ <b>T+ シナリオ</b></td></tr>
+      <tr><td>イ　既存の拠点からの移転</td><td>今の場所（天神・博多など）にとどまっていた</td><td>B・C・T−（どこから減らすかの違い）</td></tr>
+      <tr><td>ウ　都市圏の外から新しく来る分</td><td>都市圏に来なかった</td><td>今は扱っていない。総数を増やすシナリオ（今後の作業 t27）で扱える</td></tr>
+    </tbody>
+  </table></div>
+  <p>大事なのは、<b>アもイと同じく「場所の付け替え」</b>だという点です。成長の分であっても、「本来どこで増えていたか」によって通勤とCO₂の評価が変わります。むしろ成長している都市圏のほうが、「伸びをどこに置くか」が開発の評価の中心になります。したがって、成長は論文から外すのではなく、<b>基準の都市（トレンドが続いた将来）に成長を入れ、その上で出どころを比べる</b>形で取り込みます。ウ（都市圏全体の雇用が増える効果）は、出どころの議論とは別に、感度分析として示します。</p>
+
+  <h3>②を論文で示すために必要なこと</h3>
+  <ol>
+    <li><b>差が「大きい」ことを示す。</b>出どころによる評価の幅（5+章の②）が、各シナリオの跡地の効果（5+章の①）と比べて無視できない大きさでないと、社会的な意味は弱くなる。今の結果では、①は 今×B が CO₂ +0.13%、今×C が −0.57%、②（B−C）は <b>0.70ポイント</b>で、①のどちらの大きさ（0.13・0.57）も上回っている。新しい設定（32中心地・較正08）で計算し直したうえで、物差しを2つ使って示す：(a) 主な見通し「将来×T+」の①と比べる、(b) トレンドが7年続くこと自体の効果（④）と比べる。</li>
+    <li><b>誘致で出どころが変わりうることを、資料で示す。</b>福岡市の企業誘致の方針（補助・優遇の対象、市外からの誘致の実績など）と、九大跡地の計画（どんな企業・機関を想定しているか）を確認する。「出どころは選べない」と言われると S1 が弱くなる。</li>
+    <li><b>出どころの幅を、観測されたトレンドで絞る。</b>「何でもありの感度分析」ではなく、「観測と整合するのはこのあたり」まで言えると、実務で使える答えになる。</li>
+    <li><b>移転元の側の影響も示す。</b>空く拠点の周りで、家賃・通勤・厚生がどう変わるか（誰が得をして誰が損をするか）。地域別の厚生の帰着は、公平性の観点で査読に響きやすい。</li>
+  </ol>
+
+  <div class="card">
+    <b>論文の Introduction の書き出し（案、2026-11-09 改訂）</b>
+    <p>大規模な再開発は雇用を「つくる」と言われる。しかし、その雇用の多くは、再開発がなくても都市圏のどこかで生まれていたか、都市圏内の別の場所から移ってくる。福岡都市圏のように雇用が伸びている都市圏では、問題は「雇用が増えるか」よりも、「その伸びがどこに置かれるか」になる。事業評価はこの部分を1つの割合で差し引くだけで、再開発がなかったら雇用がどこにあったかを問わない。しかし通勤とCO₂、家賃と厚生は、雇用の量よりも、その雇用が本来どこにあったかに強く左右されうる。本研究は、福岡都市圏で2009→2021年に観測された雇用の再配置を手がかりに、九州大学箱崎キャンパス跡地の再開発の評価が、雇用の出どころの仮定でどれだけ変わるかを示す。</p>
+    <p class="small">Draft: Large redevelopments are said to "create" jobs, yet many of these jobs would have arisen elsewhere in the region anyway, or relocate from existing centres. In a growing metropolitan area such as Fukuoka, the question is less whether jobs grow than where that growth is placed. Appraisal deducts this as a single share and does not ask where the jobs would otherwise have been. Yet commuting and emissions, rents and welfare may depend more on that counterfactual location than on the number of jobs. Using the redistribution of employment observed in Fukuoka between 2009 and 2021, we show how much the appraisal of the Kyushu University Hakozaki redevelopment depends on where its jobs come from.</p>
+    <p class="small">前の案の「雇用の総数が大きく増えない中では」は誤りでした。福岡市の人口は2040年頃に約170万人でピークになる見込みで（市の推計）、都市圏の従業者も2009→2021で +6.7% 増えています。成長を論文から外すのではなく、上の「成長する都市圏での読み替え」のように取り込みます。</p>
+  </div>
+  <p class="small">S1〜S4の根拠のうち「未確認」としたもの（市の誘致方針、市の排出に占める運輸の割合）は、論文に書く前に市の資料で確認が必要です。What Works Centre の内容は要旨・解説記事の範囲で、元のレビュー（2016）は読んでいません。</p>
+</section>
+
+<hr>
+
+<!-- 4 -->
+<section id="s4">
+  <div class="eyebrow">4</div>
+  <h2>観測されたトレンドと、B・Cの読み方</h2>
+  <div class="card">
+    <p>17拠点で見た 2009→2021 の従業者数の変化（都市圏の合計は +6.7%）。合計より伸びた拠点は「シェアが増えた」、合計より伸びが小さい拠点は「シェアが減った」ことになります。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>動き</th><th>拠点（増減率）</th></tr></thead>
+      <tbody>
+        <tr><td>シェアが大きく増えた（周辺の新しい拠点）</td><td>アイランドシティ +90%、九大学研都市 +25%、福間 +20%、前原 +19%、香椎 +16%、姪浜 +12%、二日市 +11%</td></tr>
+        <tr><td>ほぼ横ばい</td><td>天神＋博多（都心）+7.1%、古賀 +9%</td></tr>
+        <tr><td>シェアが減った（内側の古い拠点）</td><td>箱崎 +5.7%（2014年は高く、その後減少）、太宰府 +4%、赤間 +3%、春日原 +3%、六本松 +2%、西新 −2%、大橋 −1%、雑餉隈 −8%</td></tr>
+      </tbody>
+    </table></div>
+    <p class="small">17拠点・ボロノイでの値（planning-history）。中心地32・所要時間の新しい設定で計算し直します。</p>
+  </div>
+  <div class="card">
+    <b>この表から見たB・Cの意味（案）</b>
+    <ul>
+      <li><b>C（郊外の遠い中心地から集める）</b>：最近伸びてきた周辺の拠点（福間・前原・学研都市など）の雇用を、内側の箱崎に引き戻す形。<b>2009→2021 の分散のトレンドに逆らう</b>開発と読める。結果はCO₂ −0.57%。</li>
+      <li><b>B（一律）</b>：どこからも同じ割合で来る。<b>トレンドに中立</b>な基準。CO₂ +0.13%。</li>
+      <li><b>トレンドに沿う（新）</b>：跡地の雇用は、「これから伸びるはずだった拠点」の伸びの一部を取ってくる、と考える（伸び率に比例して出どころを割り振る）。</li>
+      <li><b>内側で取り合う（新）</b>：シェアが減っている内側の拠点（雑餉隈・大橋・西新・六本松）から移ってくる。古い拠点の衰退を早める形。</li>
+    </ul>
+    <p class="small">手元の結果だけでも、「分散のトレンドに逆らって内側に集める開発（C）はCO₂を減らすが、中立の開発（B）は増やす」と読めます。ただし、CとBでは出どころの空間的な位置と、出どころのゾーンの大きさの両方が違うので、どちらが効いているかを分けて示す必要があります。</p>
+  </div>
+</section>
+
+<hr>
+
+<!-- 5 -->
+<section id="s5">
+  <div class="eyebrow">5</div>
+  <h2>シナリオの具体的な作り方（案）</h2>
+  <div class="card">
+    <ol>
+      <li><b>トレンドを数字にする</b>：中心地32ごとに、2009→2014→2021 のシェアの変化（年あたり）を出す。</li>
+      <li><b>層1（基準の都市）</b>：(i) 2021年のまま、(ii) シェアの変化を2028年（まちびらき）まで延ばした将来。総数は2021年にそろえる（分布の効果だけを見るため）。</li>
+      <li><b>層2（雇用の出どころ）</b>：B 一律、C 郊外から、T+ トレンドに沿う（伸び率に比例）、T− 内側で取り合う（シェアの減り方に比例）。必要なら「全部が新しい雇用（総数が増える）」も参考に。</li>
+      <li><b>評価</b>：「再開発あり − なし」を、層1の2通り × 層2の4通りで出す。EVは基準の都市の家賃で測る。</li>
+      <li><b>読み方</b>：観測されたトレンドに整合する出どころ（T+）を「主」の予想とし、B・C・T− はその幅として示す。結論は「出どころでどれだけ変わるか」と「トレンドに沿う場合の効果」。</li>
+    </ol>
+    <p class="small">計算量：1シナリオ約10分（案C導入後）。層1×層2で8本＋感度分析。1日あれば回せる量です。</p>
+  </div>
+</section>
+
+<hr>
+
+<!-- 5+ -->
+<section id="s5b">
+  <div class="eyebrow">5+</div>
+  <h2>8本のシナリオで、何を比べて何が分かるか</h2>
+  <p>8本の計算結果（と、再開発なしの基準2本）から、比べ方を変えると別々のことが分かります。記号は、基準の都市を <b>X</b>（今／将来）、出どころを <b>S</b>（B・C・T+・T−）、ある指標（CO₂、厚生など）の値を <b>Y</b> とします。</p>
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図　比べ方の4つの向き</div>
+    <div class="svgbox"><svg viewBox="0 0 400 262" role="img" aria-label="2行×5列の表。列は基準（再開発なし）とB・C・T+・T−、行は今と将来。①基準からの差＝跡地の効果、②横の比較＝出どころの差、③縦の比較＝基準の作り方の差、④基準どうしの差＝トレンドが続くこと自体の効果">
+<defs><marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="acc"/></marker></defs>
+<text x="10" y="18" font-size="11" font-weight="700">2通りの基準 × 4通りの出どころ</text>
+<text x="41" y="44" font-size="10.5" font-weight="700" text-anchor="middle">なし（基準）</text>
+<text x="129" y="44" font-size="10.5" font-weight="700" text-anchor="middle">B</text>
+<text x="201" y="44" font-size="10.5" font-weight="700" text-anchor="middle">C</text>
+<text x="273" y="44" font-size="10.5" font-weight="700" text-anchor="middle">T+</text>
+<text x="345" y="44" font-size="10.5" font-weight="700" text-anchor="middle">T−</text>
+<rect class="boxa" x="10" y="54" width="62" height="40" rx="6"/>
+<text x="41" y="72" font-size="9.5" text-anchor="middle">今</text>
+<text x="41" y="85" font-size="8.5" text-anchor="middle" class="mut">再開発なし</text>
+<rect class="box" x="96" y="54" width="66" height="40" rx="6"/>
+<text x="129" y="72" font-size="9.5" text-anchor="middle">今×B</text>
+<text x="129" y="85" font-size="8.5" text-anchor="middle" class="mut">計算済み</text>
+<rect class="box" x="168" y="54" width="66" height="40" rx="6"/>
+<text x="201" y="72" font-size="9.5" text-anchor="middle">今×C</text>
+<text x="201" y="85" font-size="8.5" text-anchor="middle" class="mut">計算済み</text>
+<rect class="box" x="240" y="54" width="66" height="40" rx="6"/>
+<text x="273" y="72" font-size="9.5" text-anchor="middle">今×T+</text>
+<rect class="box" x="312" y="54" width="66" height="40" rx="6"/>
+<text x="345" y="72" font-size="9.5" text-anchor="middle">今×T−</text>
+<rect class="boxa" x="10" y="150" width="62" height="40" rx="6"/>
+<text x="41" y="168" font-size="9.5" text-anchor="middle">将来</text>
+<text x="41" y="181" font-size="8.5" text-anchor="middle" class="mut">再開発なし</text>
+<rect class="box" x="96" y="150" width="66" height="40" rx="6"/>
+<text x="129" y="168" font-size="9.5" text-anchor="middle">将来×B</text>
+<rect class="box" x="168" y="150" width="66" height="40" rx="6"/>
+<text x="201" y="168" font-size="9.5" text-anchor="middle">将来×C</text>
+<rect class="boxw" x="240" y="150" width="66" height="40" rx="6"/>
+<text x="273" y="168" font-size="9.5" text-anchor="middle">将来×T+</text>
+<text x="273" y="181" font-size="8.5" text-anchor="middle" class="mut">主な見通し</text>
+<rect class="box" x="312" y="150" width="66" height="40" rx="6"/>
+<text x="345" y="168" font-size="9.5" text-anchor="middle">将来×T−</text>
+<line x1="73" y1="74" x2="94" y2="74" class="accs" stroke-width="2" marker-end="url(#ah2)"/>
+<circle cx="83" cy="62" r="7" class="acc"/><text x="83" y="65.5" font-size="9" text-anchor="middle" style="fill:#fff">1</text>
+<line x1="41" y1="96" x2="41" y2="148" class="accs" stroke-width="2" marker-end="url(#ah2)"/>
+<circle cx="56" cy="122" r="7" class="acc"/><text x="56" y="125.5" font-size="9" text-anchor="middle" style="fill:#fff">4</text>
+<line x1="273" y1="96" x2="273" y2="148" class="accs" stroke-width="2" marker-start="url(#ah2)" marker-end="url(#ah2)"/>
+<circle cx="288" cy="122" r="7" class="acc"/><text x="288" y="125.5" font-size="9" text-anchor="middle" style="fill:#fff">3</text>
+<path d="M100,200 L100,210 L374,210 L374,200" fill="none" class="accs" stroke-width="2"/>
+<circle cx="237" cy="222" r="7" class="acc"/><text x="237" y="225.5" font-size="9" text-anchor="middle" style="fill:#fff">2</text>
+<text x="200" y="244" font-size="9.5" text-anchor="middle" class="mut">① 基準との差＝跡地の効果　② 横に比べる＝出どころの差</text><text x="200" y="258" font-size="9.5" text-anchor="middle" class="mut">③ 縦に比べる＝基準の作り方の差　④ 基準どうし＝トレンド自体の効果</text>
+</svg></div>
+    <div class="cap">マス1つが1回の計算。左端の「なし（基準）」も計算が必要（今の基準は計算済み、将来の基準は新しく作る）。</div>
+  </figure>
+
+  <h3>比べ方の一覧</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>#</th><th>何と何を比べるか</th><th>何が分かるか</th><th>論文での使い方・仮説</th></tr></thead>
+    <tbody>
+      <tr><td>①</td><td><b>同じ基準の中で、再開発あり − なし</b><br>Y(X, S) − Y(X, なし)</td><td>その仮定のもとでの<b>跡地の効果</b>。CO₂・通勤・家賃・厚生（EV）がどれだけ変わるか。8通り出る</td><td>九大跡地の評価そのもの。「将来×T+」を主な見通しとして示す</td></tr>
+      <tr><td>②</td><td><b>同じ基準の中で、出どころどうし</b><br>Y(X, S₁) − Y(X, S₂)（基準は打ち消し合う）</td><td><b>出どころの仮定だけで、評価がどれだけ変わるか</b>。4本の最大−最小が「出どころの仮定による評価の幅」</td><td><b>新規性N1の中心の結果</b>。特に意味のある組：<br>・<b>B と C</b>：中立な出どころ vs 郊外から呼び戻す（分散の流れに逆らう）<br>・<b>T+ と T−</b>：トレンドに沿う vs 内側で取り合う<br>今の結果（今×B と 今×C）：CO₂で 0.70ポイントの差、符号も逆</td></tr>
+      <tr><td>③</td><td><b>同じ出どころで、基準どうし</b><br>[Y(将来, S) − Y(将来, なし)] − [Y(今, S) − Y(今, なし)]</td><td><b>比べる相手の作り方で、評価が変わるか</b>。将来の都市では周辺の拠点が大きく、雇用も増えているので、同じ「一律」でも中身が変わる</td><td>結論の頑健さの確認。②の大小関係（どの出どころがCO₂を減らすか）が今・将来の両方で同じなら、結論が強い</td></tr>
+      <tr><td>④</td><td><b>基準どうし（再開発なし）</b><br>Y(将来, なし) − Y(今, なし)</td><td><b>トレンドが2028年まで続くこと自体の効果</b>（分散＋雇用の伸び）。再開発がなくても起きる変化</td><td>物差しとして使う：「跡地の効果は、トレンド7年分の変化を何%打ち消す（強める）か」。前半の結果ともつながる</td></tr>
+      <tr><td>⑤</td><td><b>前半の結果と比べる</b><br>①の効果 vs 2009→2021 の雇用の動きの効果</td><td>跡地1か所の開発が、<b>12年間に実際に起きた雇用の動き全体</b>と比べてどれくらいの大きさか。T+（流れを続ける）と T−（流れを戻す）の符号が、前半で見た「分散の効果」の符号と整合するか</td><td>論文の前半と後半をつなぐ（N2）。H5（政策どおりの拠点の成長はCO₂を減らしたか）の裏返しの確認にもなる</td></tr>
+      <tr><td>⑥</td><td><b>①の中身を分ける</b>（どのマスでも）</td><td>・交通CO₂ と 住宅CO₂ が逆向きか（<b>H4</b>）<br>・自動車→鉄道の転換が起きたか（<b>H2</b>）<br>・CO₂減と厚生増が両立するか（<b>H3</b> win-win）<br>・平均通勤距離が延びたか縮んだか（<b>H1</b>）<br>・<b>地域別</b>の厚生・家賃：雇用が抜けた拠点の周りで誰が損をし、跡地の周りで誰が得をするか</td><td>仮説H1〜H4を、観測（前半）と将来（後半）の両方で確かめる。地域別の帰着は社会への示唆（3+章 S3）に使う</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="caution"><b>「今×T+」の意味に注意</b><span>「今」の基準には成長が入っていないので、「今×T+」は「周辺の伸びている拠点の<b>今いる</b>雇用を箱崎が奪う」という意味になります（箱崎が周辺の拠点と競合する）。「将来×T+」は「周辺で<b>これから増えるはずだった</b>分を箱崎が受け取る」という意味です。同じT+でも中身が違うので、論文では名前を分けるか、「今×T+」を省くことを検討します。</span></div>
+
+  <div class="rec"><b>論文の主な結果の形（案）</b>
+    <span>・主な見通し：「将来×T+」の跡地の効果（①）<br>・その幅：8本の①の最小〜最大、うち出どころによる幅（②）と基準による幅（③）を分けて示す<br>・物差し：トレンド自体の効果（④）と、前半の観測された変化（⑤）<br>・中身：交通と住宅、地域別（⑥）</span></div>
+</section>
+
+<hr>
+
+<!-- 6 -->
+<section id="s6">
+  <div class="eyebrow">6</div>
+  <h2>弱点と、査読で突かれそうな点</h2>
+  <div class="caution">
+    <ul>
+      <li><b>トレンドが続く根拠</b>：12年・3時点のトレンドを7年先まで延ばすのは単純すぎる、と言われうる。延ばすのは「基準の都市」だけにして、出どころの割り振りはトレンドに比例させるだけにするなど、仮定を軽くする工夫が要る。</li>
+      <li><b>九大跡地の1.5万人の根拠</b>：公表資料に就業者数の目標値が見つからない。計画の延床面積×就業者密度などで根拠を作るか、数通りの規模で示す必要がある。</li>
+      <li><b>跡地には住宅もできる</b>：スマートシティ計画は住宅も含むが、今のシナリオは雇用だけを動かす。限界として書くか、居住側の変更も入れるか。</li>
+      <li><b>雇用は外生</b>：出どころを分析者が与える点は変わらない。「どこから来るかを予測する」のではなく、「仮定によって評価がどれだけ変わり、観測と整合するのはどれか」を示す研究だと位置づける必要がある。</li>
+      <li><b>1都市の1事業</b>：一般化の範囲は限られる。方法（トレンドで出どころを縛る）を主張の中心にし、福岡は適用例とする。</li>
+      <li><b>前半（2009→2021）の効果が小さい場合</b>：移動は全体の約5%なので、前半の効果は小さく出る可能性が高い。その場合でも、後半の「出どころで評価が変わる」は独立に成り立つので、論文の主張は後半寄りにできる（保険になる）。</li>
+    </ul>
+  </div>
+</section>
+
+<hr>
+
+<!-- 7 -->
+<section id="s7">
+  <div class="eyebrow">7</div>
+  <h2>判断していただきたいこと</h2>
+  <div class="opts">
+    <div class="opt pick">
+      <div class="tag">判断1　論文の構成と新規性</div>
+      <p><b>推奨</b>：前半＝2009→2021の観測された再配置の評価（RQ1〜3）、後半＝観測トレンドで出どころを根拠づけた九大跡地の事前評価（新しいRQ5）。新規性は N1（＋N2のつながり）。</p>
+      <p class="small">RQ5（案）：九大箱崎キャンパス跡地の再開発がCO₂と厚生に与える効果は、その雇用がどこから来るか（観測された分散のトレンドに沿うか逆らうか）によってどれだけ変わるか。</p>
+    </div>
+    <div class="opt pick">
+      <div class="tag">判断2　作るシナリオ</div>
+      <p><b>推奨</b>：層1 2通り（2021年のまま／トレンドを2028年まで延ばす）× 層2 4通り（B・C・トレンドに沿う・内側で取り合う）。</p>
+    </div>
+    <div class="opt pick">
+      <div class="tag">判断3　跡地の規模（1.5万人）</div>
+      <p><b>推奨</b>：今の1.5万人の根拠を先生に確認。根拠がなければ、計画の床面積から推計した値を主にし、0.5倍・2倍でも示す。</p>
+    </div>
+  </div>
+  <div class="reply">
+    <label for="replytxt" class="small">直したいところだけ書き換えて、コピーしてチャットに貼ってください。</label>
+    <textarea id="replytxt">1. 構成：前半＝2009→2021の評価、後半＝トレンドで出どころを根拠づけた九大跡地の評価（RQ5追加）でOK
+2. シナリオ：層1 2通り × 層2 4通りでOK
+3. 1.5万人：先生に根拠を確認する（私から）</textarea>
+    <button id="copybtn" type="button">コピー</button>
+    <span id="copymsg" class="small" aria-live="polite"></span>
+  </div>
+  <div class="card">
+    <b>参考にした資料</b>
+    <ul class="small">
+      <li>Regional Studies：From forecasts to scenarios in strategic city-regional land-use and transportation planning（趨勢シナリオを基準にする実務）</li>
+      <li>What Works Centre for Local Economic Growth：Enterprise zones may increase employment but they could just be taking it from somewhere else（移転の実証の整理）</li>
+      <li>福岡市：脱炭素戦略2040（2040年度に温室効果ガス実質ゼロのチャレンジ目標、策定資料）</li>
+      <li>国土交通省都市局（2019）『市街地再開発事業の費用便益分析マニュアル（案）平成30年度改訂版第2版』https://www.mlit.go.jp/toshi/city/sigaiti/content/001736534.pdf</li>
+      <li>国土交通省（2023）『公共事業評価の費用便益分析に関する技術指針（共通編）』令和5年9月（最新は令和7年9月改定。https://www.mlit.go.jp/tec/hyouka/public/09_public_08.html）</li>
+      <li>Ueda, T., Tsutsumi, M., Muto, S., Yamasaki, K. (2013) Unified computable urban economic model. <i>Annals of Regional Science</i> 50(1), 341–362. doi:10.1007/s00168-012-0499-z</li>
+      <li>Homes and Communities Agency (2014) <i>Additionality Guide</i>, 4th ed.（現在は廃止扱い、MHCLG の手引きに引き継ぎ）https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/378177/additionality_guide_2014_full.pdf</li>
+      <li>MHCLG (2025) <i>The Appraisal Guide</i>, 3rd ed. https://assets.publishing.service.gov.uk/media/67fe6be1ed87b8160854670a/MHCLG_The_Appraisal_Guide.pdf</li>
+      <li>Department for Transport (2026) <i>TAG Unit A2.1 Wider Economic Impacts Appraisal</i>（2026年5月版）https://www.gov.uk/transport-analysis-guidance-tag</li>
+      <li>BIS (2009) <i>Research to improve the assessment of additionality</i>（HCA 表4.7 の移転率の平均の出典。本文は未読）</li>
+      <li>国土交通省：市街地再開発事業の費用便益分析マニュアル（事業あり・なしの差）、CUEモデルの実務資料</li>
+      <li>A LUTI agent-based model of Lyon area（中心地を減らすと住宅床面積の増加が温室効果ガスの減少を打ち消しうる）</li>
+      <li>Scale effect in a LUTI model of Brussels（多核構造ほどゾーンの切り方に敏感）</li>
+      <li>英国交通省：Transport appraisal and quantitative spatial economics（QSMによる事前評価）</li>
+      <li>九州大学・UR・JR九州など：箱崎キャンパス跡地の土地利用事業者の決定（2026-03、2028年度まちびらき）</li>
+    </ul>
+  </div>
+</section>
+</div>
+
+<script>
+(function(){
+  var b=document.getElementById('copybtn'),t=document.getElementById('replytxt'),m=document.getElementById('copymsg');
+  if(b) b.addEventListener('click',function(){
+    var done=function(){m.textContent='コピーしました';};
+    var fb=function(){t.focus();t.select();m.textContent='選択しました。長押しでコピーしてください';};
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(done,fb);} else fb(); }catch(e){fb();}
+  });
+})();
+</script>

@@ -1,0 +1,475 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+
+次のパッケージを付け加えます: ‘dplyr’
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    filter, lag
+
+以下のオブジェクトは ‘package:base’ からマスクされています:
+
+    intersect, setdiff, setequal, union
+
+要求されたパッケージ sp をロード中です
+
+次のパッケージを付け加えます: ‘raster’
+
+以下のオブジェクトは ‘package:dplyr’ からマスクされています:
+
+    select
+
+terra 1.9.27
+
+次のパッケージを付け加えます: ‘terra’
+
+以下のオブジェクトは ‘package:tidyr’ からマスクされています:
+
+    extract
+
+
+次のパッケージを付け加えます: ‘janitor’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    crosstab
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    crosstab
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    chisq.test, fisher.test
+
+Reading layer `MEAmap3' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/UEA' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 222 features and 30 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 123.4578 ymin: 24.32743 xmax: 146.4404 ymax: 45.52638
+Geodetic CRS:  JGD2000
+Reading layer `MESH05030' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/raw/1kmメッシュ福岡境界データ' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 5600 features and 5 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 130 ymin: 33.33333 xmax: 131 ymax: 34
+Geodetic CRS:  JGD2000
+Coordinate Reference System:
+  User input: EPSG:6670 
+  wkt:
+PROJCRS["JGD2011 / Japan Plane Rectangular CS II",
+    BASEGEOGCRS["JGD2011",
+        DATUM["Japanese Geodetic Datum 2011",
+            ELLIPSOID["GRS 1980",6378137,298.257222101,
+                LENGTHUNIT["metre",1]]],
+        PRIMEM["Greenwich",0,
+            ANGLEUNIT["degree",0.0174532925199433]],
+        ID["EPSG",6668]],
+    CONVERSION["Japan Plane Rectangular CS zone II",
+        METHOD["Transverse Mercator",
+            ID["EPSG",9807]],
+        PARAMETER["Latitude of natural origin",33,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8801]],
+        PARAMETER["Longitude of natural origin",131,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["Scale factor at natural origin",0.9999,
+            SCALEUNIT["unity",1],
+            ID["EPSG",8805]],
+        PARAMETER["False easting",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["northing (X)",north,
+            ORDER[1],
+            LENGTHUNIT["metre",1]],
+        AXIS["easting (Y)",east,
+            ORDER[2],
+            LENGTHUNIT["metre",1]],
+    USAGE[
+        SCOPE["Cadastre, engineering survey, topographic mapping (large and medium scale)."],
+        AREA["Japan - onshore - Kyushu east of approximately 130°E - Fukuoka-ken; Saga-ken; Kumamoto-ken; Oita-ken; Miyazaki-ken; Kagoshima-ken (except for area within Japan Plane Rectangular Coordinate System zone I)."],
+        BBOX[30.18,129.76,33.99,132.05]],
+    ID["EPSG",6670]]
+options:        ENCODING=CP932 
+Reading layer `L03-b-16_5030' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/raw/NLNI_Fukuoka' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 550000 features and 3 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 130 ymin: 33.33333 xmax: 131 ymax: 34
+Geodetic CRS:  JGD2000
+[1] "over10のメッシュ数: 895"
+[1] "総メッシュ数: 1356"
+Deleting layer `bnd_mesh_wL10' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10' to data source 
+  `data/processed/bnd_mesh_wL10' using driver `ESRI Shapefile'
+Writing 895 features with 1 fields and geometry type Polygon.
+Deleting layer `bnd_mesh_wL10_wE' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10_wE' to data source 
+  `data/processed/bnd_mesh_wL10_wE' using driver `ESRI Shapefile'
+Writing 895 features with 2 fields and geometry type Polygon.
+Reading layer `bnd_mesh_wL10_wE' from data source 
+  `/Users/natsumioi/Library/CloudStorage/GoogleDrive-natunatu88946al@gmail.com/マイドライブ/01_研究室・学業/1_Projects/LUTI/data/processed/bnd_mesh_wL10_wE' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 895 features and 2 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -89473.49 ymin: 37055.84 xmax: -32407.09 ymax: 101815.2
+Projected CRS: JGD2011 / Japan Plane Rectangular CS II
+Deleting layer `bnd_mesh_wL10_filterd' using driver `ESRI Shapefile'
+Writing layer `bnd_mesh_wL10_filterd' to data source 
+  `data/processed/bnd_mesh_wL10_filterd' using driver `ESRI Shapefile'
+Writing 883 features with 2 fields and geometry type Polygon.
+
+次のパッケージを付け加えます: ‘igraph’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    blocks, compare, union
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    union
+
+以下のオブジェクトは ‘package:dplyr’ からマスクされています:
+
+    as_data_frame, groups, union
+
+以下のオブジェクトは ‘package:tidyr’ からマスクされています:
+
+    crossing
+
+以下のオブジェクトは ‘package:stats’ からマスクされています:
+
+    decompose, spectrum
+
+以下のオブジェクトは ‘package:base’ からマスクされています:
+
+    union
+
+udunits database from /Library/Frameworks/R.framework/Versions/4.6/Resources/library/units/share/udunits/udunits2.xml
+[1] "削除された孤立居住地数: 37"
+[1] "削除された孤立従業地数: 1"
+要求されたパッケージ foreach をロード中です
+要求されたパッケージ iterators をロード中です
+Package 'GA' version 3.2.5
+Type 'citation("GA")' for citing this R package in publications.
+
+次のパッケージを付け加えます: ‘GA’
+
+以下のオブジェクトは ‘package:utils’ からマスクされています:
+
+    de
+
+[GA住宅土地統計調査版] 比較に使う市区町村数: 30 
+[住宅土地統計調査版] 単発テスト fitness値: -20.20096 
+ [1] -40.35 -39.28 -43.46 -42.58 -44.38 -41.60 -37.57 -42.90 -43.22 -39.20
+
+使用するグローバルパラメータ（07_ga-housing-survey-target の記録値）:
+  alpha_a   gamma_0   gamma_1   theta_H   theta_L 
+0.2844877 0.4964926 0.5757613 0.2519312 3.3892956 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.0200938686580917,842.244016450055 
+[debug2] gap= 0.0009835342  iteration= 112  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 1 , diff= 922468.6 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.00845462921342869,829.640439687446 
+[debug2] gap= 0.0009349227  iteration= 55  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 2 , diff= 40995.42 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.00691282667431861,837.850465325291 
+[debug2] gap= 0.0009244096  iteration= 68  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 3 , diff= 4764.848 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.00648014782616441,839.998780146455 
+[debug2] gap= 0.0008973191  iteration= 47  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 4 , diff= 572.8491 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.00634160283253911,842.184263901072 
+[debug2] gap= 0.0009508431  iteration= 63  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 5 , diff= 103.7148 
+[debug] termcd= 2  NA(v_equilibrium)= 0  NA(l_i_j)= 0  NA(P.car)= 0  NA(disposable_income_ij)= 0  NA(ODD.car)= 0  NA(demand)= 0  range(demand)= 0.00627946934802101,841.431470256196 
+[debug2] gap= 0.000942569  iteration= 70  NA(cost)= 0  Inf(cost)= 0  NA(flow)= 0  neg(flow)= 0  NA(capacity)= 0  zero(capacity)= 0 
+ii= 6 , diff= 21.54111 
+
+次のパッケージを付け加えます: ‘patchwork’
+
+以下のオブジェクトは ‘package:terra’ からマスクされています:
+
+    area
+
+以下のオブジェクトは ‘package:raster’ からマスクされています:
+
+    area
+
+wCorr v1.9.8
+
+# A tibble: 31 × 6
+   CITY_NAME    cover_rate hab_rate in_5030 used  keep 
+   <chr>             <dbl>    <dbl>   <dbl> <lgl> <lgl>
+ 1 飯塚市          0.00606  0.00172   1     TRUE  FALSE
+ 2 岡垣町          0.0215   0.00825   1     TRUE  FALSE
+ 3 鞍手町          0.0548   0.0118    1     TRUE  FALSE
+ 4 宮若市          0.0326   0.0306    1     TRUE  FALSE
+ 5 久留米市        0.0121   0.0550    0.234 TRUE  FALSE
+ 6 筑前町          0.159    0.191     1     TRUE  FALSE
+ 7 大刀洗町        0.204    0.207     1.00  TRUE  FALSE
+ 8 那珂川市        0.179    0.380     1.000 TRUE  FALSE
+ 9 須恵町          0.409    0.514     1     TRUE  TRUE 
+10 篠栗町          0.343    0.849     1.000 TRUE  TRUE 
+11 久山町          0.348    0.850     1.000 FALSE FALSE
+12 古賀市          0.677    0.860     1.00  TRUE  TRUE 
+13 筑紫野市        0.632    0.910     1.00  TRUE  TRUE 
+14 新宮町          0.754    0.912     1     TRUE  TRUE 
+15 小郡市          0.952    0.945     1     TRUE  TRUE 
+16 福岡市博多区    0.936    0.957     1.00  TRUE  TRUE 
+17 宗像市          0.800    0.959     0.992 TRUE  TRUE 
+18 福岡市西区      0.770    0.962     1     TRUE  TRUE 
+19 福岡市東区      0.839    0.967     1.000 TRUE  TRUE 
+20 大野城市        0.651    0.967     1.000 TRUE  TRUE 
+21 福岡市早良区    0.447    0.969     1.000 TRUE  TRUE 
+22 太宰府市        0.725    0.970     1     TRUE  TRUE 
+23 宇美町          0.508    0.974     1.000 TRUE  TRUE 
+24 粕屋町          0.956    0.985     1.000 TRUE  TRUE 
+25 糸島市          0.732    0.986     1.000 TRUE  TRUE 
+26 福津市          0.895    0.988     1.00  TRUE  TRUE 
+27 福岡市中央区    0.985    0.996     1.00  TRUE  TRUE 
+28 福岡市城南区    0.893    0.999     1.000 TRUE  TRUE 
+29 福岡市南区      0.940    1         1     TRUE  TRUE 
+30 春日市          1.000    1         1.000 TRUE  TRUE 
+31 志免町          1        1         1     TRUE  TRUE 
+# A tibble: 5 × 6
+  indicator  target      n    R2  R2_w log_err
+  <chr>      <chr>   <int> <dbl> <dbl>   <dbl>
+1 household  all       815 0.610 0.419  0.418 
+2 rent       all        30 0.844 0.846  0.131 
+3 rent       hab>=th    22 0.841 0.845  0.131 
+4 floor_area all        30 0.559 0.692  0.0345
+5 floor_area hab>=th    22 0.644 0.703  0.0344
+床面積（市区町村・住宅土地統計調査） R²: 0.5591597 
+=== Scenario Definitions ===
+scn0 : Base Scenario (Current Conditions) 
+  Total employment: 1226208 
+scn1 : Scenario 1: Uniform Distribution 
+  Total employment: 1226206 
+scn2 : Scenario 2: CBD-Distance Weighted 
+  Total employment: 1226209 
+
+=== Running: Base Scenario (Current Conditions) ===
+Scenario: scn0  | Iter: 1  | diff: 4.46e+01 
+Converged: TRUE  in  1  iterations
+
+
+=== Running: Scenario 1: Uniform Distribution ===
+Scenario: scn1  | Iter: 1  | diff: 1.35e+03 
+Scenario: scn1  | Iter: 2  | diff: 3.44e+02 
+Scenario: scn1  | Iter: 3  | diff: 8.29e+01 
+Converged: TRUE  in  3  iterations
+
+
+=== Running: Scenario 2: CBD-Distance Weighted ===
+Scenario: scn2  | Iter: 1  | diff: 7.81e+03 
+Scenario: scn2  | Iter: 2  | diff: 6.91e+02 
+Scenario: scn2  | Iter: 3  | diff: 1.09e+02 
+Scenario: scn2  | Iter: 4  | diff: 1.43e+02 
+Scenario: scn2  | Iter: 5  | diff: 5.34e+01 
+Converged: TRUE  in  5  iterations
+
+[1] "scn1平均厚生の変化率: 1.0029"
+[1] "scn2平均厚生の変化率: 1.0179"
+[1] "scn0 自動車CO2: 3290.1 tCO2/日"
+[1] "scn1 自動車CO2: 3299.4 tCO2/日"
+[1] "scn2 自動車CO2: 3263.7 tCO2/日"
+[1] "scn0 鉄道CO2: 467.7 tCO2/日"
+[1] "scn1 鉄道CO2: 466.2 tCO2/日"
+[1] "scn2 鉄道CO2: 463.4 tCO2/日"
+メインスクリプトがエラーで停止: オブジェクト 'lij_plot_M' がありません
+
+=== Running: emp2009 ===
+Scenario: emp2009  | Iter: 1  | diff: 3.52e+03 
+Scenario: emp2009  | Iter: 2  | diff: 3.75e+02 
+Scenario: emp2009  | Iter: 3  | diff: 4.27e+01 
+
+=== Running: emp2021 ===
+Scenario: emp2021  | Iter: 1  | diff: 5.98e+03 
+Scenario: emp2021  | Iter: 2  | diff: 4.38e+02 
+Scenario: emp2021  | Iter: 3  | diff: 8.52e+01 
+48 件の警告がありました (警告を見るには warnings() を使って下さい)
+
+[main+scenario done] 9.107375 mins 
+MSA1n: scn0 | it 1 | diff_raw 4.46e+01 | diff_avg 1.12e+01 
+MSA1n: scn0 | it 2 | diff_raw 5.92e+01 | diff_avg 6.57e+00 
+MSA1n: scn0 | it 3 | diff_raw 4.91e+01 | diff_avg 3.07e+00 
+MSA1n: scn0 | it 4 | diff_raw 7.49e+01 | diff_avg 3.00e+00 
+MSA1n: scn0 | it 5 | diff_raw 8.73e+01 | diff_avg 2.42e+00 
+MSA1n: scn0 | it 6 | diff_raw 4.64e+01 | diff_avg 9.46e-01 
+MSA1n: scn0 | it 7 | diff_raw 3.77e+01 | diff_avg 5.89e-01 
+MSA1n: scn0 | it 8 | diff_raw 2.35e+01 | diff_avg 2.90e-01 
+MSA1n: scn0 | it 9 | diff_raw 2.00e+01 | diff_avg 2.00e-01 
+MSA1n: scn0 | it 10 | diff_raw 2.32e+01 | diff_avg 1.92e-01 
+MSA1n: scn0 | it 11 | diff_raw 2.35e+01 | diff_avg 1.63e-01 
+MSA1n: scn0 | it 12 | diff_raw 1.22e+01 | diff_avg 7.21e-02 
+MSA1n: scn0 | it 13 | diff_raw 1.86e+01 | diff_avg 9.49e-02 
+MSA1n: scn0 | it 14 | diff_raw 1.77e+01 | diff_avg 7.88e-02 
+MSA1n: scn0 | it 15 | diff_raw 1.16e+02 | diff_avg 4.53e-01 
+MSA1n: scn0 | it 16 | diff_raw 8.59e+01 | diff_avg 2.97e-01 
+MSA1n: scn0 | it 17 | diff_raw 6.70e+01 | diff_avg 2.07e-01 
+MSA1n: scn0 | it 18 | diff_raw 4.19e+01 | diff_avg 1.16e-01 
+MSA1n: scn0 | it 19 | diff_raw 5.15e+01 | diff_avg 1.29e-01 
+MSA1n: scn0 | it 20 | diff_raw 3.21e+01 | diff_avg 7.28e-02 
+MSA1n: scn0 | it 21 | diff_raw 3.08e+01 | diff_avg 6.37e-02 
+MSA1n: scn0 | it 22 | diff_raw 2.87e+01 | diff_avg 5.43e-02 
+MSA1n: scn0 | it 23 | diff_raw 2.92e+01 | diff_avg 5.07e-02 
+MSA1n: scn0 | it 24 | diff_raw 2.82e+01 | diff_avg 4.51e-02 
+MSA1n: scn0 | it 25 | diff_raw 6.33e+01 | diff_avg 9.36e-02 
+MSA1n: scn0 | it 26 | diff_raw 4.07e+01 | diff_avg 5.58e-02 
+MSA1n: scn0 | it 27 | diff_raw 1.98e+01 | diff_avg 2.53e-02 
+MSA1n: scn0 | it 28 | diff_raw 1.10e+01 | diff_avg 1.31e-02 
+MSA1n: scn0 | it 29 | diff_raw 1.51e+01 | diff_avg 1.67e-02 
+MSA1n: scn0 | it 30 | diff_raw 6.98e+01 | diff_avg 7.27e-02 
+MSA1n: scn0 | it 31 | diff_raw 1.01e+02 | diff_avg 9.88e-02 
+MSA1n: scn0 | it 32 | diff_raw 1.16e+01 | diff_avg 1.06e-02 
+MSA1n: scn0 | it 33 | diff_raw 1.71e+01 | diff_avg 1.48e-02 
+MSA1n: scn0 | it 34 | diff_raw 2.75e+01 | diff_avg 2.25e-02 
+MSA1n: scn0 | it 35 | diff_raw 1.48e+01 | diff_avg 1.15e-02 
+MSA1n: scn0 | it 36 | diff_raw 3.12e+01 | diff_avg 2.28e-02 
+MSA1n: scn0 | it 37 | diff_raw 1.65e+01 | diff_avg 1.14e-02 
+MSA1n: scn0 | it 38 | diff_raw 1.43e+01 | diff_avg 9.39e-03 
+MSA1n: scn0 | it 39 | diff_raw 2.22e+01 | diff_avg 1.39e-02 
+MSA1n: scn0 | it 40 | diff_raw 1.31e+01 | diff_avg 7.78e-03 
+MSA1n: scn0 | it 41 | diff_raw 4.60e+01 | diff_avg 2.61e-02 
+MSA1n: scn0 | it 42 | diff_raw 4.39e+01 | diff_avg 2.37e-02 
+MSA1n: scn0 | it 43 | diff_raw 3.49e+01 | diff_avg 1.80e-02 
+MSA1n: scn0 | it 44 | diff_raw 4.47e+01 | diff_avg 2.21e-02 
+MSA1n: scn0 | it 45 | diff_raw 2.10e+01 | diff_avg 9.93e-03 
+MSA1n: scn0 | it 46 | diff_raw 1.84e+01 | diff_avg 8.31e-03 
+MSA1n: scn0 | it 47 | diff_raw 1.52e+01 | diff_avg 6.59e-03 
+MSA1n: scn0 | it 48 | diff_raw 1.93e+01 | diff_avg 8.02e-03 
+MSA1n: scn0 | it 49 | diff_raw 8.77e+00 | diff_avg 3.51e-03 
+MSA1n: scn0 | it 50 | diff_raw 2.32e+01 | diff_avg 8.91e-03 
+MSA1n: emp2009 | it 1 | diff_raw 3.52e+03 | diff_avg 8.80e+02 
+MSA1n: emp2009 | it 2 | diff_raw 3.75e+02 | diff_avg 4.17e+01 
+MSA1n: emp2009 | it 3 | diff_raw 2.67e+02 | diff_avg 1.67e+01 
+MSA1n: emp2009 | it 4 | diff_raw 1.36e+02 | diff_avg 5.46e+00 
+MSA1n: emp2009 | it 5 | diff_raw 4.34e+01 | diff_avg 1.21e+00 
+MSA1n: emp2009 | it 6 | diff_raw 3.98e+01 | diff_avg 8.13e-01 
+MSA1n: emp2009 | it 7 | diff_raw 3.50e+01 | diff_avg 5.46e-01 
+MSA1n: emp2009 | it 8 | diff_raw 2.64e+01 | diff_avg 3.26e-01 
+MSA1n: emp2009 | it 9 | diff_raw 2.52e+01 | diff_avg 2.52e-01 
+MSA1n: emp2009 | it 10 | diff_raw 1.21e+01 | diff_avg 1.00e-01 
+MSA1n: emp2009 | it 11 | diff_raw 9.91e+01 | diff_avg 6.88e-01 
+MSA1n: emp2009 | it 12 | diff_raw 2.54e+01 | diff_avg 1.51e-01 
+MSA1n: emp2009 | it 13 | diff_raw 1.07e+02 | diff_avg 5.45e-01 
+MSA1n: emp2009 | it 14 | diff_raw 1.79e+01 | diff_avg 7.94e-02 
+MSA1n: emp2009 | it 15 | diff_raw 8.79e+00 | diff_avg 3.43e-02 
+MSA1n: emp2009 | it 16 | diff_raw 3.10e+01 | diff_avg 1.07e-01 
+MSA1n: emp2009 | it 17 | diff_raw 3.34e+01 | diff_avg 1.03e-01 
+MSA1n: emp2009 | it 18 | diff_raw 5.85e+01 | diff_avg 1.62e-01 
+MSA1n: emp2009 | it 19 | diff_raw 1.78e+01 | diff_avg 4.46e-02 
+MSA1n: emp2009 | it 20 | diff_raw 1.74e+01 | diff_avg 3.94e-02 
+MSA1n: emp2009 | it 21 | diff_raw 1.64e+01 | diff_avg 3.39e-02 
+MSA1n: emp2009 | it 22 | diff_raw 1.04e+01 | diff_avg 1.96e-02 
+MSA1n: emp2009 | it 23 | diff_raw 2.50e+01 | diff_avg 4.34e-02 
+MSA1n: emp2009 | it 24 | diff_raw 3.10e+01 | diff_avg 4.97e-02 
+MSA1n: emp2009 | it 25 | diff_raw 1.94e+01 | diff_avg 2.88e-02 
+MSA1n: emp2009 | it 26 | diff_raw 2.76e+01 | diff_avg 3.79e-02 
+MSA1n: emp2009 | it 27 | diff_raw 3.11e+01 | diff_avg 3.97e-02 
+MSA1n: emp2009 | it 28 | diff_raw 2.81e+01 | diff_avg 3.34e-02 
+MSA1n: emp2009 | it 29 | diff_raw 2.59e+01 | diff_avg 2.88e-02 
+MSA1n: emp2009 | it 30 | diff_raw 2.13e+01 | diff_avg 2.22e-02 
+MSA1n: emp2009 | it 31 | diff_raw 1.55e+01 | diff_avg 1.51e-02 
+MSA1n: emp2009 | it 32 | diff_raw 2.48e+01 | diff_avg 2.28e-02 
+MSA1n: emp2009 | it 33 | diff_raw 1.29e+02 | diff_avg 1.12e-01 
+MSA1n: emp2009 | it 34 | diff_raw 1.37e+02 | diff_avg 1.11e-01 
+MSA1n: emp2009 | it 35 | diff_raw 4.42e+01 | diff_avg 3.41e-02 
+MSA1n: emp2009 | it 36 | diff_raw 1.08e+01 | diff_avg 7.91e-03 
+MSA1n: emp2009 | it 37 | diff_raw 2.43e+01 | diff_avg 1.69e-02 
+MSA1n: emp2009 | it 38 | diff_raw 2.08e+01 | diff_avg 1.37e-02 
+MSA1n: emp2009 | it 39 | diff_raw 1.59e+01 | diff_avg 9.94e-03 
+MSA1n: emp2009 | it 40 | diff_raw 1.92e+01 | diff_avg 1.14e-02 
+MSA1n: emp2009 | it 41 | diff_raw 2.40e+01 | diff_avg 1.36e-02 
+MSA1n: emp2009 | it 42 | diff_raw 2.29e+01 | diff_avg 1.24e-02 
+MSA1n: emp2009 | it 43 | diff_raw 5.45e+01 | diff_avg 2.81e-02 
+MSA1n: emp2009 | it 44 | diff_raw 1.08e+01 | diff_avg 5.35e-03 
+MSA1n: emp2009 | it 45 | diff_raw 2.45e+01 | diff_avg 1.16e-02 
+MSA1n: emp2009 | it 46 | diff_raw 1.16e+01 | diff_avg 5.27e-03 
+MSA1n: emp2009 | it 47 | diff_raw 1.65e+01 | diff_avg 7.15e-03 
+MSA1n: emp2009 | it 48 | diff_raw 1.45e+01 | diff_avg 6.05e-03 
+MSA1n: emp2009 | it 49 | diff_raw 2.67e+01 | diff_avg 1.07e-02 
+MSA1n: emp2009 | it 50 | diff_raw 2.52e+01 | diff_avg 9.69e-03 
+MSA1n: emp2021 | it 1 | diff_raw 5.98e+03 | diff_avg 1.49e+03 
+MSA1n: emp2021 | it 2 | diff_raw 4.38e+02 | diff_avg 4.87e+01 
+MSA1n: emp2021 | it 3 | diff_raw 1.41e+02 | diff_avg 8.80e+00 
+MSA1n: emp2021 | it 4 | diff_raw 7.35e+01 | diff_avg 2.94e+00 
+MSA1n: emp2021 | it 5 | diff_raw 5.70e+01 | diff_avg 1.58e+00 
+MSA1n: emp2021 | it 6 | diff_raw 4.06e+01 | diff_avg 8.29e-01 
+MSA1n: emp2021 | it 7 | diff_raw 5.71e+01 | diff_avg 8.92e-01 
+MSA1n: emp2021 | it 8 | diff_raw 4.05e+01 | diff_avg 5.01e-01 
+MSA1n: emp2021 | it 9 | diff_raw 6.71e+01 | diff_avg 6.71e-01 
+MSA1n: emp2021 | it 10 | diff_raw 6.28e+01 | diff_avg 5.19e-01 
+MSA1n: emp2021 | it 11 | diff_raw 3.13e+01 | diff_avg 2.18e-01 
+MSA1n: emp2021 | it 12 | diff_raw 3.07e+01 | diff_avg 1.82e-01 
+MSA1n: emp2021 | it 13 | diff_raw 2.98e+01 | diff_avg 1.52e-01 
+MSA1n: emp2021 | it 14 | diff_raw 4.16e+01 | diff_avg 1.85e-01 
+MSA1n: emp2021 | it 15 | diff_raw 9.07e+01 | diff_avg 3.54e-01 
+MSA1n: emp2021 | it 16 | diff_raw 2.48e+01 | diff_avg 8.59e-02 
+MSA1n: emp2021 | it 17 | diff_raw 3.09e+01 | diff_avg 9.54e-02 
+MSA1n: emp2021 | it 18 | diff_raw 6.72e+01 | diff_avg 1.86e-01 
+MSA1n: emp2021 | it 19 | diff_raw 4.33e+01 | diff_avg 1.08e-01 
+MSA1n: emp2021 | it 20 | diff_raw 5.59e+01 | diff_avg 1.27e-01 
+MSA1n: emp2021 | it 21 | diff_raw 4.60e+01 | diff_avg 9.50e-02 
+MSA1n: emp2021 | it 22 | diff_raw 4.54e+01 | diff_avg 8.59e-02 
+MSA1n: emp2021 | it 23 | diff_raw 1.15e+02 | diff_avg 2.00e-01 
+MSA1n: emp2021 | it 24 | diff_raw 4.54e+01 | diff_avg 7.27e-02 
+MSA1n: emp2021 | it 25 | diff_raw 3.03e+01 | diff_avg 4.48e-02 
+MSA1n: emp2021 | it 26 | diff_raw 1.89e+01 | diff_avg 2.59e-02 
+MSA1n: emp2021 | it 27 | diff_raw 2.55e+01 | diff_avg 3.25e-02 
+MSA1n: emp2021 | it 28 | diff_raw 4.95e+01 | diff_avg 5.89e-02 
+MSA1n: emp2021 | it 29 | diff_raw 1.12e+02 | diff_avg 1.25e-01 
+MSA1n: emp2021 | it 30 | diff_raw 3.26e+01 | diff_avg 3.39e-02 
+MSA1n: emp2021 | it 31 | diff_raw 1.42e+01 | diff_avg 1.38e-02 
+MSA1n: emp2021 | it 32 | diff_raw 1.75e+01 | diff_avg 1.61e-02 
+MSA1n: emp2021 | it 33 | diff_raw 1.10e+01 | diff_avg 9.47e-03 
+MSA1n: emp2021 | it 34 | diff_raw 2.59e+01 | diff_avg 2.12e-02 
+MSA1n: emp2021 | it 35 | diff_raw 3.11e+01 | diff_avg 2.40e-02 
+MSA1n: emp2021 | it 36 | diff_raw 2.88e+01 | diff_avg 2.10e-02 
+MSA1n: emp2021 | it 37 | diff_raw 6.50e+01 | diff_avg 4.50e-02 
+MSA1n: emp2021 | it 38 | diff_raw 2.05e+01 | diff_avg 1.35e-02 
+MSA1n: emp2021 | it 39 | diff_raw 1.36e+01 | diff_avg 8.49e-03 
+MSA1n: emp2021 | it 40 | diff_raw 3.81e+01 | diff_avg 2.27e-02 
+MSA1n: emp2021 | it 41 | diff_raw 1.47e+01 | diff_avg 8.32e-03 
+MSA1n: emp2021 | it 42 | diff_raw 9.06e+01 | diff_avg 4.90e-02 
+MSA1n: emp2021 | it 43 | diff_raw 1.96e+01 | diff_avg 1.01e-02 
+MSA1n: emp2021 | it 44 | diff_raw 7.50e+01 | diff_avg 3.71e-02 
+MSA1n: emp2021 | it 45 | diff_raw 1.13e+01 | diff_avg 5.33e-03 
+MSA1n: emp2021 | it 46 | diff_raw 8.21e+00 | diff_avg 3.72e-03 
+MSA1n: emp2021 | it 47 | diff_raw 4.08e+01 | diff_avg 1.77e-02 
+MSA1n: emp2021 | it 48 | diff_raw 4.36e+01 | diff_avg 1.81e-02 
+MSA1n: emp2021 | it 49 | diff_raw 4.76e+01 | diff_avg 1.90e-02 
+MSA1n: emp2021 | it 50 | diff_raw 1.71e+01 | diff_avg 6.56e-03 
+
+== EV by checkpoint (万円/月) ==
+   s0_09  s09_0 s0_21  s21_0 s09_21 s21_09
+10 40531 -37757 34838 -27759  -2388  14122
+20 40346 -37569 35143 -28059  -1895  13641
+30 40377 -37599 35586 -28499  -1486  13235
+40 40546 -37767 35517 -28429  -1719  13469
+50 40568 -37789 35584 -28496  -1674  13424
+
+== drift: EV between successive checkpoints, same scenario ==
+   scn0 emp2009 emp2021
+20  234      24     503
+30 -109     -82     324
+40  -36     129    -107
+50  -46     -25      18
+
+== CO2 total by checkpoint ==
+                       10      20      30      40      50
+scn0.co2_total    6204.51 6204.82 6204.65 6204.63 6204.58
+emp2009.co2_total 6161.42 6161.50 6161.31 6161.42 6161.36
+emp2021.co2_total 6187.08 6187.54 6187.86 6187.73 6187.76
+[all done] 46.54931 mins 

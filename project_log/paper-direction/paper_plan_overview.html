@@ -1,0 +1,349 @@
+<title>福岡LUTI論文の方針</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Shippori+Mincho+B1:wght@600;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 1本の読み物カラム＋上部に現在地の帯。路線図のように、節ごとに番号付きの停車駅マーカーを置く */
+:root{
+  --bg:#f5f7f6; --surface:#ffffff; --ink:#18242b; --muted:#5a6a70; --line:#d6dedd;
+  --accent:#0f6b6f; --accent-soft:#e1efee; --warn:#9a5b00; --warn-soft:#fbf0dc;
+  --good:#2f6b2a; --good-soft:#e4f0e1; --bad:#a1322c; --bad-soft:#f8e3e1;
+  --f-display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"BIZ UDPGothic","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11181b; --surface:#182226; --ink:#e3eaea; --muted:#98a8ab; --line:#2c3a3e;
+  --accent:#5cc0bf; --accent-soft:#173336; --warn:#e2a64b; --warn-soft:#352813;
+  --good:#8fcf86; --good-soft:#1b2e1a; --bad:#ee8a82; --bad-soft:#3a1d1b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11181b; --surface:#182226; --ink:#e3eaea; --muted:#98a8ab; --line:#2c3a3e;
+  --accent:#5cc0bf; --accent-soft:#173336; --warn:#e2a64b; --warn-soft:#352813;
+  --good:#8fcf86; --good-soft:#1b2e1a; --bad:#ee8a82; --bad-soft:#3a1d1b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.75;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.wrap{max-width:980px;margin:0 auto}
+header.top{padding-block:40px 24px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,4.5vw,38px);line-height:1.3;margin:6px 0 10px;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:800;font-size:24px;line-height:1.35;margin:0;text-wrap:balance}
+h3{font-size:16px;margin:28px 0 8px}
+p{margin:0 0 12px;max-width:68ch}
+.lead{color:var(--muted);max-width:70ch}
+.status{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:22px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;min-width:0}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.stat .s{font-size:12px;color:var(--muted)}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px 16px;padding-block:14px;font-size:13px;border-bottom:1px solid var(--line)}
+nav.toc a{color:var(--accent);text-decoration:none}
+nav.toc a:hover,nav.toc a:focus-visible{text-decoration:underline}
+section{padding-block:36px 8px;border-bottom:1px solid var(--line)}
+.sec-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.stop{flex:none;width:30px;height:30px;border-radius:50%;border:3px solid var(--accent);display:grid;place-items:center;
+  font-family:var(--f-mono);font-size:13px;font-weight:500;color:var(--accent);background:var(--surface)}
+.tbl{overflow-x:auto;margin:10px 0 16px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th,td{text-align:left;vertical-align:top;padding:9px 11px;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--muted);font-weight:700;background:var(--accent-soft)}
+tr:last-child td{border-bottom:none}
+td.c{text-align:center;white-space:nowrap}
+.mine{background:var(--accent-soft);font-weight:700}
+.chip{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:999px;white-space:nowrap;font-weight:700}
+.chip.main{background:var(--accent);color:var(--surface)}
+.chip.sub{background:var(--accent-soft);color:var(--accent)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.good{background:var(--good-soft);color:var(--good)}
+.chip.bad{background:var(--bad-soft);color:var(--bad)}
+.note{border-left:3px solid var(--warn);background:var(--warn-soft);padding:10px 14px;border-radius:0 6px 6px 0;margin:12px 0 18px;max-width:76ch}
+.note b{color:var(--warn)}
+.claim{background:var(--surface);border:1px solid var(--accent);border-radius:6px;padding:16px 18px;margin:12px 0 18px}
+.claim .en{font-family:var(--f-mono);font-size:13px;color:var(--muted);margin-top:8px;line-height:1.6}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.cols > div{min-width:0}
+ul{margin:0 0 12px;padding-left:1.3em}
+li{margin:3px 0}
+.rq{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:10px}
+.rq .id{font-family:var(--f-mono);font-weight:500;color:var(--accent);font-size:14px;padding-top:2px}
+.rq .q{font-weight:700}
+.rq .d{grid-column:2;color:var(--muted);font-size:13.5px}
+.rq .d .en{font-family:var(--f-mono);font-size:12.5px}
+.phase{margin:22px 0 6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.phase .when{font-family:var(--f-mono);font-size:12.5px;color:var(--accent)}
+.phase .what{font-weight:700}
+.todo{list-style:none;padding:0;margin:0 0 8px}
+.todo li{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:start;padding:8px 0;border-bottom:1px dashed var(--line)}
+.todo input{width:16px;height:16px;margin-top:4px;accent-color:var(--accent)}
+.todo label{cursor:pointer}
+.todo .why{display:block;font-size:12.5px;color:var(--muted)}
+.todo input:checked + label{text-decoration:line-through;color:var(--muted)}
+.todo input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.files{font-family:var(--f-mono);font-size:12.5px}
+footer{padding-block:24px;color:var(--muted);font-size:12.5px}
+a{color:var(--accent)}
+@media (max-width:520px){.todo li{grid-template-columns:22px 1fr}.todo li .chip{grid-column:2;justify-self:start}}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">Fukuoka LUTI · English paper · 2026-11-07 時点</div>
+  <h1>福岡LUTI論文の方針</h1>
+  <p class="lead" style="border-left:4px solid var(--accent);padding-left:10px"><b>2026-11-08 追記：</b>このページは11/7時点の方針です。その後の決定と進捗は「福岡LUTI研究の進捗」（<span style="font-family:var(--f-mono)">project_log/paper-direction/research_status.html</span>）にまとめています。</p>
+  <p class="lead">これまでのリサーチ（既往研究の4つの流れ、モデルの系譜、投稿先の性格）から、空白・論文の方針・リサーチクエスチョン・12月末までにやることをまとめた確認用の資料です。すべて未確定で、論文への採用はまだ決めていません。</p>
+  <div class="status">
+    <div class="stat"><div class="k">投稿先</div><div class="v"><i>Urban Transitions</i></div><div class="s">Elsevier、2025年創刊、編集長 A. de Nazelle</div></div>
+    <div class="stat"><div class="k">投稿目標</div><div class="v">2026年12月末</div><div class="s">残り約8週（APC免除の範囲は要確認）</div></div>
+    <div class="stat"><div class="k">主張の柱</div><div class="v">G1：観測された雇用再配置</div><div class="s">交通・住宅・CO₂・厚生を部門横断で評価</div></div>
+    <div class="stat"><div class="k">最大の障害</div><div class="v">EVの違和感</div><div class="s">2009・2021とも現状比で大幅プラス</div></div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="目次">
+  <a href="#research">1 リサーチの結果</a>
+  <a href="#gap">2 空白</a>
+  <a href="#direction">3 論文の方針</a>
+  <a href="#rq">4 リサーチクエスチョン</a>
+  <a href="#todo">5 やること</a>
+  <a href="#check">6 要確認</a>
+</nav>
+
+<!-- 1 -->
+<section id="research">
+  <div class="sec-head"><div class="stop">1</div><h2>リサーチの結果</h2></div>
+
+  <h3>既往研究の4つの流れ</h3>
+  <div class="tbl"><table>
+    <thead><tr><th style="width:20%">流れ</th><th style="width:28%">代表的な文献</th><th>分かっていること</th><th style="width:24%">限界（＝空白の根拠）</th></tr></thead>
+    <tbody>
+      <tr><td><b>1. 多核化と通勤・CO₂の実証</b><br><span class="why" style="color:var(--muted);font-size:12.5px">回帰・要因分解</span></td>
+        <td>Cervero &amp; Wu 1998、Blumenberg 他 2024、Sun 他 2020、Deng 他 2024、Chen 他 2026</td>
+        <td>結論が割れている。郊外の新しい中心は通勤を延ばし、都心内の中心は短くする傾向。Sun 他 2020 は多核化で家庭部門CO₂が増えると指摘</td>
+        <td>相関なので、雇用の再配置の効果を人口・所得・交通網の変化から切り分けられない。厚生は測れない</td></tr>
+      <tr><td><b>2. モデルによるシナリオ分析</b></td>
+        <td>Li 他 2017（ブリスベン）、Yang 2020・2026（上海）、Anas 2013（RELU-TRAN）、Zhang 2015（CUE）</td>
+        <td>雇用を<b>どこへ</b>動かすかで結果が逆になる（Li 2017、Yang 2026）。職住近接で通勤は短くなる</td>
+        <td>雇用配置はほぼ<b>仮想シナリオ</b>。「どこに集まるかが重要」はすでに示されているので新規性にならない</td></tr>
+      <tr><td><b>3. 観測された変化の構造モデルによる事後評価</b><br><span style="color:var(--muted);font-size:12.5px">定量空間モデル（QSM）</span></td>
+        <td>Ahlfeldt 他 2015、Severen 2018、Heblich 他 2020、Allen &amp; Arkolakis 2022、Mann 他 2026</td>
+        <td>実際に起きた交通整備などの効果を、データに合わせたモデルで反実仮想として評価できる。近年は混雑・手段選択も入る</td>
+        <td><b>CO₂（とくに住宅側）を評価対象にしていない</b>（床面積を内生化したモデルなら計算は可能）。都市圏内の雇用分布の変化だけを与えた例は見つからない</td></tr>
+      <tr><td><b>4. LUTIの較正・不確実性</b></td>
+        <td>Krishnamurthy &amp; Kockelman 2003、Ševčíková 他 2021、Capelle 他 2017、Skandary 他 2021、Hörcher 他 2026</td>
+        <td>パラメータの不確実性が予測を大きく揺らす。進化的最適化（GA・差分進化）による較正が使われている</td>
+        <td>較正の目標値に<b>どのデータ源を使うか</b>で結論が変わるかを調べた研究は見つからない</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:13px;color:var(--muted)">検索は Consensus の要旨ベース。「見つからない」は今回の検索の範囲での話です。詳細は <span class="files">literature_gap.md</span>。</p>
+
+  <h3>モデルの系譜の中での位置</h3>
+  <p>私のモデルは日本の<b>CUEモデル</b>（応用都市経済モデル：家計・地主・デベロッパーの行動と住宅市場の均衡を解き、交通と結合して便益をEVで測るモデル）に最も近い位置にあります。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>機能</th><th>CUE</th><th>都市CGE</th><th>QSM</th><th class="mine">私のモデル</th></tr></thead>
+    <tbody>
+      <tr><td>空間の細かさ</td><td>市区町村〜ゾーン</td><td>粗い</td><td>細かい</td><td class="mine">1kmメッシュ847 × 従業17</td></tr>
+      <tr><td>雇用・賃金</td><td>内生が多い</td><td>内生</td><td>内生（集積込み）</td><td class="mine">外生</td></tr>
+      <tr><td>床面積の供給</td><td>○</td><td>○</td><td>△</td><td class="mine">○（転用ロジット）</td></tr>
+      <tr><td>手段選択・道路配分</td><td>○</td><td>△〜○</td><td>△（近年○）</td><td class="mine">○（3手段、OSM網でUE配分）</td></tr>
+      <tr><td>交通CO₂</td><td>○</td><td>○</td><td>×</td><td class="mine">○</td></tr>
+      <tr><td>住宅CO₂</td><td>△</td><td>△</td><td>×</td><td class="mine">○（係数の出典は要確認）</td></tr>
+      <tr><td>厚生</td><td>○（EV）</td><td>○</td><td>○</td><td class="mine">○（EV）</td></tr>
+      <tr><td>パラメータの決め方</td><td>推定＋調整係数</td><td>文献値＋較正</td><td>構造推定</td><td class="mine">GA＋k_i 逆算</td></tr>
+      <tr><td>観測された変化での検証</td><td>△</td><td>△</td><td>○</td><td class="mine">×</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="cols">
+    <div>
+      <h3>強み</h3>
+      <ul>
+        <li>家賃・床面積の均衡、3手段選択、実道路網のUE配分、交通CO₂と住宅CO₂、EVが1つのモデルにそろっている<br><span style="font-size:12px;color:var(--muted)">→ ただし<b>新規性にはならない</b>。RELU-TRAN（Anas）が床面積市場・手段/経路選択・内生混雑・厚生・交通CO₂を既に持つ。住宅CO₂も「総床面積×原単位＋定数」（L.3117）で、建て方・断熱の区別がなく、係数を掛けただけという批判がこちらにも当てはまる</span></li>
+        <li>1kmメッシュとOSM道路網という細かさ</li>
+        <li>公的統計だけで作れるので、日本の他都市に移せる</li>
+        <li>2009/2021の観測された雇用分布を、総数・総給与を固定して「分布の効果だけ」として与えられる</li>
+      </ul>
+    </div>
+    <div>
+      <h3>弱み（査読で突かれやすい順）</h3>
+      <ul>
+        <li><b>雇用と賃金が外生</b>で、集積の経済がない</li>
+        <li>家計が1種類で、所得階層別の分配を言えない</li>
+        <li>GAは適合度の最大化で、外生的な変化による識別ではない</li>
+        <li>従業ゾーンが17と粗い</li>
+        <li>鉄道混雑・通勤以外のトリップ・動学がない</li>
+        <li>観測された変化での検証がない</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note"><b>結論（2026-11-07 更新）：</b>モデルの統合そのものは新規性にならない（「計算できるのに計算していない」だけ）。新規性は<b>モデルではなく発見と問い</b>に置く：<br>
+  A. <b>定説の検証</b>：職住近接（co-location）仮説、コンパクト化のwin-win（CO₂減と厚生増の両立）を、仮想シナリオではなく観測された再配置で確かめる（定説どおりでも価値はある）<br>
+  B. <b>計画と実際のずれ</b>：広域拠点政策どおりに伸びた拠点・逆に減った拠点が、CO₂・EVにどう効いたか（<span class="files">planning-history/</span>）<br>
+  C. <b>統合の価値を数字で示す</b>：住宅経路と交通経路の寄与・符号。交通だけで評価すると何%ずれるか（住宅CO₂の式が単純なので弱くなりうる）<br>
+  推奨は A を主、B を事例の読み解き。<b>まだ発見は手元にない</b>ので、メッシュ化と3時点比較の後に決める。確かめる仮説は結果を見る前に書いて固定する。</div>
+</section>
+
+<!-- 2 -->
+<section id="gap">
+  <div class="sec-head"><div class="stop">2</div><h2>空白（gap）の候補</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th style="width:8%">#</th><th>空白</th><th style="width:22%">手持ちの結果</th><th style="width:16%">12月までの実現性</th><th style="width:12%">扱い</th></tr></thead>
+    <tbody>
+      <tr><td><b>G1</b></td><td>観測された都市圏内の雇用再配置の効果を、同時期の他の変化から切り分け、<b>厚生とCO₂の両方で経路別に</b>定量化した研究がない</td><td>2009/2021シナリオ（総数・総給与固定）</td><td><span class="chip good">高い</span><br>EVの違和感の解消が前提</td><td><span class="chip main">主</span></td></tr>
+      <tr><td><b>G2</b></td><td>雇用再配置が<b>通勤CO₂と住宅CO₂に逆向きに効く</b>可能性を、床面積の供給を内生化して評価した研究が少ない</td><td>住宅CO₂は計算済み</td><td><span class="chip warn">中</span><br>係数の出典が不明</td><td><span class="chip sub">副</span></td></tr>
+      <tr><td><b>G3</b></td><td>較正データの選択（民間物件データ vs 公的統計）が政策評価の結論を変えるか</td><td>較正01と07</td><td><span class="chip good">高い</span></td><td><span class="chip sub">頑健性</span></td></tr>
+      <tr><td><b>G4</b></td><td>従業中心地の定義が政策評価を変えるか</td><td>なし</td><td><span class="chip bad">低い</span></td><td><span class="chip warn">限界・今後</span></td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:13px;color:var(--muted)">G1の言い方は修正済み：混雑・手段選択を入れたQSMはあるので、「QSMは混雑を持たない」とは書けない。言えるのは「CO₂（とくに住宅側）を持たない」「観測された都市圏内の雇用分布の変化だけを与えた例がない」まで。</p>
+</section>
+
+<!-- 3 -->
+<section id="direction">
+  <div class="sec-head"><div class="stop">3</div><h2>論文の方針</h2></div>
+  <p><i>Urban Transitions</i> は都市計画・交通・環境・健康の学際誌です。創刊号の巻頭言は「部門ごとの取り組みに偏り、部門横断のアプローチが見落とされている」と書いています。そのため、モデル理論の新しさより「<b>実際に起きた都市の転換を部門横断で評価し、政策に何が言えるか</b>」が評価されやすいと考えています（推測）。</p>
+
+  <div class="claim">
+    <b>主張の書き方（案）</b><br>
+    多核化・職住近接は交通の脱炭素の手段とされるが、その効果は通勤統計の相関分析か、仮想シナリオで示されてきた。観測された雇用の再配置が、交通・住宅・環境・厚生に部門横断でどう効いたかを、他の変化から切り分けて評価した研究はない。
+    <div class="en">Draft: Polycentric development is promoted as a lever for transport decarbonisation, yet evidence comes either from correlational commuting statistics or from hypothetical scenarios. No study has isolated the effect of an observed intra-metropolitan redistribution of employment and evaluated it jointly across transport, housing, emissions and welfare.</div>
+  </div>
+
+  <div class="tbl"><table>
+    <thead><tr><th style="width:26%">柱</th><th>内容</th><th style="width:20%">雑誌との相性</th><th style="width:14%">論文での位置</th></tr></thead>
+    <tbody>
+      <tr><td><b>① 観測された転換の部門横断評価</b>（G1）</td><td>2009→2021の実際の雇用再配置を、通勤距離・手段・混雑、家賃・床面積、交通CO₂＋住宅CO₂、EVで同時に評価</td><td>◎ 巻頭言の主張にそのまま答える</td><td><span class="chip main">主張の柱</span></td></tr>
+      <tr><td><b>② 交通CO₂と住宅CO₂のトレードオフ</b>（G2）</td><td>雇用の集中・分散が通勤CO₂と床面積由来のCO₂に逆向きに効くか</td><td>◎ 建物エネルギーの編集陣がいる</td><td><span class="chip sub">補強</span></td></tr>
+      <tr><td><b>③ 徒歩・自転車の変化</b></td><td>自転車（徒歩）の分担率と移動時間の変化。健康への換算は今後の課題にする</td><td>◎ 編集長の専門に近い</td><td><span class="chip sub">補強</span></td></tr>
+      <tr><td><b>④ 空間的な分配</b></td><td>都心／郊外、ゾーン別に誰が得をし誰が損をするかを地図で示す（所得階層別は不可）</td><td>○</td><td><span class="chip sub">結果の地図</span></td></tr>
+      <tr><td><b>⑤ 較正データの選択</b>（G3）</td><td>較正01（民間物件）と07（住宅・土地統計調査）で結論が変わるか</td><td>△ 方法論の話</td><td><span class="chip warn">頑健性</span></td></tr>
+      <tr><td><b>⑥ 非欧米の中規模都市圏</b></td><td>福岡都市圏、公的統計だけで作れるモデル</td><td>○ 単独では新規性にならない</td><td><span class="chip warn">事例の価値</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>書き方の方針</h3>
+  <ul>
+    <li>学際誌なので、式は最小限にして仕組みを図で示す。CUE・QSMとの違いは関連研究の節で短く位置づける</li>
+    <li>QSMの「観測された変化を使う」考え方と、CUE/LUTIの「交通とCO₂の詳しさ」の<b>橋渡し</b>として位置づける（前例：Mann 他 2026 が交通系の雑誌に掲載）</li>
+    <li>雇用・賃金の外生性は「生産性を固定し、通勤と住宅市場の経路だけを取り出す設計」として明示し、限界に書く。可能なら集積弾力性を入れた感度分析を1本</li>
+    <li>根拠の薄い健康影響の換算は入れない</li>
+  </ul>
+</section>
+
+<!-- 4 -->
+<section id="rq">
+  <div class="sec-head"><div class="stop">4</div><h2>リサーチクエスチョン（案）</h2></div>
+  <p class="lead">ここまでの議論から私が組み立てた案です。言い回しは先生と相談して決めてください。</p>
+  <div class="note"><b>2026-11-07 確認：RQ1は今の17拠点のままでは成り立たない。</b>2009→2021で場所を移った従業者はメッシュ単位で8.8%なのに、17ゾーンに集計すると2.2%に減る（移動の約4分の3がゾーン内で打ち消される）。モデル結果の差も、CO₂ +0.43%、EV −2,006万円/月と小さい。従業中心地を増やした結果を見てから決める問い（notes.md 2026-11-07）。</div>
+
+  <div class="rq"><div class="id">RQ1</div><div class="q">2009年から2021年に福岡都市圏で実際に起きた雇用分布の変化は、総従業者数・総給与・交通網を固定したとき、通勤（距離・手段分担・道路混雑）、住宅市場（家賃・床面積）、CO₂、家計の厚生をどう変えたか。</div>
+    <div class="d">柱①（G1）。2009シナリオと2021シナリオの差を「分布の効果」として読む。<br><span class="en">How did the observed 2009–2021 redistribution of employment in the Fukuoka metropolitan area affect commuting, housing markets, CO₂ emissions and household welfare, holding total employment, wages and networks fixed?</span></div></div>
+
+  <div class="rq"><div class="id">RQ2</div><div class="q">その効果は、どの経路（通勤距離、手段の転換、道路混雑、住み替えと床面積の変化）を通じて生じたか。</div>
+    <div class="d">柱①の中身。経路別の分解が「切り分けた」ことの裏付けになる。<br><span class="en">Through which channels did these effects arise: commuting distance, mode shift, road congestion, or residential relocation and floor-space adjustment?</span></div></div>
+
+  <div class="rq"><div class="id">RQ3</div><div class="q">雇用の再配置は、交通部門のCO₂と住宅部門のCO₂に逆向きに効くか。効くなら、部門をまたいだ相殺はどの程度か。</div>
+    <div class="d">柱②（G2）。住宅CO₂の係数の出典を固めてから。<br><span class="en">Does employment redistribution move transport and residential-building emissions in opposite directions, and how large is the cross-sectoral offset?</span></div></div>
+
+  <div class="rq"><div class="id">RQ4</div><div class="q">これらの結論は、較正の目標値に使うデータ源（民間の賃貸物件データか公的統計か）によって変わるか。</div>
+    <div class="d">柱⑤（G3）。主題ではなく頑健性の確認として。<br><span class="en">Are these conclusions robust to the choice of calibration data source (private rental listings versus official housing statistics)?</span></div></div>
+  <p style="font-size:13px;color:var(--muted)">③の徒歩・自転車と④の空間分配は、RQ1の結果の一部として示す想定です。</p>
+</section>
+
+<!-- 5 -->
+<section id="todo">
+  <div class="sec-head"><div class="stop">5</div><h2>やること（12月末まで）</h2></div>
+  <p class="lead">週の割り振りは目安です。チェックはこのブラウザにだけ保存されます。</p>
+
+  <div class="phase"><span class="when">11/9 – 11/15</span><span class="what">前提を固める</span></div>
+  <ul class="todo">
+    <li><input type="checkbox" id="t01"><label for="t01">ScienceDirectで雑誌の情報を確認する<span class="why">APC免除が通常投稿にも当てはまるか、論文の種類・語数・書式（Guide for Authors）、掲載済みの論文</span></label><span class="chip bad">最優先</span></li>
+    <li><input type="checkbox" id="t02"><label for="t02">新しい雑誌（インパクトファクターなし）でよいか、先生に確認する</label><span class="chip bad">最優先</span></li>
+    <li><input type="checkbox" id="t03"><label for="t03">EVの違和感を診断する<span class="why">2009・2021とも現状比 +37,382／+32,121 万円/月。総数・総給与の揃え方、基準の取り方を再確認（notes.md 2026-10-27）</span></label><span class="chip bad">最優先</span></li>
+    <li><input type="checkbox" id="t04"><label for="t04">Google ScholarでG1の空白を確かめる<span class="why">「2時点の観測された雇用分布を入力にしたLUTI/CUE/空間均衡モデル」が無いか。Yang 2020・2026、RELU-TRANの本文確認、日本のCUE研究</span></label><span class="chip warn">高</span></li>
+  </ul>
+
+  <div class="phase"><span class="when">11/9 – 11/29</span><span class="what">結果を出す（2026-11-07 見直し、この順で）</span></div>
+  <div class="note"><b>前提（ユーザー確認）：</b>現状 scn0 の入力は、従業世帯数 L̂<sub>j</sub> が経済センサス‐基礎調査（2014）、賃金 ω<sub>j</sub> が経済センサス‐活動調査（2021、1kmメッシュの産業構成）×賃金構造基本統計調査（2024、福岡県の産業別）。ω<sub>j</sub> は中心地メッシュ1つの産業構成だけで計算し、2009/2021シナリオでも同じ ω<sub>j</sub> を総給与が合うよう一律に倍率調整しているだけ（<span class="files">scripts/scenario_employment_2009_2021.R</span>）。<b>年次がそろっておらず、年ごとの賃金の違いも入っていない</b>。</div>
+  <div class="note"><b>2026-11-07 実施済み（記録は <span class="files">project_log/base-year-revision/</span>）：</b><br>
+  ・t17 年次の棚卸し：雇用だけ2014、ほかは2020〜2023中心。基準年2021ならほぼそろう<br>
+  ・t18 データ制約：3時点とも「A〜S全産業」で範囲はそろう（今の列で正しい）。2021は名簿拡充の注記が必要。2009・2014のメッシュ産業構成はe-Stat非公開 → 賃金は案(c)（構成は基準年で固定、相対賃金だけ年次別）を推奨<br>
+  ・t21 EV診断：数値の誤りではない。2014だけ箱崎・博多駅東側のゾーン（50303344）に雇用が6〜7千人多く、モデルはそこで働く世帯の厚生が低いと評価するため。ただし<b>収束の雑音でEVが±1〜3千ぶれ、2021−2009のEV（約−2千）はその範囲内</b>。EVの近似式は向きで大きさが変わる（2千 vs 1.4万）<br>
+  ・t22 事前チェック：中心地K≈24で2009→2021の移動が2.2%→4.1%、K=32で4.8%、K=100でも6%。<b>K=25〜35で十分</b><br>
+  ・t23 自転車行列：道路網を時速15km（手段選択スクリプトの仮定値、出典なし）で計算すると完全に再現。先生への確認は不要<br>
+  ・t20 仮説の下書き：<span class="files">paper-direction/hypotheses_draft.md</span>（要確認）</div>
+  <ul class="todo">
+    <li><input type="checkbox" id="t17"><label for="t17">入力データの年次を棚卸しする<span class="why">雇用2014、産業構成2021、賃金2024、人口（T001100、2020？）、土地利用（L03-b-16、2016？）、地価2025、家賃（住調・athome）、PT 2017–19、OSM 2026。論文のデータ表にもそのまま使う</span></label><span class="chip bad">最優先</span></li>
+    <li><input type="checkbox" id="t18"><label for="t18">賃金・雇用データの制約を調べる<span class="why">①2009・2014の1kmメッシュ産業別従業者数がe-Statにあるか（産業分類の改定2013年に注意）<br>②賃金構造基本統計調査の福岡県・産業別を2009/2014/2021で取れるか。2020年の調査方法の変更で前後が比べられるか、所定内給与か年収か<br>③物価で実質化するか（CPI）<br>④経済センサス3時点の対象範囲（基礎調査と活動調査、国・地方公共団体の事業所）</span></label><span class="chip bad">最優先</span></li>
+    <li><input type="checkbox" id="t19"><label for="t19">基準年（scn0）を決める：2014か2021か<span class="why">較正の目標値は世帯数＝国勢調査2020、家賃・床面積＝住調2023なので、雇用だけ2014だとk_iが2014→2020の雇用の動きを吸収してしまう。<b>推奨は2021</b>（活動調査2021＋国調2020＋住調2023＋賃構2021でほぼそろう）。2009・2014は「2021年の都市に、その年の雇用分布を入れた」反実仮想として比べる。t17・t18の結果を見て先生と相談</span></label><span class="chip bad">最優先</span></li>
+    <li><input type="checkbox" id="t20"><label for="t20">確かめる仮説を先に書いて固定する<span class="why">職住近接仮説、win-win、交通/住宅CO₂の符号</span></label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t21"><label for="t21">（診断のみ）今のモデルで2014をrun_scenarioに通し、scn0を再現できるか<span class="why">EVの違和感（t03）の原因を絞る。結果は論文には使わない</span></label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t22"><label for="t22">中心地を増やす前の事前チェック<span class="why">モデルに手を入れず、案①の閾値（K≈20/30/40）で集計したとき2009→2021の移動が何%残るか（17ゾーン2.2%、メッシュ8.8%）</span></label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t23"><label for="t23">自転車の所要時間行列の作り方を突き止める<span class="why">中心地を変えると作り直しが必要。先生に確認（並行して）</span></label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t24"><label for="t24">年次別の賃金 ω<sub>j</sub>(t) を作る<span class="why">その年の産業構成×その年の産業別賃金（実質化）。中心地1メッシュではなくボロノイ領域全体の産業構成で。データが無い年は「賃金構造は基準年で固定」と明記して限界に書く</span></label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t25"><label for="t25">基準年・中心地・賃金をまとめて変え、再較正を1回で済ませる<span class="why">ω<sub>j</sub> もscn0も変わるので07の較正はそのまま使えない。GAの計算時間に注意。project_log/calibration/ に新しい試行として記録</span></label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t26"><label for="t26">3時点（2009・2014・2021）を回す：分布の効果<span class="why">総数・総給与は基準年に合わせる。賃金構造を固定した版と年次別の版の2通りで、場所の効果と賃金構造の効果を分ける</span></label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t27"><label for="t27">雇用の総量の変化も入れたシナリオ：規模の効果<span class="why">人口・世帯数の扱いをそろえ、1人あたりの指標で比べる。国勢調査の人口分布の変化と比べれば検証にもなる。t18④の結果しだい</span></label><span class="chip sub">中</span></li>
+  </ul>
+
+  <div class="phase"><span class="when">11/16 – 11/29</span><span class="what">分析を仕上げる</span></div>
+  <ul class="todo">
+    <li><input type="checkbox" id="t05"><label for="t05">2021−2009の差を経路別に分解する<span class="why">通勤距離、手段分担、道路混雑、住み替え・床面積</span></label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t06"><label for="t06">住宅CO₂の係数の出典を固める</label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t07"><label for="t07">自転車（徒歩）の分担率と移動時間を集計する</label><span class="chip sub">中</span></li>
+    <li><input type="checkbox" id="t08"><label for="t08">ゾーン別の得失（厚生・家賃・通勤時間）の地図を作る</label><span class="chip sub">中</span></li>
+    <li><input type="checkbox" id="t09"><label for="t09">較正01でも2009/2021シナリオを回し、07と比べる（G3）</label><span class="chip sub">中</span></li>
+    <li><input type="checkbox" id="t10"><label for="t10">（余裕があれば）賃金に集積弾力性を入れた感度分析</label><span class="chip sub">任意</span></li>
+  </ul>
+
+  <div class="phase"><span class="when">11/30 – 12/20</span><span class="what">執筆</span></div>
+  <ul class="todo">
+    <li><input type="checkbox" id="t11"><label for="t11">序論と関連研究（4つの流れ、系譜の中での位置づけ）</label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t12"><label for="t12">方法（モデルの仕組みを図で、反実仮想の設計を明示）<span class="why">ch3_ch4_materials.md の素材を英語化</span></label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t13"><label for="t13">結果と考察（RQ1〜4）、限界（雇用・賃金の外生、家計1種類、G4）</label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t14"><label for="t14">文献の書誌を確認する<span class="why">Allen &amp; Arkolakis、Ahlfeldt、Heblich、Severen の年と誌名。Mann 2026・Hörcher 2026 がCO₂を扱っていないか</span></label><span class="chip sub">中</span></li>
+  </ul>
+
+  <div class="phase"><span class="when">12/21 – 12/31</span><span class="what">仕上げと投稿</span></div>
+  <ul class="todo">
+    <li><input type="checkbox" id="t15"><label for="t15">先生の確認、英文校正</label><span class="chip warn">高</span></li>
+    <li><input type="checkbox" id="t16"><label for="t16">カバーレター、図表の体裁を整えて投稿</label><span class="chip warn">高</span></li>
+  </ul>
+</section>
+
+<!-- 6 -->
+<section id="check">
+  <div class="sec-head"><div class="stop">6</div><h2>要確認・リスク</h2></div>
+  <div class="note"><b>APC免除：</b>「2026年12月末まで免除」の文は、会議 Urban Transitions 2026 の特集号の案内の中に書かれていた。通常投稿にも当てはまるかは未確認（ScienceDirectは自動取得できなかった）。</div>
+  <ul>
+    <li>EVの違和感が解消できないと、厚生の主張（柱①の半分）が成り立たない</li>
+    <li>住宅CO₂の係数の出典が不明なままだと、柱②は書けない</li>
+    <li>G1の空白はConsensusの要旨ベース。Scholarで同じ問いの研究が見つかったら、主張を組み直す</li>
+    <li>雇用・賃金の外生性は、QSM・CGE寄りの査読者がまず突く点</li>
+    <li>道路配分の精度が較正時（1e-2）と現状計算（1e-3）でずれている</li>
+    <li><b>LUTIループに収束の雑音の床がある</b>（diff≈10〜100で上下）。EVで±1〜3千万円/月、CO₂で数tCO₂/日ぶれる。小さな差を論じるには、道路配分の精度を上げるか複数回の平均が必要</li>
+    <li>EVの近似式は向きで大きさが変わる。両方向とその平均を示す</li>
+    <li>scn0 は雇用が2014年（基礎調査）、賃金が2021年の産業構成×2024年の賃金で、年次がそろっていない。今の「2009−現状」「2021−現状」は2014との比較で、比べ方の調整が必要</li>
+    <li>基準年・賃金を直すと再較正が必要。11月中に終わらない場合は、17ゾーン・現行賃金で書き、直した版を投稿までに差し替える二段構え</li>
+    <li>中心地を増やしても、大きな動きの多くは隣り合うメッシュ間なので、通勤への効果は大きくならない可能性がある（その場合はRQ1の組み直し）</li>
+  </ul>
+</section>
+
+<footer>
+  元の資料（<span class="files">project_log/paper-direction/</span>）：<span class="files">literature_gap.md</span>・<span class="files">model_lineage_review.md</span>・<span class="files">target_journal.md</span>・<span class="files">notes.md</span>
+</footer>
+</div>
+
+<script>
+(function(){
+  var KEY='luti-paper-todo';
+  var state={};
+  try{state=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){state={};}
+  document.querySelectorAll('.todo input[type=checkbox]').forEach(function(cb){
+    if(state[cb.id]) cb.checked=true;
+    cb.addEventListener('change',function(){
+      state[cb.id]=cb.checked;
+      try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+    });
+  });
+})();
+</script>

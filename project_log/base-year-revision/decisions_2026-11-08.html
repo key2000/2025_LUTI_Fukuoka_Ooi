@@ -1,0 +1,543 @@
+<title>基準年見直しの判断事項</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Kaku+Gothic+New:wght@700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 縦1列の読み物。判断ごとに「背景→図→選択肢→推奨」の順。スマホ幅を基準に組む */
+:root{
+  --bg:#f5f7f5; --card:#ffffff; --fg:#1c2421; --muted:#5b6964; --line:#d3dbd7;
+  --accent:#0d6b66; --accent-soft:#dcefed; --warn:#a85a17; --warn-soft:#f7e8d9;
+  --band:#e6ebe8; --good:#2f7a3d;
+  --f-display:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-body:"BIZ UDPGothic","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --card:#19201d; --fg:#e3eae7; --muted:#9aa8a2; --line:#2d3733;
+  --accent:#4fc0b6; --accent-soft:#163532; --warn:#e3a066; --warn-soft:#3a2a1c;
+  --band:#222a27; --good:#6cc27c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111614; --card:#19201d; --fg:#e3eae7; --muted:#9aa8a2; --line:#2d3733;
+  --accent:#4fc0b6; --accent-soft:#163532; --warn:#e3a066; --warn-soft:#3a2a1c;
+  --band:#222a27; --good:#6cc27c; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.75}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.4;margin:0}
+h1{font-size:1.55rem}
+h2{font-size:1.25rem}
+h3{font-size:1.02rem;margin-top:6px}
+p{margin:0}
+.lead{color:var(--muted);font-size:.93rem}
+section{display:flex;flex-direction:column;gap:14px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.rec{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.rec b{color:var(--accent)}
+.caution{border-left:4px solid var(--warn);background:var(--warn-soft);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.term{font-size:.88rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+.term b{color:var(--fg)}
+ul,ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:4px}
+.toc{display:flex;flex-direction:column;gap:8px}
+.toc a{display:grid;grid-template-columns:2.2em 1fr;gap:8px;text-decoration:none;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.toc a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toc .n{font-family:var(--f-mono);color:var(--accent);font-weight:500}
+.toc .q{font-weight:700}
+.toc .r{display:block;font-size:.85rem;color:var(--muted);font-weight:400}
+.fig{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 10px 8px;display:flex;flex-direction:column;gap:6px}
+.fig .cap{font-size:.84rem;color:var(--muted)}
+.fig .ttl{font-weight:700;font-size:.92rem}
+.svgbox{overflow-x:auto}
+svg{display:block;width:100%;height:auto;min-width:320px}
+svg text{fill:var(--fg);font-family:var(--f-body)}
+svg .mut{fill:var(--muted)}
+svg .acc{fill:var(--accent)} svg .wrn{fill:var(--warn)}
+svg .ax{stroke:var(--line);stroke-width:1}
+svg .grid{stroke:var(--line);stroke-width:.6;stroke-dasharray:2 3}
+svg .bandf{fill:var(--band)}
+svg .accs{stroke:var(--accent)} svg .wrns{stroke:var(--warn)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:420px}
+th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+th{font-weight:700;color:var(--muted);font-size:.8rem}
+.ok{color:var(--good);font-weight:700}.mid{color:var(--warn);font-weight:700}.ng{color:var(--warn);font-weight:700}
+.opts{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:640px){.opts.two{grid-template-columns:1fr 1fr}}
+.opt{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.opt.pick{border:2px solid var(--accent)}
+.opt .tag{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.opt.pick .tag{color:var(--accent);font-weight:500}
+.pm{display:grid;grid-template-columns:1.6em 1fr;gap:2px 4px;font-size:.9rem}
+.pm .p{color:var(--good);font-weight:700}.pm .m{color:var(--warn);font-weight:700}
+.formula{font-family:var(--f-mono);font-size:.85rem;background:var(--band);border-radius:6px;padding:10px;overflow-x:auto;white-space:pre}
+.reply{display:flex;flex-direction:column;gap:8px}
+textarea{width:100%;box-sizing:border-box;font-family:var(--f-mono);font-size:.88rem;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:9.5em}
+button{align-self:flex-start;font-family:var(--f-body);font-size:.92rem;background:var(--accent);color:var(--card);border:0;border-radius:6px;padding:8px 14px;font-weight:700}
+.small{font-size:.84rem;color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+</style>
+
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:8px">
+  <div class="eyebrow">福岡LUTI ・ 基準年の見直し ・ 2026-11-08</div>
+  <h1>判断していただきたい5つのこと</h1>
+  <p class="lead">t17〜t23 の調査・診断はすべて終わりました。ここから先（中心地を増やす・賃金を年ごとに作る・較正をやり直す）は、下の5つが決まらないと始められません。各項目に、判断の材料（何が起きているか・選択肢・それぞれの長所短所・推奨）を省略せずに載せています。</p>
+</header>
+
+<nav class="toc" aria-label="判断事項の一覧">
+  <a href="#d1"><span class="n">1</span><span><span class="q">較正の基準年を何年にするか</span><span class="r">推奨：2021年</span></span></a>
+  <a href="#d2"><span class="n">2</span><span><span class="q">年ごとの賃金 ω<sub>j</sub>(t) の作り方</span><span class="r">推奨：案(c) 産業構成は基準年で固定し、賃金だけ年ごとに入れ替える</span></span></a>
+  <a href="#d3"><span class="n">3</span><span><span class="q">2021年の賃金構造基本統計調査をダウンロードしてよいか</span><span class="r">1で2021年を選ぶなら必要</span></span></a>
+  <a href="#d4"><span class="n">4</span><span><span class="q">確かめる仮説（H1〜H5）をこの内容で固定してよいか</span><span class="r">結果を見る前に決めておくため</span></span></a>
+  <a href="#d5"><span class="n">5</span><span><span class="q">計算の揺れ（収束の雑音）にどう対処するか</span><span class="r">推奨：まずステップ幅を1/nに（安い）→ 足りなければ道路配分の精度を上げる</span></span></a>
+</nav>
+
+<!-- ============ 背景 ============ -->
+<section id="bg">
+  <div class="eyebrow">前提</div>
+  <h2>いまのモデルが何をしているか（判断の土台）</h2>
+  <div class="card">
+    <p>今の比較は「<b>基準年の都市</b>（住宅・交通網・居住地の魅力 k<sub>i</sub>・総従業者数・総給与を固定）に、<b>2009年・2014年・2021年の雇用の分布だけ</b>を入れ替えて計算し、結果どうしを比べる」という設計です。この設計そのものは正しいです。</p>
+    <p>問題は、<b>基準年の中身の年がばらばら</b>なことと、<b>計算の揺れ</b>が比べたい差と同じくらいあることです。1・2・3 は前者、5 は後者への対応です。</p>
+    <div class="term">
+      <b>比較静学</b>：ある1時点の状態（均衡）をつくり、条件を1つだけ変えたときの新しい均衡と比べる方法。時間の経過（何年かけて移るか）は扱わない。<br>
+      <b>較正（キャリブレーション）</b>：モデルのパラメータ（α, γ<sub>0</sub>, γ<sub>1</sub>, θ<sub>H</sub>, θ<sub>L</sub>）を、実際の世帯数・家賃・床面積に合うように決めること。今はGA（遺伝的アルゴリズム）で探している。<br>
+      <b>k<sub>i</sub></b>：居住ゾーンごとの「モデルで説明できない住みやすさ」。実データとのずれを最後に吸収する残差なので、入力の年がずれていると、そのずれも k<sub>i</sub> に入り込む。
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ============ 判断1 ============ -->
+<section id="d1">
+  <div class="eyebrow">判断 1 / 5</div>
+  <h2>較正の基準年を、2014年にするか2021年にするか</h2>
+
+  <p>今は「雇用だけ2014年、他は2020〜2024年」で較正しています。下の図の<span style="color:var(--warn);font-weight:700">橙の点</span>が今、<span style="color:var(--accent);font-weight:700">緑の点</span>が2021年基準にしたときです。</p>
+
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図1　モデルに入れているデータの年（今 → 2021年基準）</div>
+    <div class="svgbox">
+    <svg viewBox="0 0 400 300" role="img" aria-label="入力データの年次。従業者数は2014から2021へ、賃金は2024から2021へ移すと、2020〜2023の範囲にそろう">
+      <rect class="bandf" x="286.8" y="22" width="44.3" height="234" rx="3"/>
+      <text x="308.9" y="16" font-size="10" text-anchor="middle" class="mut">そろう範囲</text>
+      <!-- grid -->
+      <g class="grid">
+        <line x1="124.7" y1="24" x2="124.7" y2="256"/><line x1="198.4" y1="24" x2="198.4" y2="256"/>
+        <line x1="301.6" y1="24" x2="301.6" y2="256"/><line x1="375.3" y1="24" x2="375.3" y2="256"/>
+      </g>
+      <line class="ax" x1="110" y1="258" x2="392" y2="258"/>
+      <g font-size="10.5" text-anchor="middle" class="mut">
+        <text x="124.7" y="274" class="mut">2009</text><text x="198.4" y="274" class="mut">2014</text>
+        <text x="301.6" y="274" class="mut">2021</text><text x="375.3" y="274" class="mut">2026</text>
+      </g>
+      <g font-size="11">
+        <text x="4" y="44">従業者数 L̂<tspan font-size="8" dy="2">j</tspan></text>
+        <text x="4" y="78">産業構成</text>
+        <text x="4" y="112">産業別賃金</text>
+        <text x="4" y="146">世帯数(目標)</text>
+        <text x="4" y="180">家賃・床(目標)</text>
+        <text x="4" y="214">手段選択(PT)</text>
+        <text x="4" y="248">道路・鉄道網</text>
+      </g>
+      <!-- row1 employment 2014 -> 2021 -->
+      <line x1="204" y1="40" x2="293" y2="40" class="accs" stroke-width="1.6" marker-end="url(#ar)"/>
+      <circle cx="198.4" cy="40" r="6" class="wrn" style="fill:var(--warn)"/>
+      <circle cx="301.6" cy="40" r="6" style="fill:var(--accent)"/>
+      <!-- row2 industry 2021 -->
+      <circle cx="301.6" cy="74" r="6" style="fill:var(--accent)"/>
+      <circle cx="301.6" cy="74" r="9.5" fill="none" class="wrns" stroke-width="1.6"/>
+      <!-- row3 wage 2024 -> 2021 -->
+      <line x1="340" y1="108" x2="310" y2="108" class="accs" stroke-width="1.6" marker-end="url(#ar)"/>
+      <circle cx="345.8" cy="108" r="6" style="fill:var(--warn)"/>
+      <circle cx="301.6" cy="108" r="6" style="fill:var(--accent)"/>
+      <!-- row4 households 2020 -->
+      <circle cx="286.8" cy="142" r="6" style="fill:var(--accent)"/>
+      <circle cx="286.8" cy="142" r="9.5" fill="none" class="wrns" stroke-width="1.6"/>
+      <!-- row5 rent 2023 -->
+      <circle cx="331.1" cy="176" r="6" style="fill:var(--accent)"/>
+      <circle cx="331.1" cy="176" r="9.5" fill="none" class="wrns" stroke-width="1.6"/>
+      <!-- row6 PT 2017-2019 -->
+      <rect x="242.6" y="205" width="29.5" height="10" rx="5" style="fill:var(--muted)"/>
+      <!-- row7 OSM 2026 -->
+      <circle cx="375.3" cy="244" r="6" style="fill:var(--muted)"/>
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L10,5L0,10z" style="fill:var(--accent)"/></marker></defs>
+      <!-- legend -->
+      <g font-size="10">
+        <circle cx="116" cy="291" r="5" style="fill:var(--warn)"/><text x="125" y="295">今だけ</text>
+        <circle cx="178" cy="291" r="5" style="fill:var(--accent)"/><text x="187" y="295">2021年基準</text>
+        <circle cx="262" cy="291" r="5" style="fill:var(--accent)"/><circle cx="262" cy="291" r="8" fill="none" class="wrns" stroke-width="1.4"/><text x="274" y="295">両方同じ</text>
+        <circle cx="336" cy="291" r="5" style="fill:var(--muted)"/><text x="345" y="295">変えられない</text>
+      </g>
+    </svg>
+    </div>
+    <div class="cap">今は従業者数（2014）と賃金（2024）が、世帯数（2020）・家賃（2023）から外れています。2021年基準にすると、灰色の帯（2020〜2023）にほぼ収まります。手段選択の係数（PT調査 2017〜19）と道路・鉄道網（OSM 2026）はどちらにしても残る食い違いで、論文に明記します。</div>
+  </figure>
+
+  <h3>なぜ年がずれると困るのか</h3>
+  <div class="card">
+    <p>較正は「2014年の職場の分布」と「2020年の世帯の分布」を同時に再現しようとします。2014→2020 の間に職場が動いた分は、モデルが説明できないので k<sub>i</sub>（説明できない住みやすさ）に押し込まれます。</p>
+    <p>その k<sub>i</sub> はシナリオ間で固定するので、「2009年・2021年の雇用を入れたら」という計算のすべてに、この押し込まれたずれが乗ります。判断5の図4で見る「ゾーン間の満足度の差が大きすぎる（都心 98 〜 アイランドシティ 215）」も、これが原因の候補です。</p>
+  </div>
+
+  <h3>2つの案の比較</h3>
+  <div class="opts two">
+    <div class="opt">
+      <div class="tag">案 2014年基準（年をそろえ直す）</div>
+      <div class="pm">
+        <span class="p">＋</span><span>コロナ禍の影響がない</span>
+        <span class="p">＋</span><span>経済センサスの名簿拡充（2021年）の影響を受けない</span>
+        <span class="m">－</span><span>世帯数（国調2015にすれば可）・家賃（住調2013にすれば可）を全部2014年前後に取り直す必要がある。較正07は住調2023で作っているので、家賃データから作り直し</span>
+        <span class="m">－</span><span>メッシュの産業構成が2014年はe-Statにない（町丁別から面積で按分する必要）</span>
+        <span class="m">－</span><span>2021年が「未来の反実仮想」になり、論文の「今の福岡」の話として読みにくい</span>
+      </div>
+    </div>
+    <div class="opt pick">
+      <div class="tag">推奨　案 2021年基準</div>
+      <div class="pm">
+        <span class="p">＋</span><span>活動調査2021・国調2020・住調2023・賃構2021がほぼそろう。較正07のデータ（住調2023）をそのまま使える</span>
+        <span class="p">＋</span><span>メッシュの産業構成が2021年はそろっている（T001157）</span>
+        <span class="p">＋</span><span>2009・2014は「過去の雇用分布だったら」という反実仮想として素直に読める</span>
+        <span class="m">－</span><span>2021年6月はコロナ禍。通勤・雇用に一時的な影響がありうる（論文に注記）</span>
+        <span class="m">－</span><span>2021年は名簿を拡充しているので、2009・2014と総数は単純に比べられない（判断2の下の注を参照）</span>
+        <span class="m">－</span><span>較正をもう1回やり直す（どちらの案でも必要）</span>
+      </div>
+    </div>
+  </div>
+  <div class="rec"><b>推奨：2021年</b><p>年をそろえやすく、既存の家賃データ（較正07）を使い回せるため。コロナ禍と名簿拡充は、論文で注記する「残る限界」として扱います。中心地を増やす作業と合わせて、較正は1回でやり直します。</p></div>
+</section>
+
+<hr>
+
+<!-- ============ 判断2 ============ -->
+<section id="d2">
+  <div class="eyebrow">判断 2 / 5</div>
+  <h2>年ごとの賃金 ω<sub>j</sub>(t) をどう作るか</h2>
+
+  <div class="card">
+    <p>今の賃金 ω<sub>j</sub>（従業ゾーン j で働く人の給料）は、次の2つを掛け合わせて作っています。</p>
+    <ol>
+      <li>そのゾーンの<b>産業構成</b>（製造業が何割、卸小売が何割…）＝ 経済センサス活動調査 <b>2021</b> の1kmメッシュ</li>
+      <li>産業ごとの<b>平均賃金</b> ＝ 賃金構造基本統計調査（福岡県）<b>2024</b></li>
+    </ol>
+    <p>2009・2014・2021 の3時点を比べるなら、本来はこの2つとも各年のものを使うべきです。ところが、<b>データがそろいません</b>。</p>
+  </div>
+
+  <figure class="fig" style="margin:0">
+    <div class="ttl">表　3時点でそろうデータ</div>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>データ</th><th>2009</th><th>2014</th><th>2021</th></tr></thead>
+      <tbody>
+        <tr><td>メッシュ別の従業者総数（全産業A〜S）</td><td class="ok">○</td><td class="ok">○</td><td class="ok">○ <span class="small">名簿拡充の注記あり</span></td></tr>
+        <tr><td>メッシュ別の<b>産業構成</b></td><td class="ng">× <span class="small">e-Stat非公開</span></td><td class="mid">△ <span class="small">町丁別から按分</span></td><td class="ok">○</td></tr>
+        <tr><td>福岡県の<b>産業別賃金</b>（賃構）</td><td class="ok">○ <span class="small">旧推計</span></td><td class="ok">○ <span class="small">旧推計</span></td><td class="ok">○ <span class="small">新推計</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="cap">2009・2014年のメッシュ産業別の集計は、統計局の中には存在します（表番号092〜259）が、e-Statでは公開されていません。入手方法・費用は統計局への問い合わせが必要です。賃構は2020年から推計方法が変わり（回収率で補正する等）、新方式で遡った値は全国しか出ていません。</div>
+  </figure>
+
+  <h3>3つの案</h3>
+  <div class="opts">
+    <div class="opt">
+      <div class="tag">案 (a)　統計局に問い合わせる</div>
+      <p>2009・2014のメッシュ産業別を取り寄せ、3時点とも正式なデータで作る。</p>
+      <div class="pm">
+        <span class="p">＋</span><span>一番厳密</span>
+        <span class="m">－</span><span>入手までの時間・費用が不明。12月末の投稿に間に合わないおそれ</span>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="tag">案 (b)　2014は町丁別を按分、2009は2014で代用</div>
+      <p>2014年の町丁・大字別（T000843、産業大分類あり）をメッシュに面積で配り直す。2009年は2014年の構成をそのまま使う。</p>
+      <div class="pm">
+        <span class="p">＋</span><span>2014年は実データに近い</span>
+        <span class="m">－</span><span>面積按分の誤差が入る。2009年は結局代用なので、年によって作り方が違う</span>
+      </div>
+    </div>
+    <div class="opt pick">
+      <div class="tag">推奨　案 (c)　産業構成は基準年で固定、賃金だけ年ごとに</div>
+      <p>メッシュの産業構成は3時点とも2021年のものを使い、産業別賃金だけを各年の賃構に入れ替える。賃金は「産業別賃金 ÷ 県の全産業平均」という<b>相対値</b>にして使う。</p>
+      <div class="pm">
+        <span class="p">＋</span><span>3時点で作り方が同じ。すぐできる</span>
+        <span class="p">＋</span><span>相対値にすれば、2020年の推計方法の変更による段差（全産業が一律に上下する分）が打ち消される（推測。確認します）</span>
+        <span class="p">＋</span><span>総給与はもともとシナリオ間でそろえているので、年ごとに変わるのは「どの産業が相対的に高いか」だけ。主に見たいのは雇用の分布の効果なので、目的と合う</span>
+        <span class="m">－</span><span>「2009年にそのゾーンが製造業中心だった」などの産業構成の変化は反映されない。論文に限界として書く</span>
+      </div>
+    </div>
+  </div>
+
+  <figure class="fig" style="margin:0">
+    <div class="ttl">案(c) の式</div>
+    <div class="formula">ω_j(t) = k_w(t) × Σ_k  s_jk(2021) × w_k(t) / w̄(t)
+
+s_jk(2021) : 中心地 j の領域での産業 k のシェア（2021、固定）
+w_k(t)     : 福岡県の産業 k の平均賃金（t 年の賃構）
+w̄(t)       : 福岡県の全産業平均賃金（t 年）
+k_w(t)     : 総給与を基準年にそろえる倍率</div>
+    <div class="cap">「中心地 j の領域」＝ 各メッシュを一番近い中心地に割り当ててできる範囲（ボロノイ領域）。今は中心地のメッシュ1つだけの産業構成を使っていますが、中心地を増やすのに合わせて、領域全体の構成に変えます（t24）。</div>
+  </figure>
+
+  <div class="caution">
+    <b style="color:var(--warn)">注：2021年の雇用が単純に比べられない理由</b>
+    <p>2021年の経済センサスは、国税庁の法人番号公表サイトの情報を使って事業所の名簿を広げました。そのため、以前は数えられていなかった小さな事業所も入っています。福岡都市圏の従業者は 2009年 1,224,173人 → 2021年 1,305,733人（+6.7%）ですが、この中に「数え漏れが減った分」が混ざっています。分布の比較でも、新しく数えられた事業所の場所が混ざりえます。総数はもともと基準年にそろえるので、影響は「分布」の部分だけです。論文には注記します。</p>
+  </div>
+
+  <div class="rec"><b>推奨：案 (c)</b><p>作り方が3時点で同じで、12月に間に合う。産業構成を固定する限界は明記します。もし (a) の問い合わせだけ並行して出しておきたい場合は、それも書き添えてください。</p></div>
+</section>
+
+<hr>
+
+<!-- ============ 判断3 ============ -->
+<section id="d3">
+  <div class="eyebrow">判断 3 / 5</div>
+  <h2>2021年の賃金構造基本統計調査をダウンロードしてよいか</h2>
+  <div class="card">
+    <p>判断1で2021年基準を選ぶ場合、基準年の賃金を2024年から2021年に差し替えます。判断2で案(c)を選ぶ場合は、2009年・2014年の分も必要です。</p>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>項目</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td>取得元</td><td>e-Stat（政府統計の総合窓口）賃金構造基本統計調査<br><span class="small num" style="word-break:break-all">e-stat.go.jp/stat-search/files?toukei=00450091</span></td></tr>
+        <tr><td>取るもの</td><td>都道府県別・産業大分類別の表（福岡県）<br>令和3年（2021）／平成26年（2014）／平成21年（2009）</td></tr>
+        <tr><td>形式・大きさ</td><td>Excel または CSV。1年分で数百KB程度の見込み（ファイル名と正確な大きさは、ダウンロードの前にページで確認してお伝えします）</td></tr>
+        <tr><td>置き場所</td><td><span class="num">data/raw/</span> の下（Git管理外）</td></tr>
+        <tr><td>注意</td><td>2021年は新推計、2009・2014年は旧推計。判断2の相対値で段差を消す前提。農林漁業（A・B）と公務（S）は含まれないので、メッシュ側のA・B・Sは全産業平均で補う</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div class="rec"><b>お願い</b><p>3年分（2009・2014・2021）のダウンロードを許可するかどうか。2021年だけ、でも構いません。</p></div>
+</section>
+
+<hr>
+
+<!-- ============ 判断4 ============ -->
+<section id="d4">
+  <div class="eyebrow">判断 4 / 5</div>
+  <h2>確かめる仮説を、この内容で固定してよいか</h2>
+  <div class="card">
+    <p>新規性は「モデル」ではなく「発見」に置く方針なので、<b>今まで言われてきた定説</b>を仮説として立て、それが福岡で成り立つかを確かめます。結果を見てから仮説を足したり向きを変えたりすると、都合のいい結果だけ拾ったと見られるので、<b>計算の前に固定</b>します。固定後に足すものは「事後の探索」と明記します。</p>
+    <p class="small">比較の単位：基準年の都市に各年の雇用分布を入れたシナリオどうしの差。</p>
+  </div>
+
+  <div class="opts">
+    <div class="opt">
+      <div class="tag">H1　職住近接</div>
+      <p>雇用が郊外の拠点に分散すると、職場が住まいに近づき、平均通勤距離・時間は短くなる。</p>
+      <p class="small">指標：平均通勤距離・時間（手段別・全体）。福岡では 2014→2021 で都心シェアも増えている（35.2→36.0%）ので、分散と集中が同時に起きている。都心と郊外の寄与を分けて示す。</p>
+    </div>
+    <div class="opt">
+      <div class="tag">H2　都心集中は交通CO₂を減らす</div>
+      <p>都心の雇用が増えると鉄道の分担が上がり、自動車のCO₂が減る。</p>
+      <p class="small">指標：手段分担、自動車・鉄道CO₂。今の17ゾーン版では 2021−2009 で自動車CO₂ +0.61%（定説と逆）だが、雑音の範囲かもしれない（判断5）。中心地を増やした版で確かめる。</p>
+    </div>
+    <div class="opt">
+      <div class="tag">H3　コンパクト化の win-win</div>
+      <p>交通CO₂が減る雇用分布の変化は、家計の厚生（EV）も上げる。</p>
+      <p class="small">判定：CO₂減とEV増が同時に起きるか、片方が悪くなるトレードオフか。</p>
+    </div>
+    <div class="opt">
+      <div class="tag">H4　交通と住宅のCO₂は逆向きに効くか</div>
+      <p>雇用が集中すると通勤CO₂は減るが、家賃が上がって床面積が減り、住宅CO₂も減る（同じ向き）。分散では両方増える。逆向きになるのはどんな再配置のときか。</p>
+      <p class="small">指標：交通CO₂と住宅CO₂の変化の符号と比。交通だけで評価した場合との差（%）。住宅CO₂は総床面積だけで決まる式になっている点に注意。</p>
+    </div>
+    <div class="opt">
+      <div class="tag">H5　政策どおりの拠点の成長はCO₂を減らしたか</div>
+      <p>広域拠点政策どおりに伸びた拠点（アイランドシティ、学研都市、香椎など）の寄与と、政策と逆に減った拠点（雑餉隈、大橋）の寄与を分けて、政策どおりの部分がCO₂を減らしたかを見る。</p>
+      <p class="small">方法：拠点を1つずつ差し替えるシナリオ。計算量が多いので、H1〜H4の後に実施するか判断。論文の柱B（計画と実際のずれ）にあたる。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <b>判定のルール（案）</b>
+    <ul>
+      <li>効果は「総数をそろえた差の%」と「1世帯あたり」で示す。</li>
+      <li>中心地の数（K≈17 / 24 / 32）と較正（01 / 07）を変えても符号が変わらないものだけを「結論」とし、変わるものは「頑健でない」と書く。</li>
+      <li>計算の揺れ（判断5）より小さい差は、結論にしない。</li>
+    </ul>
+    <div class="term"><b>EV（等価変分）</b>：「ある変化が起きたのと同じ満足度を得るには、今の状態でいくらお金をもらえばよいか」を金額で表した厚生の指標。正なら良くなった、負なら悪くなった。ここでは万円/月で、都市圏の全世帯を合計した値。</div>
+  </div>
+
+  <div class="rec"><b>お願い</b><p>このまま固定してよいか、足す・削る・向きを直すものがあるか。先生にも見せる場合は、先生の確認後に固定日を記録します。</p></div>
+</section>
+
+<hr>
+
+<!-- ============ 判断5 ============ -->
+<section id="d5">
+  <div class="eyebrow">判断 5 / 5</div>
+  <h2>計算の揺れに、どう対処するか</h2>
+
+  <div class="card">
+    <p>LUTIループ（土地利用 ⇄ 交通を繰り返して落ち着かせる計算）は、毎回の道路所要時間の変化量 <span class="num">diff</span> が 100 を下回ったら止めています。ところが止める基準を厳しくして50回回しても、<span class="num">diff</span> は 13〜310 の間を上下し続け、<b>下がりきりません</b>。</p>
+  </div>
+
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図2　ループの回数と変化量 diff（現状scn0、基準を厳しくして50回）</div>
+    <div class="svgbox">
+    <svg id="noise" viewBox="0 0 400 205" role="img" aria-label="50回の反復で diff は13から310の間を上下し続け、100付近から下に下がりきらない">
+      <rect class="bandf" x="50" y="95" width="340" height="75"/>
+      <line class="grid" x1="50" y1="20" x2="390" y2="20"/>
+      <line x1="50" y1="95" x2="390" y2="95" class="wrns" stroke-width="1.4" stroke-dasharray="5 3"/>
+      <text x="388" y="90" font-size="10" text-anchor="end" class="wrn">今の停止基準 diff=100</text>
+      <text x="388" y="164" font-size="10" text-anchor="end" class="mut">雑音の床（10〜100）</text>
+      <line class="ax" x1="50" y1="170" x2="390" y2="170"/>
+      <line class="ax" x1="50" y1="20" x2="50" y2="170"/>
+      <g font-size="10" text-anchor="end" class="mut">
+        <text x="45" y="24" class="mut">1000</text><text x="45" y="99" class="mut">100</text><text x="45" y="174" class="mut">10</text>
+      </g>
+      <g font-size="10" text-anchor="middle" class="mut">
+        <text x="50" y="186" class="mut">1</text><text x="154" y="186" class="mut">16</text><text x="245" y="186" class="mut">29</text><text x="390" y="186" class="mut">50回目</text>
+      </g>
+      <text x="220" y="201" font-size="10" text-anchor="middle" class="mut">ループの回数（縦軸は対数）</text>
+      <polyline id="nline" fill="none" class="accs" stroke-width="1.6" stroke-linejoin="round"/>
+      <g id="ndots"></g>
+    </svg>
+    </div>
+    <div class="cap">原因は、各回の道路配分（UE配分）を「精度 max_gap = 0.001 で打ち切っている」ことです。毎回少しずつ違う打ち切り誤差が出るので、ループ全体もその幅で揺れ続けます。今の基準 100 は、この揺れの上で止めているだけです。</div>
+  </figure>
+
+  <h3>揺れがEVにどれくらい効くか</h3>
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図3　EV（万円/月）を両方向で計算した結果</div>
+    <div class="svgbox">
+    <svg viewBox="0 0 400 240" role="img" aria-label="2014と2009・2021の比較は大きく、向きを逆にするとほぼ符号が反転する。2009と2021の差は揺れの帯とほぼ同じか、向きで大きさが大きく変わる">
+      <rect class="bandf" x="208" y="16" width="24" height="190"/>
+      <g class="grid"><line x1="140" y1="16" x2="140" y2="206"/><line x1="300" y1="16" x2="300" y2="206"/></g>
+      <line class="ax" x1="220" y1="16" x2="220" y2="206"/>
+      <line class="ax" x1="60" y1="206" x2="380" y2="206"/>
+      <g font-size="10" text-anchor="middle" class="mut">
+        <text x="60" y="220" class="mut">−4万</text><text x="140" y="220" class="mut">−2万</text><text x="220" y="220" class="mut">0</text><text x="300" y="220" class="mut">+2万</text><text x="380" y="220" class="mut">+4万</text>
+      </g>
+      <text x="220" y="236" font-size="10" text-anchor="middle" class="mut">灰色の帯＝計算の揺れ（±3,000）</text>
+      <g font-size="10.5">
+        <text x="2" y="34">2014→2009</text><text x="2" y="58">2009→2014</text>
+        <text x="2" y="100">2014→2021</text><text x="2" y="124">2021→2014</text>
+        <text x="2" y="166">2009→2021</text><text x="2" y="190">2021→2009</text>
+      </g>
+      <g>
+        <rect x="220" y="24" width="149.5" height="14" style="fill:var(--accent)"/>
+        <rect x="81.5" y="48" width="138.5" height="14" style="fill:var(--warn)"/>
+        <rect x="220" y="90" width="128.5" height="14" style="fill:var(--accent)"/>
+        <rect x="119.7" y="114" width="100.3" height="14" style="fill:var(--warn)"/>
+        <rect x="212" y="156" width="8" height="14" style="fill:var(--warn)"/>
+        <rect x="220" y="180" width="54.8" height="14" style="fill:var(--accent)"/>
+      </g>
+      <g font-size="10" class="num">
+        <text x="214" y="35" text-anchor="end">+37,382</text>
+        <text x="226" y="59">−34,623</text>
+        <text x="214" y="101" text-anchor="end">+32,121</text>
+        <text x="226" y="125">−25,067</text>
+        <text x="208" y="167" text-anchor="end">−2,006</text>
+        <text x="214" y="191" text-anchor="end">+13,710</text>
+      </g>
+    </svg>
+    </div>
+    <div class="cap">「A→B」は、Aを基準にBへ変わったときのEV。理想的には「A→B」と「B→A」は符号が逆で同じ大きさになります。37,382万円/月 ≈ 3.7億円/月。</div>
+  </figure>
+
+  <div class="card">
+    <b>読み取り</b>
+    <ul>
+      <li><b>2014との比較（上4本）</b>：向きを逆にするとほぼ符号が反転する → 計算の誤りではなく、モデルが「2014年の分布は厚生が低い」と判断している（下の図4）。揺れ（±3千）よりずっと大きいので、本物の差。</li>
+      <li><b>2009と2021の比較（下2本）</b>：2009→2021 の −2,006 は揺れの帯とほぼ同じ大きさで、本当の差か区別できない。逆向きは +13,710 で、「2009年のほうが良い」という向きは一致するが、大きさが7倍近く違う。これは揺れではなく、<b>EVの近似式が「基準側の家賃」で評価するため</b>に、向きで値が変わる性質による。論文では両方向とその平均を示す必要がある。</li>
+      <li>CO₂の 2021−2009 の差（+0.4%）も、揺れで数 t-CO₂/日 動くので同じくらい心もとない。</li>
+    </ul>
+  </div>
+
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図4　EVを大きくしている従業ゾーン 50303344（箱崎・博多駅東側）の従業者数</div>
+    <div class="svgbox">
+    <svg viewBox="0 0 400 150" role="img" aria-label="ゾーン50303344の従業者数は2009年144,653、2014年150,825、2021年143,412。2014年だけ6〜7千人多い">
+      <g class="grid"><line x1="60" y1="16" x2="60" y2="116"/><line x1="166.7" y1="16" x2="166.7" y2="116"/><line x1="273.3" y1="16" x2="273.3" y2="116"/><line x1="380" y1="16" x2="380" y2="116"/></g>
+      <line class="ax" x1="60" y1="118" x2="380" y2="118"/>
+      <g font-size="10" text-anchor="middle" class="mut">
+        <text x="60" y="132" class="mut">14.0万</text><text x="166.7" y="132" class="mut">14.4万</text><text x="273.3" y="132" class="mut">14.8万</text><text x="380" y="132" class="mut">15.2万人</text>
+      </g>
+      <text x="220" y="147" font-size="9.5" text-anchor="middle" class="mut">（差を見るため横軸は14万から）</text>
+      <g font-size="11"><text x="4" y="34">2009</text><text x="4" y="68">2014</text><text x="4" y="102">2021</text></g>
+      <line x1="60" y1="30" x2="184.1" y2="30" class="ax"/><circle cx="184.1" cy="30" r="6" style="fill:var(--accent)"/>
+      <line x1="60" y1="64" x2="348.7" y2="64" class="ax"/><circle cx="348.7" cy="64" r="6" style="fill:var(--warn)"/>
+      <line x1="60" y1="98" x2="151.0" y2="98" class="ax"/><circle cx="151.0" cy="98" r="6" style="fill:var(--accent)"/>
+      <g font-size="10" class="num">
+        <text x="194" y="34">144,653</text><text x="338" y="68" text-anchor="end">150,825</text><text x="161" y="102">143,412</text>
+      </g>
+    </svg>
+    </div>
+    <div class="cap">2014年だけ6〜7千人多い。モデルはこのゾーンで働く世帯の満足度 v<sub>j</sub> を低く評価する（近くの住宅が足りない）ため、雇用が減る2009年・2021年はどちらも EV が大きく増えます（+3.4〜4.1億円/月がこのゾーンだけで出る）。逆に都心（50303302）は雇用が増えて −2.0〜2.8億円/月。ゾーン間の満足度の差（都心 98 〜 アイランドシティ 215）が大きいので、数千人の移動で億単位の差になります。この差の大きさ自体が、判断1の「年のずれ」で歪んでいる可能性があり、2021年で較正し直した後に確かめます。</div>
+  </figure>
+
+  <h3>揺れへの対処の選択肢</h3>
+  <div class="opts">
+    <div class="opt pick">
+      <div class="tag">推奨（まず試す）　案 C　ステップ幅を 1/n に減らす</div>
+      <p>今のループは、毎回「前回と今回の結果を半々（0.5）で混ぜる」ことで落ち着かせています。混ぜる割合を回数 n とともに 1/2, 1/3, 1/4… と減らすと、新しい回の打ち切り誤差の影響がだんだん小さくなり、揺れが平均されて消えていきます。</p>
+      <div class="pm">
+        <span class="p">＋</span><span>コードの変更は1行程度。計算時間はほぼ増えない（回数は増える）</span>
+        <span class="p">＋</span><span>交通分野の標準的なやり方（本来のMSA）で、論文で説明しやすい</span>
+        <span class="m">－</span><span>回数を多めに回す必要がある（30〜50回の見込み）。効くかは試してみないと分からない</span>
+      </div>
+      <div class="term"><b>MSA（逐次平均法）</b>：繰り返し計算の結果を「それまでの平均」に少しずつ混ぜていく方法。混ぜる割合を 1/n にすると、n回分の単純平均と同じになり、収束が保証される。今のコードは名前はMSAだが、割合を0.5に固定しているので、揺れが消えない。</div>
+    </div>
+    <div class="opt">
+      <div class="tag">案 A　道路配分の精度を上げる</div>
+      <p>各回の道路配分の打ち切り精度 max_gap を 0.001 → 0.0001 にして、揺れの元を小さくする。</p>
+      <div class="pm">
+        <span class="p">＋</span><span>揺れの原因そのものを減らす</span>
+        <span class="m">－</span><span>1回の配分の時間が数倍になる見込み（未計測）。今は3シナリオ×50回で約47分なので、何時間にもなりうる。較正（GA）の中では使えない</span>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="tag">案 B　最後の何回かの結果を平均する</div>
+      <p>例えば11〜50回目の状態（家賃・人口・所要時間）を平均して、それを最終結果とする。</p>
+      <div class="pm">
+        <span class="p">＋</span><span>計算は今のままでよい</span>
+        <span class="m">－</span><span>平均した状態は、厳密には1つの均衡になっていない（家賃と人口の組み合わせが互いに矛盾しうる）。EVの計算と相性が悪い</span>
+      </div>
+      <p class="small">補足：以前「何回か計算して平均」と書きましたが、この計算は毎回同じ結果になる（乱数を使っていない）ので、同じ計算を繰り返しても平均にはなりません。正しくは、この「1回の計算の中で最後の何回分を平均」です。</p>
+    </div>
+  </div>
+  <div class="rec"><b>推奨：まず案C を現状scn0で1回試す → 揺れが±数百万円/月まで下がればそれで採用。足りなければ案A を併用</b><p>試験自体は1〜2時間の計算で、結果を見せてから本番に使うか決めます。EVの向きの問題（近似式）は揺れとは別なので、どの案でも「両方向とその平均」を示します。</p></div>
+</section>
+
+<hr>
+
+<!-- ============ 返信 ============ -->
+<section id="reply">
+  <div class="eyebrow">返信用</div>
+  <h2>推奨どおりでよければ、これをそのまま送ってください</h2>
+  <div class="reply">
+    <label for="replytxt" class="small">直したいところだけ書き換えて、コピーしてチャットに貼ってください。</label>
+    <textarea id="replytxt">1. 基準年：2021年でOK
+2. 賃金：案(c)でOK
+3. 賃構のダウンロード：2009・2014・2021の3年分OK
+4. 仮説：このまま固定でOK（修正：なし）
+5. 揺れ：案Cをまず試す、でOK</textarea>
+    <button id="copybtn" type="button">コピー</button>
+    <span id="copymsg" class="small" aria-live="polite"></span>
+  </div>
+  <p class="small">記録：<span class="num">project_log/base-year-revision/</span>（01〜04の各notes.md）、方針は <span class="num">project_log/paper-direction/paper_plan_overview.html</span>（版7）。このページも <span class="num">base-year-revision/decisions_2026-11-08.html</span> に保存しています。</p>
+</section>
+
+</div>
+
+<script>
+(function(){
+  var d=[44.6,59.2,46.8,16.6,16.5,16.4,13.6,91.4,310,99.8,89.9,60.3,55.9,16.6,67.6,54.1,48.0,45.1,58.4,20.2,80.0,53.8,13.2,27.3,25.9,23.7,35.7,65.6,35.4,15.8,32.4,26.8,96.9,40.5,84.3,48.8,42.7,27.3,60.8,15.6,62.3,24.3,75.5,38.9,56.0,79.7,31.5,43.2,31.4,56.3];
+  var pts=d.map(function(v,i){var x=50+i*340/49;var y=170-(Math.log10(v)-1)*75;return [x.toFixed(1),y.toFixed(1)];});
+  var pl=document.getElementById('nline'); if(pl) pl.setAttribute('points',pts.map(function(p){return p.join(',');}).join(' '));
+  var g=document.getElementById('ndots'); var ns='http://www.w3.org/2000/svg';
+  if(g) pts.forEach(function(p){var c=document.createElementNS(ns,'circle');c.setAttribute('cx',p[0]);c.setAttribute('cy',p[1]);c.setAttribute('r','2.2');c.setAttribute('style','fill:var(--accent)');g.appendChild(c);});
+  var b=document.getElementById('copybtn'),t=document.getElementById('replytxt'),m=document.getElementById('copymsg');
+  if(b) b.addEventListener('click',function(){
+    var done=function(){m.textContent='コピーしました';};
+    var fb=function(){t.focus();t.select();m.textContent='選択しました。長押しでコピーしてください';};
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(done,fb);} else fb(); }catch(e){fb();}
+  });
+})();
+</script>

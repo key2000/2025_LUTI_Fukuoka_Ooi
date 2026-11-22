@@ -1,0 +1,20 @@
+# 今の17中心地の道路（混雑なし）・鉄道の所要時間行列が、メインと同じ網で再現できるか
+suppressMessages({library(sf);library(dplyr);library(cppRouting)})
+load("data/osm/link10.xdr"); load("data/osm/node10.xdr")
+load("data/dists0.xdr"); road0 <- dists0
+load("data/railway_dist.xdr"); rail0 <- dists0
+load("data/osm/rail_network.xdr"); load("data/osm/rail_network.nodes.xdr")
+nodes <- data.frame(node10$ID, st_coordinates(node10)); names(nodes) <- c("Node","X","Y")
+l <- link10 %>% mutate(FFtime = linklen/maxspeed*60/1e3)
+g <- makegraph(df = l[,c("ID1","ID2","FFtime")] %>% st_drop_geometry(), directed = TRUE, coords = nodes)
+m <- get_distance_matrix(g, from = rownames(road0), to = colnames(road0), algorithm = "mch")
+dd <- as.vector(m) - as.vector(road0[rownames(m), colnames(m)])
+cat("道路 dim", dim(road0), " 差の要約:\n"); print(summary(dd)); cat("一致率", mean(abs(dd)<0.01, na.rm=TRUE), " NA一致", identical(is.na(m), is.na(road0[rownames(m), colnames(m)])), "\n")
+lk <- data.frame(type=c("rail","subway","access"), speed=c(60,40,5))
+lr <- rbind(rail_network, rail_network %>% rename(ID1=ID2, ID2=ID1)) %>% left_join(lk, by="type") %>% mutate(FFtime=length/speed*60/1e3)
+nr <- data.frame(rail_network.nodes$nodeID, st_coordinates(rail_network.nodes)); names(nr) <- c("Node","X","Y")
+gr <- makegraph(df = lr[,c("ID1","ID2","FFtime")] %>% st_drop_geometry(), directed = TRUE, coords = nr)
+z <- rownames(rail0)[rownames(rail0) %in% nr$Node]; ce <- colnames(rail0)
+mr <- get_distance_matrix(gr, from = z, to = ce, algorithm = "mch")
+dr <- as.vector(mr) - as.vector(rail0[z, ce])
+cat("鉄道 dim", dim(rail0), " 網にあるゾーン", length(z), " 差の要約:\n"); print(summary(dr)); cat("一致率", mean(abs(dr)<0.01, na.rm=TRUE), "\n")

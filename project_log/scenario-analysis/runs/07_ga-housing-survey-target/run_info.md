@@ -1,8 +1,8 @@
 # シナリオ分析 実行記録（自動生成）
 
-- 実行日時: 2026-10-28 12:27
+- 実行日時: 2026-11-08 21:10
 - active_calibration: `07_ga-housing-survey-target`（project_log/calibration/07_ga-housing-survey-target/）
-- git commit: f3ed6d9（scripts/ に未コミットの変更あり）
+- git commit: bec2f2e（scripts/ に未コミットの変更あり）
 
 ## パラメータ
 
@@ -15,7 +15,7 @@
 
 ## シナリオ収束
 
-- 道路配分 max_gap = 0.001、LUTIループ msa = 0.5, tol = 100
-- scn0（Base Scenario (Current Conditions)）: converged = TRUE, iterations = 1, final_diff = 44.6, 総雇用 = 1226208
-- scn1（Scenario 1: Uniform Distribution）: converged = TRUE, iterations = 3, final_diff = 82.9, 総雇用 = 1226206
-- scn2（Scenario 2: CBD-Distance Weighted）: converged = TRUE, iterations = 5, final_diff = 53.4, 総雇用 = 1226209
+- 道路配分 max_gap = 0.001、LUTIループ 混合比 1/(n+1)・40回固定
+- scn0（Base Scenario (Current Conditions)）: iterations = 40, final_diff = 13.1, final_diff_avg = 0.00778, 総雇用 = 1226208
+- scn1（Scenario 1: Uniform Distribution）: iterations = 40, final_diff = 47.3, final_diff_avg = 0.0281, 総雇用 = 1226206
+- scn2（Scenario 2: CBD-Distance Weighted）: iterations = 40, final_diff = 34.7, final_diff_avg = 0.0207, 総雇用 = 1226209

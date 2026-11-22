@@ -1,0 +1,224 @@
+<title>中心地の集約方法</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Kaku+Gothic+New:wght@700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 縦1列の読み物。判断ごとに「背景→図→選択肢→推奨」の順。スマホ幅を基準に組む */
+:root{
+  --bg:#f5f7f5; --card:#ffffff; --fg:#1c2421; --muted:#5b6964; --line:#d3dbd7;
+  --accent:#0d6b66; --accent-soft:#dcefed; --warn:#a85a17; --warn-soft:#f7e8d9;
+  --band:#e6ebe8; --good:#2f7a3d;
+  --f-display:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-body:"BIZ UDPGothic","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --card:#19201d; --fg:#e3eae7; --muted:#9aa8a2; --line:#2d3733;
+  --accent:#4fc0b6; --accent-soft:#163532; --warn:#e3a066; --warn-soft:#3a2a1c;
+  --band:#222a27; --good:#6cc27c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111614; --card:#19201d; --fg:#e3eae7; --muted:#9aa8a2; --line:#2d3733;
+  --accent:#4fc0b6; --accent-soft:#163532; --warn:#e3a066; --warn-soft:#3a2a1c;
+  --band:#222a27; --good:#6cc27c; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.75}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 56px;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.4;margin:0}
+h1{font-size:1.55rem}
+h2{font-size:1.25rem}
+h3{font-size:1.02rem;margin-top:6px}
+p{margin:0}
+.lead{color:var(--muted);font-size:.93rem}
+section{display:flex;flex-direction:column;gap:14px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;color:var(--accent);text-transform:uppercase}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.rec{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.rec b{color:var(--accent)}
+.caution{border-left:4px solid var(--warn);background:var(--warn-soft);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.term{font-size:.88rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+.term b{color:var(--fg)}
+ul,ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:4px}
+.toc{display:flex;flex-direction:column;gap:8px}
+.toc a{display:grid;grid-template-columns:2.2em 1fr;gap:8px;text-decoration:none;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.toc a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toc .n{font-family:var(--f-mono);color:var(--accent);font-weight:500}
+.toc .q{font-weight:700}
+.toc .r{display:block;font-size:.85rem;color:var(--muted);font-weight:400}
+.fig{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 10px 8px;display:flex;flex-direction:column;gap:6px}
+.fig .cap{font-size:.84rem;color:var(--muted)}
+.fig .ttl{font-weight:700;font-size:.92rem}
+.svgbox{overflow-x:auto}
+svg{display:block;width:100%;height:auto;min-width:320px}
+svg text{fill:var(--fg);font-family:var(--f-body)}
+svg .mut{fill:var(--muted)}
+svg .acc{fill:var(--accent)} svg .wrn{fill:var(--warn)}
+svg .ax{stroke:var(--line);stroke-width:1}
+svg .grid{stroke:var(--line);stroke-width:.6;stroke-dasharray:2 3}
+svg .bandf{fill:var(--band)}
+svg .accs{stroke:var(--accent)} svg .wrns{stroke:var(--warn)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:420px}
+th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+th{font-weight:700;color:var(--muted);font-size:.8rem}
+.ok{color:var(--good);font-weight:700}.mid{color:var(--warn);font-weight:700}.ng{color:var(--warn);font-weight:700}
+.opts{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:640px){.opts.two{grid-template-columns:1fr 1fr}}
+.opt{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.opt.pick{border:2px solid var(--accent)}
+.opt .tag{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.opt.pick .tag{color:var(--accent);font-weight:500}
+.pm{display:grid;grid-template-columns:1.6em 1fr;gap:2px 4px;font-size:.9rem}
+.pm .p{color:var(--good);font-weight:700}.pm .m{color:var(--warn);font-weight:700}
+.formula{font-family:var(--f-mono);font-size:.85rem;background:var(--band);border-radius:6px;padding:10px;overflow-x:auto;white-space:pre}
+.reply{display:flex;flex-direction:column;gap:8px}
+textarea{width:100%;box-sizing:border-box;font-family:var(--f-mono);font-size:.88rem;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:9.5em}
+button{align-self:flex-start;font-family:var(--f-body);font-size:.92rem;background:var(--accent);color:var(--card);border:0;border-radius:6px;padding:8px 14px;font-weight:700}
+.small{font-size:.84rem;color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+</style>
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:8px">
+  <div class="eyebrow">福岡LUTI ・ 中心地の見直し ・ 2026-11-08（その3）</div>
+  <h1>中心地にまとめる方法を、直線距離のままにするか所要時間に変えるか</h1>
+  <p class="lead">ご指示どおり、中心地でないメッシュの雇用を「直線で一番近い中心地」にまとめる今のやり方（ボロノイ分割）と、「道路で一番早く着く中心地」にまとめるやり方で、割り当てがどれだけ違うかを確かめました。違いが思ったより大きかったので、どちらを使うか決めていただきたいです。判断は1つだけです。</p>
+</header>
+
+<section>
+  <div class="eyebrow">確かめたこと</div>
+  <h2>結果のまとめ</h2>
+  <div class="card">
+    <ul>
+      <li>中心地は決定どおり、17拠点＋2021年に単独で1万人以上のメッシュ15か所＝<b>32か所</b>（足すのはほとんど天神・博多・中洲・渡辺通・薬院あたり）。</li>
+      <li>所要時間は、道路網の<b>混んでいないときの時間</b>で、各メッシュから各中心地までの最短時間を出しました。</li>
+      <li>雇用は2021年の経済センサス（全産業）。</li>
+    </ul>
+    <div class="tbl"><table>
+      <thead><tr><th>中心地</th><th>割り当てが変わるメッシュ</th><th>変わる従業者</th></tr></thead>
+      <tbody>
+        <tr><td>今の17</td><td class="num">130 / 847（15%）</td><td class="num">23.8万人（18%）</td></tr>
+        <tr><td>2万人以上（24）</td><td class="num">136（16%）</td><td class="num">18.7万人（14%）</td></tr>
+        <tr><td><b>1万人以上（32、主）</b></td><td class="num"><b>151（18%）</b></td><td class="num"><b>20.9万人（16%）</b></td></tr>
+        <tr><td>5千人以上（46）</td><td class="num">141（17%）</td><td class="num">19.0万人（15%）</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図1　割り当てが変わる151メッシュの「時間の差」（中心地32の場合）</div>
+    <div class="svgbox">
+    <svg viewBox="0 0 400 150" role="img" aria-label="時間の差が5分以下が109メッシュ、5から10分が24、10分を超えるのが18">
+      <line class="ax" x1="110" y1="14" x2="110" y2="118"/><line class="ax" x1="110" y1="118" x2="380" y2="118"/>
+      <g class="grid"><line x1="200" y1="14" x2="200" y2="118"/><line x1="290" y1="14" x2="290" y2="118"/><line x1="380" y1="14" x2="380" y2="118"/></g>
+      <g font-size="10" text-anchor="middle"><text x="110" y="132" class="mut">0</text><text x="200" y="132" class="mut">40</text><text x="290" y="132" class="mut">80</text><text x="380" y="132" class="mut">120</text></g>
+      <text x="245" y="146" font-size="10" text-anchor="middle" class="mut">メッシュ数</text>
+      <g font-size="10.5"><text x="4" y="36">5分以下</text><text x="4" y="70">5〜10分</text><text x="4" y="104">10分超</text></g>
+      <rect x="110" y="24" width="245.3" height="18" style="fill:var(--muted)"/>
+      <rect x="110" y="58" width="54" height="18" style="fill:var(--muted)"/>
+      <rect x="110" y="92" width="40.5" height="18" style="fill:var(--warn)"/>
+      <g font-size="10" class="num"><text x="360" y="37">109</text><text x="169" y="71">24</text><text x="155" y="105">18（約1.4万人）</text></g>
+    </svg>
+    </div>
+    <div class="cap">「時間の差」＝直線で選んだ中心地までの時間 − 一番早く着く中心地までの時間。7割は5分以下で、境界の近くにあって、どちらの中心地に入れてもおかしくないメッシュです。</div>
+  </figure>
+
+  <figure class="fig" style="margin:0">
+    <div class="ttl">図2　10分以上ずれる例：直線が博多湾を越えている</div>
+    <div class="svgbox">
+    <svg viewBox="0 0 400 210" role="img" aria-label="博多湾の北側のメッシュが、直線では湾の向こうの西側の中心地に割り当てられ、道路ではアイランドシティのほうが早い">
+      <path d="M40,190 C90,150 120,120 170,118 C220,116 240,140 290,150 C330,158 360,175 380,190 Z" style="fill:var(--accent-soft)"/>
+      <path d="M40,190 C90,150 120,120 170,118 C220,116 240,140 290,150 C330,158 360,175 380,190" fill="none" style="stroke:var(--accent)" stroke-width="1"/>
+      <text x="200" y="170" font-size="12" text-anchor="middle" class="acc">博多湾</text>
+      <path d="M300,40 C270,60 230,80 190,95 C170,100 150,98 130,90" fill="none" style="stroke:var(--muted)" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
+      <text x="300" y="30" font-size="10" text-anchor="middle" class="mut">海の中道（陸続き）❓</text>
+      <rect x="118" y="78" width="22" height="22" style="fill:var(--warn)"/>
+      <text x="96" y="74" font-size="10" text-anchor="middle">湾の北側のメッシュ</text>
+      <circle cx="60" cy="190" r="6" style="fill:var(--fg)"/><text x="60" y="206" font-size="10" text-anchor="middle">姪浜・西新側</text>
+      <circle cx="330" cy="120" r="6" style="fill:var(--fg)"/><text x="330" y="108" font-size="10" text-anchor="middle">アイランドシティ</text>
+      <line x1="129" y1="100" x2="60" y2="184" stroke-dasharray="5 3" stroke-width="1.6" style="stroke:var(--warn)"/>
+      <text x="70" y="140" font-size="10" class="wrn">直線（海の上）</text>
+      <text x="70" y="153" font-size="10" class="wrn">道路では 約90分</text>
+      <path d="M140,92 C190,92 230,80 300,48 C320,60 330,90 330,112" fill="none" stroke-width="1.6" style="stroke:var(--accent)"/>
+      <text x="236" y="112" font-size="10" class="acc">道路で 約25〜40分</text>
+    </svg>
+    </div>
+    <div class="cap">模式図です（位置は大まか）。湾の北側のメッシュが、直線では湾の向こうの中心地に、道路では アイランドシティ に近いと判定されます。時間差は56〜62分で、直線距離のほうが明らかに不自然です。このようなメッシュが14〜18個（従業者 約0.9〜1.4万人）あります。地名は座標からの推定です。</div>
+  </figure>
+
+  <h3>中心地ごとの従業者数がどれだけ変わるか（中心地32の場合、差の大きい順）</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>中心地</th><th>直線</th><th>所要時間</th><th>差</th></tr></thead>
+    <tbody>
+      <tr><td>箱崎（50303344）</td><td class="num">82,980</td><td class="num">144,640</td><td class="num">+74%</td></tr>
+      <tr><td>50303314（都心の追加分）</td><td class="num">43,820</td><td class="num">17,363</td><td class="num">−60%</td></tr>
+      <tr><td>六本松（50302390）</td><td class="num">44,989</td><td class="num">70,727</td><td class="num">+57%</td></tr>
+      <tr><td>西新（50303208）</td><td class="num">39,051</td><td class="num">20,843</td><td class="num">−47%</td></tr>
+      <tr><td>香椎（50303395）</td><td class="num">55,127</td><td class="num">39,721</td><td class="num">−28%</td></tr>
+      <tr><td>姪浜（50303206）</td><td class="num">54,412</td><td class="num">41,118</td><td class="num">−24%</td></tr>
+      <tr><td>雑餉隈・南福岡（50302356）</td><td class="num">41,647</td><td class="num">29,683</td><td class="num">−29%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="small">都心のまわりでは中心地どうしが近く、数分の差で境界のメッシュを取り合うので、方法を変えると各中心地の人数が大きく動きます。都市圏の合計は同じです。</p>
+</section>
+
+<hr>
+
+<section id="d1">
+  <div class="eyebrow">判断 1 / 1</div>
+  <h2>どちらの方法でまとめるか</h2>
+  <div class="opts">
+    <div class="opt pick">
+      <div class="tag">推奨　(a) 道路の所要時間（混雑なし）で一番早く着く中心地にまとめる</div>
+      <div class="pm">
+        <span class="p">＋</span><span>海を越えるような不自然な割り当てがなくなる</span>
+        <span class="p">＋</span><span>モデルは通勤を所要時間で表しているので、「一番早く着く中心地で働いているとみなす」は筋が通る</span>
+        <span class="p">＋</span><span>道路網はもうあるので、作るのはすぐ（今回の確認と同じ計算）</span>
+        <span class="m">－</span><span>先生のボロノイの作り方から変わる（変更として記録する）。修論の結果とは中心地ごとの人数が違ってくる</span>
+        <span class="m">－</span><span>測るのは道路（自動車）の時間だけ。都心は鉄道通勤が多い</span>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="tag">(b) 直線距離（ボロノイ）のまま</div>
+      <div class="pm">
+        <span class="p">＋</span><span>先生の作り方のまま。説明が簡単</span>
+        <span class="m">－</span><span>博多湾を越える割り当て（約1万人）が残る。論文で限界として書く必要がある</span>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="tag">(c) 直線距離を基本に、大きくずれるメッシュだけ所要時間で直す</div>
+      <p>例えば時間差が10分を超える14〜18メッシュだけを、所要時間で一番早い中心地に移す。</p>
+      <div class="pm">
+        <span class="p">＋</span><span>先生の作り方をほぼ残しつつ、明らかなずれだけ直せる</span>
+        <span class="m">－</span><span>「10分」という新しい決めごとが増え、その根拠を説明する必要がある</span>
+      </div>
+    </div>
+  </div>
+  <div class="rec"><b>推奨：(a)</b><p>どの案でも、主の比較（2009・2014・2021）について一度だけ、もう一方の方法で集約した場合も回し、結論の向きが変わらないことを確かめます（感度分析）。鉄道の時間も含めた「一般化費用」で区切る方法もありますが、手段選択の結果に中心地の決め方が依存してしまうので、勧めません。</p></div>
+</section>
+
+<hr>
+
+<section id="reply">
+  <div class="eyebrow">返信用</div>
+  <h2>推奨どおりでよければ、これを送ってください</h2>
+  <div class="reply">
+    <label for="replytxt" class="small">直したいところだけ書き換えて、コピーしてチャットに貼ってください。</label>
+    <textarea id="replytxt">集約方法：(a) 道路の所要時間で一番早い中心地にまとめるでOK（感度分析でボロノイも1回）</textarea>
+    <button id="copybtn" type="button">コピー</button>
+    <span id="copymsg" class="small" aria-live="polite"></span>
+  </div>
+  <p class="small">ほかの5項目（案Cの導入・GA・EV・中心地の数・A/B/Sの賃金）は決定どおり進めています。案Cはメインスクリプトに導入済みです（元のやり方にも引数で戻せます）。詳しくは <span class="num">base-year-revision/07_center-assignment/notes.md</span>。</p>
+</section>
+</div>
+
+<script>
+(function(){
+  var b=document.getElementById('copybtn'),t=document.getElementById('replytxt'),m=document.getElementById('copymsg');
+  if(b) b.addEventListener('click',function(){
+    var done=function(){m.textContent='コピーしました';};
+    var fb=function(){t.focus();t.select();m.textContent='選択しました。長押しでコピーしてください';};
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(done,fb);} else fb(); }catch(e){fb();}
+  });
+})();
+</script>
